@@ -1,0 +1,29 @@
+{
+  "$comment": "kurisu 项目自动化权限配置",
+  "permissions": {
+    "allow": [
+      "Bash(*)",
+      "Bash(git:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(npm:*)",
+      "Bash(pnpm:*)",
+      "Bash(bun:*)",
+      "Bash(npx:*)",
+      "Write(**)",
+      "Edit(**)",
+      "mcp__*"
+    ],
+    "deny": [
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ~)"
+    ]
+  },
+  "automation": {
+    "autoCommit": true,
+    "autoPush": true,
+    "autoInstall": true,
+    "autoCreateFiles": true
+  }
+}
