@@ -212,10 +212,28 @@ kurisu/
     └── config/models/  # 模型管理模块
 ```
 
+### ✅ 规范文档优化 (2026-02-17)
+
+**变更**:
+- 新增 `.claude/INDEX.md` 作为规范单一入口
+- 精简 `.claude/TASK.md` (488→162行)
+- 精简 `.claude/rules/common/agents.md` 和 `git-workflow.md`
+- `CLAUDE.md` 添加规范索引入口
+
+**文档结构**:
+```
+CLAUDE.md (架构)
+    ↓
+.claude/INDEX.md (规范索引)
+    ├── TASK.md (任务流程)
+    └── rules/common/ (详细规范)
+```
+
 ## 快速恢复上下文
 
 新对话时，请让我读取以下文件：
 1. `PROGRESS.md` - 项目进度
 2. `CLAUDE.md` - 项目规范
-3. `.claude/TASK.md` - Agent Team 流程
-4. `docs/tasks/active/` - 当前任务详情
+3. `.claude/INDEX.md` - **规范索引 (新增)**
+4. `.claude/TASK.md` - Agent Team 流程
+5. `docs/tasks/active/` - 当前任务详情
