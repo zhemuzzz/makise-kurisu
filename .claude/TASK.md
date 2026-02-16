@@ -1,39 +1,38 @@
 # Agent Team Task Specification
 
-> kurisu 项目 Agent Team 任务规范
+> kurisu 项目任务规范 - 详细索引见 [INDEX.md](INDEX.md)
 
 ---
 
-## ⚡ TL;DR 执行清单 (必读)
+## ⚡ TL;DR 执行清单 (MANDATORY)
 
 > **开发新任务前必须遵守的流程**
 
-### 1️⃣ 任务启动前 (MANDATORY)
+### 1️⃣ 任务启动 (MANDATORY)
 
 ```
 □ 创建任务文档: docs/tasks/active/KURISU-XXX-[name].md
 □ 填写元信息: task_id, type, priority, layer, status
-□ 制定 Agent Team Plan: 明确并行/串行 agent
+□ 制定 Agent Team Plan
 □ ⛔ 等待用户确认 Plan 后再执行
 ```
 
-### 2️⃣ 执行阶段检查点 (MANDATORY)
+### 2️⃣ 执行检查点 (MANDATORY)
 
-每个子任务完成后 **必须**:
+每个 agent 完成后 **必须**:
 ```
 □ 更新任务文档进度 (打勾 ✓)
 □ 记录 agent 输出到对应区域
-□ 检查 context 使用率
-□ 如果 ≥65% → 提醒用户执行 /compact
+□ 检查 context 使用率，≥65% → 提醒用户 /compact
 ```
 
 **检查点序列**:
 ```
-planner 完成 → □ 检查 → architect 完成 → □ 检查 → tdd-guide 完成 → □ 检查
-                                                       ↓
-                                           实现阶段 (每完成一个文件 □ 检查)
-                                                       ↓
-                                           code-reviewer 完成 → □ 检查
+planner → □ 更新 → architect → □ 更新 → tdd-guide → □ 更新
+                                           ↓
+                               实现 (每文件 □ 更新)
+                                           ↓
+                               code-reviewer → □ 更新
 ```
 
 ### 3️⃣ 完成后 (MANDATORY)
@@ -47,264 +46,38 @@ planner 完成 → □ 检查 → architect 完成 → □ 检查 → tdd-guide 
 
 ### ⚠️ 常见违规
 
-| 违规行为 | 正确做法 |
-|----------|----------|
-| 直接开始编码 | 先创建任务文档，等用户确认 |
+| 违规 | 正确做法 |
+|------|----------|
+| 直接编码 | 先创建任务文档，等确认 |
 | 跳过 tdd-guide | 必须先写测试 |
-| 忘记 compact | 每个子任务完成后检查并提醒 |
+| 忘记 compact | 每个子任务完成后检查提醒 |
 | 只 commit 不 push | commit 后立即 push |
 
 ---
 
-## 任务元信息
-
-```yaml
-task_id: KURISU-001
-task_name: 人设引擎核心模块
-task_type: new_module | feature | bugfix | review | refactor
-priority: high | medium | low
-milestone: MVP | v1.0 | v1.1
-
-# 时间追踪
-created: 2026-02-16
-started: null
-completed: null
-estimated_time: 2h
-actual_time: null
-
-# 分配与关联
-assignee: agent_team
-related_tasks: [KURISU-002, KURISU-003]
-depends_on: []
-
-# 标签分类
-tags: [persona, core, langgraph]
-layer: L2  # 五层架构中的哪一层
-
-# 状态
-status: pending | planning | executing | reviewing | completed | blocked
-```
-
 ## 五层架构映射
 
-| Layer | 名称 | 前缀标签 |
-|-------|------|----------|
+| Layer | 名称 | 前缀 |
+|-------|------|------|
 | L1 | 交互网关层 (Gateway) | gateway |
-| L2 | 人设一致性引擎层 (Persona Engine) | persona |
-| L3 | Agent 编排层 (Agent Orchestrator) | agent |
-| L4 | 混合记忆引擎层 (Hybrid Memory) | memory |
+| L2 | 人设一致性引擎层 (Persona) | persona |
+| L3 | Agent 编排层 (Orchestrator) | agent |
+| L4 | 混合记忆引擎层 (Memory) | memory |
 | L5 | 基础设施层 (Infrastructure) | infra |
 
-## Agent 输出规范
-
-### planner 输出格式
-
-```markdown
-# 实现计划: [任务名]
-
-## 元信息
-- generated_at: 2026-02-16 10:30
-- model: opus | sonnet | haiku
-
-## 需求摘要
-[一句话描述]
-
-## 任务拆分
-| 序号 | 子任务 | 文件 | 复杂度 | 依赖 | 预估时间 |
-|------|--------|------|--------|------|----------|
-| 1 | 定义类型 | src/types.ts | 低 | - | 10min |
-| 2 | 实现核心 | src/core.ts | 高 | 1 | 30min |
-
-## 风险点
-| 风险 | 概率 | 影响 | 缓解方案 |
-|------|------|------|----------|
-| API 变更 | 低 | 高 | 封装适配层 |
-
-## 技术决策
-- 决策 1: 原因
-- 决策 2: 原因
-
-## 建议的 Agent Team
-- 并行: [agent列表]
-- 串行: [agent列表]
-```
-
-### architect 输出格式
-
-```markdown
-# 架构设计: [任务名]
-
-## 元信息
-- generated_at: 2026-02-16 10:35
-- model: opus | sonnet | haiku
-
-## 模块位置
-```
-src/
-├── persona/
-│   ├── engine.ts      # 人设引擎核心
-│   ├── validator.ts   # 校验器
-│   └── types.ts       # 类型定义
-```
-
-## 核心接口
-
-\`\`\`typescript
-interface PersonaEngine {
-  validate(message: Message): ValidationResult;
-  enforcePersona(response: string): string;
-}
-\`\`\`
-
-## 依赖关系
-| 依赖类型 | 模块 | 说明 |
-|----------|------|------|
-| 内部 | agent-orchestrator | 状态机集成 |
-| 外部 | @langchain/langgraph | 状态管理 |
-| 配置 | models.yaml | 模型配置 |
-
-## 数据流
-```
-用户输入 → 校验 → 处理 → 人设强化 → 输出
-```
-
-## 设计决策记录 (ADR)
-### ADR-001: [决策标题]
-- 背景: [为什么需要这个决策]
-- 决策: [选择了什么方案]
-- 备选: [考虑过的其他方案]
-- 后果: [决策的影响]
-```
-
-### tdd-guide 输出格式
-
-```markdown
-# 测试设计: [任务名]
-
-## 元信息
-- generated_at: 2026-02-16 10:40
-- model: sonnet | haiku
-
-## 测试文件
-| 文件 | 描述 | 用例数 |
-|------|------|--------|
-| tests/persona/engine.test.ts | 核心逻辑测试 | 5 |
-| tests/persona/validator.test.ts | 校验器测试 | 8 |
-
-## 测试用例
-| ID | 用例 | 描述 | 输入 | 预期输出 | 优先级 |
-|----|------|------|------|----------|--------|
-| TC01 | 校验合规消息 | 正常对话 | 正常文本 | isCompliant: true | P0 |
-| TC02 | 检测人设违规 | 卖萌内容 | 卖萌文本 | isCompliant: false | P0 |
-| TC03 | 边界情况 | 空消息 | 空字符串 | 抛出错误 | P1 |
-
-## 测试策略
-- 单元测试: 核心逻辑
-- 集成测试: 与 LangGraph 集成
-- E2E 测试: 完整对话流程（后续）
-
-## 覆盖目标
-- 行覆盖率: 80%+
-- 分支覆盖率: 75%+
-- 关键路径: 100%
-```
-
-### code-reviewer 输出格式
-
-```markdown
-# 代码审查: [任务名]
-
-## 元信息
-- generated_at: 2026-02-16 11:00
-- model: sonnet
-- files_reviewed: 3
-
-## 审查摘要
-- 审查文件: [文件列表]
-- 总体评价: 优秀 | 良好 | 需改进 | 不通过
-- 可合并: 是 | 否 | 需修改
-
-## 问题列表
-| ID | 级别 | 文件 | 行号 | 问题 | 建议 | 状态 |
-|----|------|------|------|------|------|------|
-| R01 | HIGH | x.ts | 42 | 直接修改状态 | 使用展开运算符 | 待修复 |
-| R02 | MEDIUM | y.ts | 15 | 缺少类型 | 添加类型注解 | 待修复 |
-
-## 检查清单
-- [ ] 代码可读性
-- [ ] 函数长度 (<50行)
-- [ ] 文件长度 (<800行)
-- [ ] 无深层嵌套 (>4层)
-- [ ] 错误处理完整
-- [ ] 无硬编码值
-- [ ] 状态不可变
-
-## 优点
-- 良好的错误处理
-- 清晰的函数命名
-
-## 建议改进
-- 建议 1
-```
-
-### security-reviewer 输出格式
-
-```markdown
-# 安全审查: [任务名]
-
-## 元信息
-- generated_at: 2026-02-16 11:05
-- model: sonnet
-
-## 安全检查清单
-- [ ] 无硬编码密钥
-- [ ] 用户数据隔离
-- [ ] 输入验证完整
-- [ ] 核心约束不可篡改
-- [ ] 错误信息不泄露敏感数据
-- [ ] 依赖无已知漏洞
-
-## 发现的问题
-| ID | 级别 | 位置 | 问题 | 修复建议 | 状态 |
-|----|------|------|------|----------|------|
-| S01 | HIGH | config.ts:10 | API Key 硬编码 | 使用环境变量 | 待修复 |
-
-## 安全建议
-- 建议 1
-
-## 合规性
-- [ ] 符合 kurisu 安全规范
-- [ ] 无敏感信息泄露风险
-```
-
-## 任务状态流转
-
-```
-pending → planning → executing → reviewing → completed
-   │         │          │           │          │
-   │         │          │           │          └─ 任务完成
-   │         │          │           └─ 审查阶段
-   │         │          └─ 实现阶段
-   │         └─ 分析设计阶段
-   └─ 等待开始
-
-特殊状态:
-- blocked: 被阻塞（依赖未完成）
-- cancelled: 已取消
-```
+---
 
 ## 任务模板
 
-开发新任务时，复制以下模板：
+开发新任务时，复制以下模板到 `docs/tasks/active/KURISU-XXX-[name].md`:
 
 ```markdown
 # Task: [任务名]
 
 ## 元信息
 - task_id: KURISU-XXX
-- type: new_module | feature | bugfix | review | refactor
+- type: new_module | feature | bugfix | refactor
 - priority: high | medium | low
-- milestone: MVP | v1.0
 - layer: L1 | L2 | L3 | L4 | L5
 - status: pending
 - tags: [tag1, tag2]
@@ -315,8 +88,8 @@ pending → planning → executing → reviewing → completed
 - actual_time: null
 
 ## 依赖
-- depends_on: [task_id]
-- related_tasks: [task_id]
+- depends_on: []
+- related_tasks: []
 
 ## 需求描述
 [描述要实现的功能]
@@ -330,18 +103,15 @@ pending → planning → executing → reviewing → completed
 - tests/path/to/test.ts
 
 ## Agent Team Plan
-[待确认后填写]
 
 ### Team 组合
 | Agent | 职责 | 执行方式 |
 |-------|------|----------|
-| planner | 分析 | 并行 |
-| architect | 设计 | 并行 |
+| planner | 分析 | 并行/串行 |
+| architect | 设计 | 并行/串行 |
 
 ### 执行流程
-```
 并行组 → 串行组 → 实现 → 审查
-```
 
 ## 进度
 - [ ] planner
@@ -349,139 +119,43 @@ pending → planning → executing → reviewing → completed
 - [ ] tdd-guide
 - [ ] 实现
 - [ ] code-reviewer
-- [ ] security-reviewer
 
 ## 输出汇总
 
 ### planner
 **时间**: [待填写]
-```markdown
-[planner 输出内容]
-```
+[planner 输出]
 
 ### architect
 **时间**: [待填写]
-```markdown
-[architect 输出内容]
-```
+[architect 输出]
 
 ### tdd-guide
 **时间**: [待填写]
-```markdown
-[tdd-guide 输出内容]
-```
+[tdd-guide 输出]
 
 ### code-reviewer
 **时间**: [待填写]
-```markdown
-[code-reviewer 输出内容]
-```
-
-### security-reviewer
-**时间**: [待填写]
-```markdown
-[security-reviewer 输出内容]
-```
+[code-reviewer 输出]
 
 ## 审查问题追踪
 | ID | 来源 | 问题 | 修复commit | 状态 |
 |----|------|------|-----------|------|
-| R01 | code-reviewer | 描述 | abc123 | 已修复 |
+| R01 | code-reviewer | 描述 | abc123 | 待修复 |
 
 ## 最终产出
 - 文件: [修改的文件列表]
 - 测试: [测试文件]
 - 覆盖率: X%
-- 备注: [其他说明]
-
-## 回顾总结
-[任务完成后的经验总结]
 ```
 
-## Context 管理 (Compact 规范)
+---
 
-### 触发策略
+## 相关规范
 
-| 触发条件 | 阈值/时机 | 说明 |
-|----------|-----------|------|
-| **阈值触发** | Context 达到 **65%** | 主动 compact，预留响应空间 |
-| **任务触发** | 子任务完成时 | 及时清理，避免累积 |
-
-### 执行规范
-
-1. **阈值触发 (65%)**
-   - 检测: 每次工具调用后检查 context 使用率
-   - 动作: 执行 `/compact` 保留关键上下文
-   - 保留内容: 当前任务进度、关键决策、待处理问题
-
-2. **任务触发**
-   - 时机: 每个 agent 子任务完成后
-   - 动作: 记录产出到 Progress.md，执行 compact
-   - 格式:
-     ```markdown
-     ## [子任务名] 完成
-
-     **产出**: [关键文件/决策]
-     **状态**: [完成/阻塞]
-     **下一步**: [后续任务]
-     ```
-
-### Compact 检查点
-
-在以下节点必须检查 context 使用率：
-
-```
-planner 完成 → 检查 → architect 完成 → 检查 → tdd-guide 完成 → 检查
-                                          ↓
-                              实现阶段 (每完成一个文件检查)
-                                          ↓
-                              code-reviewer 完成 → 检查 → security-reviewer 完成
-```
-
-### 进度保存格式
-
-每次 compact 前更新 Progress.md：
-
-```markdown
-## 检查点: [时间]
-
-### 当前任务
-- 任务ID: KURISU-XXX
-- 状态: [阶段]
-- 进度: X/Y 子任务完成
-
-### 已完成
-- [x] 子任务1: 产出描述
-- [x] 子任务2: 产出描述
-
-### 待处理
-- [ ] 子任务3
-- [ ] 问题修复: [问题描述]
-
-### 关键决策
-- 决策1: 原因
-```
-
-## 使用流程
-
-1. **创建任务**：复制模板，填写需求和元信息
-2. **确认 Plan**：展示 Agent Team Plan，等待用户确认
-3. **执行阶段**：按顺序执行 agent，更新进度和时间戳
-4. **问题追踪**：审查问题记录到追踪表
-5. **汇总输出**：将各 agent 输出填入对应区域
-6. **完成归档**：填写实际耗时、回顾总结
-
-**注意**: 每个子任务完成后检查 context，达到 65% 或任务完成时执行 compact
-
-## 任务归档
-
-完成的任务建议移动到 `docs/tasks/archive/` 目录：
-```
-docs/tasks/
-├── active/
-│   └── KURISU-001-persona-engine.md
-├── archive/
-│   └── 2026-02/
-│       └── KURISU-001-persona-engine.md
-└── TASK-TEMPLATE.md
-```
+| 规范 | 文件 |
+|------|------|
+| Git 提交 | [git-workflow.md](rules/common/git-workflow.md) |
+| Agent 协作 | [agents.md](rules/common/agents.md) |
+| 测试要求 | [testing.md](rules/common/testing.md) |
+| 代码风格 | [coding-style.md](rules/common/coding-style.md) |

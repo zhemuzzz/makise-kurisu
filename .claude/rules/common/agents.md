@@ -2,26 +2,7 @@
 
 > kurisu 项目 Agent 协作规范
 
-## ⚠️ Agent Team 完整流程
-
-> **重要**: 开发新任务必须遵守 `.claude/TASK.md` 的 TL;DR 执行清单
-
-### 执行检查点 (MANDATORY)
-
-每个 agent 完成后 **必须**:
-```
-□ 更新任务文档进度 (docs/tasks/active/KURISU-XXX.md)
-□ 记录 agent 输出到对应区域
-□ 检查 context 使用率，≥65% 时提醒用户 /compact
-```
-
-```
-planner 完成 → □ 更新 → architect 完成 → □ 更新 → tdd-guide 完成 → □ 更新
-                                                    ↓
-                                        实现阶段 (每完成一个文件 □ 更新)
-                                                    ↓
-                                        code-reviewer 完成 → □ 更新
-```
+> **任务流程**: 开发新任务必须遵守 [TASK.md](../../TASK.md) 的 TL;DR 执行清单
 
 ---
 
