@@ -1,0 +1,37 @@
+# 模型配置文件
+# 位置: config/models.yaml
+
+# 默认模型配置
+defaults:
+  conversation: glm-5
+  task: glm-5
+  reasoning: glm-5
+  embedding: glm-5
+
+# 模型定义
+models:
+  # 主模型 (glm-5 via Anthropic 兼容 API)
+  - name: glm-5
+    type: api
+    provider: anthropic
+    endpoint: ${ANTHROPIC_BASE_URL}
+    apiKey: ${ANTHROPIC_API_KEY}
+    maxTokens: 8192
+    defaultTemperature: 0.7
+    timeout: 60000
+    capabilities:
+      maxTokens: 8192
+      supportsStreaming: true
+      supportsVision: false
+      supportsFunctionCalling: true
+      quality: excellent
+      speed: fast
+      cost: low
+    costPerMillionTokens: 0.5
+
+# 路由规则
+routing:
+  rules:
+    conversation: glm-5
+    code: glm-5
+    reasoning: glm-5
