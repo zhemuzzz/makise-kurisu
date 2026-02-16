@@ -6,8 +6,8 @@
  * 如果不指定 model-name，则测试所有模型
  */
 
-import "dotenv/config";
 import { resolve } from "path";
+import { config } from "dotenv";
 import {
   loadConfig,
   ModelProvider,
@@ -16,6 +16,9 @@ import {
 
 // 获取项目根目录
 const projectRoot = resolve(__dirname, "..");
+
+// 从项目根目录加载 .env 文件
+config({ path: resolve(projectRoot, ".env") });
 
 interface TestResult {
   model: string;

@@ -28,6 +28,7 @@ export interface ModelConfig {
   provider: string;
   endpoint?: string;
   apiKey?: string;
+  authType?: "x-api-key" | "bearer"; // 认证方式
   model?: string;
   modelPath?: string;
   maxTokens?: number;

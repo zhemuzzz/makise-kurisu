@@ -1,8 +1,8 @@
 /**
- * Anthropic 兼容 API Provider
- * 位置: src/config/models/providers/anthropic.ts
+ * OpenAI 兼容 API Provider
+ * 位置: src/config/models/providers/openai-compatible.ts
  *
- * 支持 glm-5 等通过 Anthropic 兼容 API 访问的模型
+ * 支持 OpenAI 格式的 API（如 minimax、deepseek 等）
  */
 
 import type {
@@ -20,32 +20,21 @@ import type {
 interface HttpClientConfig {
   baseURL: string;
   apiKey?: string;
-  authType?: "x-api-key" | "bearer";
   timeout?: number;
 }
 
 /**
- * 简单 HTTP 客户端（用于 MVP 阶段）
+ * 简单 HTTP 客户端
  */
 class HttpClient {
   private readonly baseURL: string;
   private readonly apiKey?: string;
-  private readonly authType: "x-api-key" | "bearer";
   private readonly timeout: number;
 
   constructor(config: HttpClientConfig) {
     this.baseURL = config.baseURL;
     this.apiKey = config.apiKey;
-    this.authType = config.authType ?? "x-api-key";
     this.timeout = config.timeout ?? 30000;
-  }
-
-  private getAuthHeader(): Record<string, string> {
-    if (!this.apiKey) return {};
-    if (this.authType === "bearer") {
-      return { Authorization: `Bearer ${this.apiKey}` };
-    }
-    return { "x-api-key": this.apiKey };
   }
 
   async post<T>(path: string, body: Record<string, unknown>): Promise<T> {
@@ -53,8 +42,7 @@ class HttpClient {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...this.getAuthHeader(),
-        "anthropic-version": "2023-06-01",
+        Authorization: `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(this.timeout),
@@ -76,8 +64,7 @@ class HttpClient {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...this.getAuthHeader(),
-        "anthropic-version": "2023-06-01",
+        Authorization: `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify({ ...body, stream: true }),
       signal: AbortSignal.timeout(this.timeout),
@@ -111,9 +98,8 @@ class HttpClient {
           try {
             yield JSON.parse(data);
           } catch (parseError) {
-            // 记录解析错误用于调试，但不中断流处理
             console.debug(
-              "[AnthropicClient] Failed to parse SSE data:",
+              "[OpenAIClient] Failed to parse SSE data:",
               data.substring(0, 100),
               parseError,
             );
@@ -125,9 +111,9 @@ class HttpClient {
 }
 
 /**
- * Anthropic 兼容模型实现
+ * OpenAI 兼容模型实现
  */
-export class AnthropicCompatibleModel implements IModel {
+export class OpenAICompatibleModel implements IModel {
   readonly name: string;
   readonly type: string;
   readonly provider: string;
@@ -141,9 +127,8 @@ export class AnthropicCompatibleModel implements IModel {
     this.provider = config.provider;
     this.config = config;
     this.client = new HttpClient({
-      baseURL: config.endpoint ?? "https://api.anthropic.com",
+      baseURL: config.endpoint ?? "https://api.openai.com",
       apiKey: config.apiKey,
-      authType: config.authType,
       timeout: config.timeout,
     });
   }
@@ -158,39 +143,40 @@ export class AnthropicCompatibleModel implements IModel {
 
     const startTime = Date.now();
 
-    // 分离 system 消息
-    const systemMessage = messages.find((m) => m.role === "system");
-    const chatMessages = messages.filter((m) => m.role !== "system");
+    // 转换消息格式为 OpenAI 格式
+    const openaiMessages = messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
 
     const response = await this.client.post<{
-      content: Array<{ type: string; text: string }>;
-      usage: { input_tokens: number; output_tokens: number };
-      stop_reason: string;
-    }>("/v1/messages", {
+      choices: Array<{
+        message: { content: string };
+        finish_reason: string;
+      }>;
+      usage: { prompt_tokens: number; completion_tokens: number };
+    }>("/v1/chat/completions", {
       model: this.config.model ?? this.name,
-      messages: chatMessages.map((m) => ({
-        role: m.role === "assistant" ? "assistant" : "user",
-        content: m.content,
-      })),
-      system: systemMessage?.content,
+      messages: openaiMessages,
       max_tokens: options?.maxTokens ?? this.config.maxTokens ?? 4096,
-      temperature:
-        options?.temperature ?? this.config.defaultTemperature ?? 0.7,
+      temperature: options?.temperature ?? this.config.defaultTemperature ?? 0.7,
     });
 
-    const textContent =
-      response.content.find((c) => c.type === "text")?.text ?? "";
+    const content = response.choices[0]?.message?.content ?? "";
 
     return {
-      content: textContent,
+      content,
       usage: {
-        promptTokens: response.usage.input_tokens,
-        completionTokens: response.usage.output_tokens,
-        totalTokens: response.usage.input_tokens + response.usage.output_tokens,
+        promptTokens: response.usage?.prompt_tokens ?? 0,
+        completionTokens: response.usage?.completion_tokens ?? 0,
+        totalTokens:
+          (response.usage?.prompt_tokens ?? 0) +
+          (response.usage?.completion_tokens ?? 0),
       },
       model: this.name,
       latency: Date.now() - startTime,
-      finishReason: response.stop_reason === "end_turn" ? "stop" : "length",
+      finishReason:
+        response.choices[0]?.finish_reason === "stop" ? "stop" : "length",
     };
   }
 
@@ -202,36 +188,38 @@ export class AnthropicCompatibleModel implements IModel {
       throw new Error("Messages cannot be empty");
     }
 
-    // 分离 system 消息
-    const systemMessage = messages.find((m) => m.role === "system");
-    const chatMessages = messages.filter((m) => m.role !== "system");
+    const openaiMessages = messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
 
-    const stream = this.client.postStream("/v1/messages", {
+    const stream = this.client.postStream("/v1/chat/completions", {
       model: this.config.model ?? this.name,
-      messages: chatMessages.map((m) => ({
-        role: m.role === "assistant" ? "assistant" : "user",
-        content: m.content,
-      })),
-      system: systemMessage?.content,
+      messages: openaiMessages,
       max_tokens: options?.maxTokens ?? this.config.maxTokens ?? 4096,
-      temperature:
-        options?.temperature ?? this.config.defaultTemperature ?? 0.7,
+      temperature: options?.temperature ?? this.config.defaultTemperature ?? 0.7,
     });
 
     for await (const chunk of stream) {
-      const chunkType = chunk.type as string;
+      const choices = chunk.choices as
+        | Array<{ delta?: { content?: string }; finish_reason?: string }>
+        | undefined;
 
-      if (chunkType === "content_block_delta") {
-        const delta = chunk.delta as { text?: string };
-        if (delta.text) {
+      if (choices?.[0]) {
+        const delta = choices[0].delta?.content;
+        const finishReason = choices[0].finish_reason;
+
+        if (delta) {
           yield {
-            content: delta.text,
+            content: delta,
             done: false,
-            delta: delta.text,
+            delta,
           };
         }
-      } else if (chunkType === "message_stop") {
-        yield { content: "", done: true };
+
+        if (finishReason) {
+          yield { content: "", done: true };
+        }
       }
     }
   }
@@ -263,4 +251,4 @@ export class AnthropicCompatibleModel implements IModel {
   }
 }
 
-export default AnthropicCompatibleModel;
+export default OpenAICompatibleModel;

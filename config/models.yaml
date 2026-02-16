@@ -69,13 +69,13 @@ models:
       cost: medium
     costPerMillionTokens: 3.0
 
-  # ============ minimax2.5 (minimax API) ============
-  - name: minimax2.5
+  # ============ MiniMax-M2.5 (minimax API) ============
+  - name: MiniMax-M2.5
     type: api
     provider: anthropic-compatible
     endpoint: ${MINIMAX_BASE_URL}
     apiKey: ${MINIMAX_API_KEY}
-    model: minimax2.5
+    model: MiniMax-M2.5
     maxTokens: 8192
     defaultTemperature: 0.7
     timeout: 60000
@@ -90,9 +90,11 @@ models:
     costPerMillionTokens: 0.3
 
 # 路由规则
+# 开发阶段使用 GLM-5 + MiniMax 组合
+# Claude 官方模型需要单独的 API Key (console.anthropic.com)
 routing:
   rules:
     conversation: glm-5
-    code: claude-sonnet-4-5
-    reasoning: claude-opus-4-6
+    code: glm-5              # 代码生成/理解
+    reasoning: MiniMax-M2.5  # 复杂推理
     embedding: glm-5

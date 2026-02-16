@@ -149,6 +149,43 @@ class HybridMemoryEngine {
 | 记忆系统 | 瞬时 + 短期记忆 | 长期记忆 |
 | 交互网关 | 文本流式 | 语音 + 直播 |
 
+## 模型使用策略
+
+### Claude Code Agent Team 开发
+
+开发阶段使用 **Opus 4.6 → GLM-5** 级联策略：
+
+| 阶段 | 模型 | 触发条件 |
+|------|------|----------|
+| 默认 | claude-opus-4-6 | 正常开发 |
+| 降级 | claude-sonnet-4-5 | Opus token 达到上限 |
+| 备用 | glm-5 | Claude token 完全耗尽 |
+
+### 切换规则
+
+1. **优先使用 Opus 4.6** - 复杂推理、代码 review、架构设计
+2. **Token 上限时** - 用 `/model claude-sonnet-4-5` 切换
+3. **Claude 不可用时** - 用 `/model glm-5` 切换（需配置）
+
+### kurisu 项目内部调用
+
+kurisu 项目独立的模型调用使用 `config/models.yaml` 配置：
+
+```yaml
+routing:
+  rules:
+    conversation: glm-5
+    code: glm-5              # 代码生成/理解
+    reasoning: MiniMax-M2.5  # 复杂推理
+    embedding: glm-5
+```
+
+### 注意事项
+
+- Claude Code subagent 继承主 CLI 模型配置，无法单独指定
+- kurisu 内部调用的模型与 Claude Code CLI 使用的模型是独立的
+- 开发阶段优先使用 GLM-5 + MiniMax 组合，性价比更高
+
 ## 开发规范
 
 1. 先跑通最小闭环，再堆功能

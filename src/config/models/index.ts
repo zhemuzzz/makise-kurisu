@@ -13,12 +13,14 @@ import {
   CapabilityNotConfiguredError,
 } from "./types";
 import { AnthropicCompatibleModel } from "./providers/anthropic";
+import { OpenAICompatibleModel } from "./providers/openai-compatible";
 
 // 导出类型和错误
 export * from "./types";
 export { injectEnvVars, EnvResolver } from "./env";
 export { YamlConfigLoader, loadConfig, loadConfigFromString } from "./loader";
 export { AnthropicCompatibleModel } from "./providers/anthropic";
+export { OpenAICompatibleModel } from "./providers/openai-compatible";
 
 /**
  * Provider 工厂：根据配置创建模型实例
@@ -29,9 +31,11 @@ function createModel(config: ModelConfig): IModel {
     case "anthropic-compatible":
       return new AnthropicCompatibleModel(config);
 
+    case "openai":
+    case "openai-compatible":
+      return new OpenAICompatibleModel(config);
+
     // 未来扩展其他 provider
-    // case 'openai':
-    //   return new OpenAIModel(config);
     // case 'ollama':
     //   return new OllamaModel(config);
 
