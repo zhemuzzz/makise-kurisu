@@ -62,14 +62,33 @@ git commit → 更新 PROGRESS.md → 保存记忆 → /compact
 | 条件 | 动作 |
 |------|------|
 | 每次 git commit 完成后 | **必须** compact |
-| Context 达到 65% | **主动** compact（不等 commit） |
-| 子任务阶段切换时 | **建议** compact |
+| Context 达到自动阈值 | Claude Code **自动** compact（见下方配置） |
+| 子任务阶段切换时 | **建议** 手动 `/compact` |
+
+### 自动 Compact 配置
+
+Claude Code 内置自动 compact，通过环境变量控制触发阈值：
+
+```bash
+# 在 shell profile (~/.zshrc 或 ~/.bashrc) 中添加：
+export CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=75
+```
+
+| 配置项 | 值 | 说明 |
+|--------|-----|------|
+| `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `75` | Context 使用达 75% 时自动 compact |
+| 默认值（不设置） | `~83.5%` | Claude Code 默认阈值 |
+| 取值范围 | `1-100` | 越小越早触发，越大可用 context 越多 |
+
+**推荐 75%**：比默认提前触发，为 post-commit 保存流程预留足够空间。
 
 ### Compact 前必须保存
 
 1. **PROGRESS.md** — 本次变更摘要、模块状态更新
 2. **auto memory (MEMORY.md)** — 项目知识、决策、踩坑记录
 3. **TodoWrite** — 标记已完成任务，记录待办
+
+> 注意：自动 compact 不会等你保存，所以养成 **commit 后立即保存** 的习惯。
 
 ### 目的
 
