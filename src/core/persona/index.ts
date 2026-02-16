@@ -3,8 +3,8 @@
  * 三层管控：硬约束 → 心智模型 → 合规校验
  */
 
-import { MentalModel, PersonaHardcoded, ValidationResult } from './types';
-import { PERSONA_HARDCODED } from './constants';
+import { MentalModel, PersonaHardcoded, ValidationResult } from "./types";
+import { PERSONA_HARDCODED } from "./constants";
 
 export class PersonaEngine {
   private mentalModel: MentalModel;
@@ -12,15 +12,15 @@ export class PersonaEngine {
   constructor(initialModel?: Partial<MentalModel>) {
     this.mentalModel = {
       user_profile: {
-        name: '',
-        relationship: 'stranger',
+        name: "",
+        relationship: "stranger",
         preferences: [],
         ...initialModel?.user_profile,
       },
       relationship_graph: {
         trust_level: 0,
         familiarity: 0,
-        emotional_state: 'neutral',
+        emotional_state: "neutral",
         ...initialModel?.relationship_graph,
       },
       shared_memories: {
@@ -66,12 +66,12 @@ export class PersonaEngine {
 
     // 检查是否违反核心人设
     if (this.containsOutOfCharacterPhrases(response)) {
-      violations.push('包含不符合人设的表达');
+      violations.push("包含不符合人设的表达");
     }
 
     // 检查是否记住关系状态
     if (!this.reflectsRelationshipLevel(response)) {
-      violations.push('未反映正确的关系程度');
+      violations.push("未反映正确的关系程度");
     }
 
     return {
@@ -93,10 +93,10 @@ ${persona.content}
 
 ## 当前状态
 - 与用户关系：${model.relationship_graph.familiarity}%熟悉度
-- 用户偏好：${model.user_profile.preferences.join('、')}
+- 用户偏好：${model.user_profile.preferences.join("、")}
 
 ## 最近对话
-${memories.slice(-5).join('\n')}
+${memories.slice(-5).join("\n")}
 
 ## 当前用户输入
 ${userMessage}
@@ -113,7 +113,7 @@ ${userMessage}
   }
 
   private containsOutOfCharacterPhrases(text: string): boolean {
-    const oocPhrases = ['作为AI', '作为人工智能', '我无法', '我是一个程序'];
+    const oocPhrases = ["作为AI", "作为人工智能", "我无法", "我是一个程序"];
     return oocPhrases.some((phrase) => text.includes(phrase));
   }
 
@@ -122,9 +122,65 @@ ${userMessage}
     const familiarity = this.mentalModel.relationship_graph.familiarity;
     if (familiarity < 20) {
       // 陌生阶段：应该更冷淡
-      const tooFriendly = ['亲爱的', '宝贝', '最喜欢你了'];
+      const tooFriendly = ["亲爱的", "宝贝", "最喜欢你了"];
       return !tooFriendly.some((phrase) => text.includes(phrase));
     }
     return true;
+  }
+
+  /**
+   * 强化响应的人设特征
+   * 添加傲娇标记、调整语气
+   */
+  enforcePersona(response: string): string {
+    if (!response || response.trim() === "") {
+      return response;
+    }
+
+    let enforced = response;
+
+    // 检查是否已有傲娇标记
+    const tsundereMarkers = ["哼", "笨蛋", "才不是", "才没有", "你这家伙"];
+    const hasTsundereMarker = tsundereMarkers.some((marker) =>
+      enforced.includes(marker),
+    );
+
+    // 如果没有傲娇标记，添加一个
+    if (!hasTsundereMarker) {
+      const prefix = Math.random() > 0.5 ? "哼，" : "";
+      const suffix =
+        Math.random() > 0.5
+          ? ""
+          : Math.random() > 0.5
+            ? "。笨蛋。"
+            : "。你这家伙。";
+      enforced = prefix + enforced + suffix;
+    }
+
+    return enforced;
+  }
+
+  /**
+   * 获取系统提示词
+   * 用于注入到对话上下文
+   */
+  getSystemPrompt(): string {
+    const persona = this.getHardcodedPersona();
+    const model = this.getMentalModel();
+
+    return `${persona.content}
+
+## 当前状态
+- 与用户关系：${model.user_profile.relationship} (${model.relationship_graph.familiarity}%熟悉度)
+- 用户偏好：${model.user_profile.preferences.length > 0 ? model.user_profile.preferences.join("、") : "未知"}
+
+## 回复要求
+1. 保持人设：傲娇、理性、科学
+2. 反映关系：根据熟悉度调整态度
+3. 禁止出戏：
+   - 不要说"作为AI"、"我无法..."
+   - 始终保持在 Kurisu 的角色中
+
+现在，你已完全沉浸在牧濑红莉栖的角色中。`;
   }
 }
