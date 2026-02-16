@@ -2,6 +2,60 @@
 
 > kurisu 项目 Agent Team 任务规范
 
+---
+
+## ⚡ TL;DR 执行清单 (必读)
+
+> **开发新任务前必须遵守的流程**
+
+### 1️⃣ 任务启动前 (MANDATORY)
+
+```
+□ 创建任务文档: docs/tasks/active/KURISU-XXX-[name].md
+□ 填写元信息: task_id, type, priority, layer, status
+□ 制定 Agent Team Plan: 明确并行/串行 agent
+□ ⛔ 等待用户确认 Plan 后再执行
+```
+
+### 2️⃣ 执行阶段检查点 (MANDATORY)
+
+每个子任务完成后 **必须**:
+```
+□ 更新任务文档进度 (打勾 ✓)
+□ 记录 agent 输出到对应区域
+□ 检查 context 使用率
+□ 如果 ≥65% → 提醒用户执行 /compact
+```
+
+**检查点序列**:
+```
+planner 完成 → □ 检查 → architect 完成 → □ 检查 → tdd-guide 完成 → □ 检查
+                                                       ↓
+                                           实现阶段 (每完成一个文件 □ 检查)
+                                                       ↓
+                                           code-reviewer 完成 → □ 检查
+```
+
+### 3️⃣ 完成后 (MANDATORY)
+
+```
+□ 更新 PROGRESS.md
+□ 更新 MEMORY.md (关键决策/踩坑)
+□ Git commit + push
+□ 提醒用户执行 /compact
+```
+
+### ⚠️ 常见违规
+
+| 违规行为 | 正确做法 |
+|----------|----------|
+| 直接开始编码 | 先创建任务文档，等用户确认 |
+| 跳过 tdd-guide | 必须先写测试 |
+| 忘记 compact | 每个子任务完成后检查并提醒 |
+| 只 commit 不 push | commit 后立即 push |
+
+---
+
 ## 任务元信息
 
 ```yaml
@@ -344,6 +398,70 @@ pending → planning → executing → reviewing → completed
 [任务完成后的经验总结]
 ```
 
+## Context 管理 (Compact 规范)
+
+### 触发策略
+
+| 触发条件 | 阈值/时机 | 说明 |
+|----------|-----------|------|
+| **阈值触发** | Context 达到 **65%** | 主动 compact，预留响应空间 |
+| **任务触发** | 子任务完成时 | 及时清理，避免累积 |
+
+### 执行规范
+
+1. **阈值触发 (65%)**
+   - 检测: 每次工具调用后检查 context 使用率
+   - 动作: 执行 `/compact` 保留关键上下文
+   - 保留内容: 当前任务进度、关键决策、待处理问题
+
+2. **任务触发**
+   - 时机: 每个 agent 子任务完成后
+   - 动作: 记录产出到 Progress.md，执行 compact
+   - 格式:
+     ```markdown
+     ## [子任务名] 完成
+
+     **产出**: [关键文件/决策]
+     **状态**: [完成/阻塞]
+     **下一步**: [后续任务]
+     ```
+
+### Compact 检查点
+
+在以下节点必须检查 context 使用率：
+
+```
+planner 完成 → 检查 → architect 完成 → 检查 → tdd-guide 完成 → 检查
+                                          ↓
+                              实现阶段 (每完成一个文件检查)
+                                          ↓
+                              code-reviewer 完成 → 检查 → security-reviewer 完成
+```
+
+### 进度保存格式
+
+每次 compact 前更新 Progress.md：
+
+```markdown
+## 检查点: [时间]
+
+### 当前任务
+- 任务ID: KURISU-XXX
+- 状态: [阶段]
+- 进度: X/Y 子任务完成
+
+### 已完成
+- [x] 子任务1: 产出描述
+- [x] 子任务2: 产出描述
+
+### 待处理
+- [ ] 子任务3
+- [ ] 问题修复: [问题描述]
+
+### 关键决策
+- 决策1: 原因
+```
+
 ## 使用流程
 
 1. **创建任务**：复制模板，填写需求和元信息
@@ -352,6 +470,8 @@ pending → planning → executing → reviewing → completed
 4. **问题追踪**：审查问题记录到追踪表
 5. **汇总输出**：将各 agent 输出填入对应区域
 6. **完成归档**：填写实际耗时、回顾总结
+
+**注意**: 每个子任务完成后检查 context，达到 65% 或任务完成时执行 compact
 
 ## 任务归档
 

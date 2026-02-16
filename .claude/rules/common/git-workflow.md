@@ -23,31 +23,52 @@ When creating PRs:
 
 ## Feature Implementation Workflow
 
-1. **Plan First**
-   - Use **planner** agent to create implementation plan
-   - Identify dependencies and risks
-   - Break down into phases
+> 详见 `.claude/TASK.md` 的 TL;DR 执行清单
 
-2. **TDD Approach**
-   - Use **tdd-guide** agent
-   - Write tests first (RED)
-   - Implement to pass tests (GREEN)
-   - Refactor (IMPROVE)
-   - Verify 80%+ coverage
+### 0️⃣ 任务启动 (MANDATORY - 最重要)
 
-3. **Code Review**
-   - Use **code-reviewer** agent immediately after writing code
-   - Address CRITICAL and HIGH issues
-   - Fix MEDIUM issues when possible
+```
+□ 创建任务文档: docs/tasks/active/KURISU-XXX-[name].md
+□ 填写元信息并制定 Agent Team Plan
+□ ⛔ 等待用户确认 Plan 后再执行
+```
 
-4. **Commit & Push**
-   - Detailed commit messages
-   - Follow conventional commits format
+**任务文档模板**: 见 `.claude/TASK.md` 底部
 
-5. **Post-Commit (MANDATORY)**
-   - Update `PROGRESS.md` with changes summary
-   - Save key learnings to auto memory (`MEMORY.md`)
-   - Execute `/compact` to compress context
+### 1️⃣ Plan First
+
+- Use **planner** agent to create implementation plan
+- Identify dependencies and risks
+- Break down into phases
+- **更新任务文档进度**
+
+### 2️⃣ TDD Approach
+
+- Use **tdd-guide** agent
+- Write tests first (RED)
+- Implement to pass tests (GREEN)
+- Refactor (IMPROVE)
+- Verify 80%+ coverage
+- **更新任务文档进度**
+
+### 3️⃣ Code Review
+
+- Use **code-reviewer** agent immediately after writing code
+- Address CRITICAL and HIGH issues
+- Fix MEDIUM issues when possible
+- **更新任务文档进度**
+
+### 4️⃣ Commit & Push
+
+- Detailed commit messages
+- Follow conventional commits format
+- **Push immediately after commit** (不要只 commit 不 push)
+
+### 5️⃣ Post-Commit (MANDATORY)
+
+- Update `PROGRESS.md` with changes summary
+- Save key learnings to auto memory (`MEMORY.md`)
+- **提醒用户执行 `/compact`**
 
 ## Post-Commit Compact 规范
 
