@@ -98,6 +98,18 @@ embedding: glm-5
 
 ## 待办
 
+### L2 人设引擎 - 待实现模块
+
+**源文件** (测试已就绪，待实现):
+| 文件 | 类 | 测试数 | 优先级 |
+|------|-----|--------|--------|
+| `src/core/persona/validator.ts` | PersonaValidator | 76 tests | P2 |
+| `src/core/persona/enforcer.ts` | PersonaEnforcer | 45 tests | P2 |
+| `src/core/persona/prompt-builder.ts` | PromptBuilder | 40 tests | P2 |
+| 集成测试 `persona-flow.test.ts` | - | 14 tests | P2 |
+
+**说明**: 上述测试文件已使用 `describe.skip()` 跳过，待源文件实现后启用。
+
 ### MVP 范围
 
 | 模块 | 范围 | 状态 | 优先级 |

@@ -4,7 +4,7 @@
  */
 
 import { MentalModel, PersonaHardcoded, ValidationResult } from "./types";
-import { PERSONA_HARDCODED } from "./constants";
+import { PERSONA_HARDCODED, OOC_PHRASES } from "./constants";
 
 export class PersonaEngine {
   private mentalModel: MentalModel;
@@ -42,10 +42,10 @@ export class PersonaEngine {
   }
 
   /**
-   * 获取当前心智模型
+   * 获取当前心智模型（深拷贝）
    */
   getMentalModel(): MentalModel {
-    return this.mentalModel;
+    return structuredClone(this.mentalModel);
   }
 
   /**
@@ -113,8 +113,7 @@ ${userMessage}
   }
 
   private containsOutOfCharacterPhrases(text: string): boolean {
-    const oocPhrases = ["作为AI", "作为人工智能", "我无法", "我是一个程序"];
-    return oocPhrases.some((phrase) => text.includes(phrase));
+    return OOC_PHRASES.some((phrase) => text.includes(phrase));
   }
 
   private reflectsRelationshipLevel(text: string): boolean {

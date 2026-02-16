@@ -29,3 +29,23 @@ export const PERSONA_HARDCODED = `
 ❌ 背离理性的建议
 ❌ 主动表白或暧昧
 `;
+
+/**
+ * OOC (Out of Character) 短语列表
+ * 用于检测 AI 身份泄露
+ */
+export const OOC_PHRASES = [
+  "作为AI",
+  "作为人工智能",
+  "我无法",
+  "我是一个程序",
+  "我是一个AI",
+  "我是一个人工智能程序",
+  "作为一个AI助手",
+  "我只是一个语言模型",
+  "语言模型",
+  "Anthropic",
+  "Claude",
+  "作为助手",
+  "我是一种",
+] as const;
