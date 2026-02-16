@@ -193,6 +193,7 @@ routing:
 3. TypeScript 严格类型，禁止 any
 4. 核心模块先写测试，再写业务代码
 5. 敏感信息禁止硬编码
+6. **每次 git commit 后必须**：更新 PROGRESS.md → 保存记忆 → 执行 `/compact`
 
 ## RP 模型 Prompt 工程最佳实践
 
