@@ -6,7 +6,7 @@
 // ============ 消息类型 ============
 
 export interface Message {
-  role: 'system' | 'user' | 'assistant';
+  role: "system" | "user" | "assistant";
   content: string;
 }
 
@@ -17,14 +17,14 @@ export interface ModelCapabilities {
   supportsStreaming: boolean;
   supportsVision: boolean;
   supportsFunctionCalling: boolean;
-  quality: 'basic' | 'good' | 'excellent';
-  speed: 'slow' | 'medium' | 'fast';
-  cost: 'low' | 'medium' | 'high';
+  quality: "basic" | "good" | "excellent";
+  speed: "slow" | "medium" | "fast";
+  cost: "low" | "medium" | "high";
 }
 
 export interface ModelConfig {
   name: string;
-  type: 'local' | 'cloud' | 'api';
+  type: "local" | "cloud" | "api";
   provider: string;
   endpoint?: string;
   apiKey?: string;
@@ -71,7 +71,7 @@ export interface ChatResponse {
   };
   model: string;
   latency: number;
-  finishReason?: 'stop' | 'length' | 'error';
+  finishReason?: "stop" | "length" | "error";
 }
 
 // ============ 核心接口 ============
@@ -82,7 +82,10 @@ export interface IModel {
   readonly provider: string;
 
   chat(messages: Message[], options?: ChatOptions): Promise<ChatResponse>;
-  stream(messages: Message[], options?: ChatOptions): AsyncGenerator<StreamChunk>;
+  stream(
+    messages: Message[],
+    options?: ChatOptions,
+  ): AsyncGenerator<StreamChunk>;
 
   supportsStreaming(): boolean;
   supportsVision(): boolean;
@@ -114,44 +117,48 @@ export interface IConfigLoader {
 
 // ============ 错误类型 ============
 
-export class ConfigLoadError extends Error {
-  constructor(message: string, public readonly cause?: Error) {
-    super(message);
-    this.name = 'ConfigLoadError';
+/**
+ * 基础错误类，提供统一的错误处理
+ */
+export abstract class KurisuError extends Error {
+  constructor(message: string, options?: { cause?: Error }) {
+    super(message, options);
+    this.name = this.constructor.name;
   }
 }
 
-export class ValidationError extends Error {
+export class ConfigLoadError extends KurisuError {
+  constructor(message: string, options?: { cause?: Error }) {
+    super(message, options);
+  }
+}
+
+export class ValidationError extends KurisuError {
   constructor(message: string) {
     super(message);
-    this.name = 'ValidationError';
   }
 }
 
-export class FileNotFoundError extends Error {
+export class FileNotFoundError extends KurisuError {
   constructor(public readonly path: string) {
     super(`Config file not found: ${path}`);
-    this.name = 'FileNotFoundError';
   }
 }
 
-export class EnvVarMissingError extends Error {
+export class EnvVarMissingError extends KurisuError {
   constructor(public readonly varName: string) {
     super(`Missing required environment variable: ${varName}`);
-    this.name = 'EnvVarMissingError';
   }
 }
 
-export class ModelNotFoundError extends Error {
+export class ModelNotFoundError extends KurisuError {
   constructor(public readonly modelName: string) {
     super(`Model not found: ${modelName}`);
-    this.name = 'ModelNotFoundError';
   }
 }
 
-export class CapabilityNotConfiguredError extends Error {
+export class CapabilityNotConfiguredError extends KurisuError {
   constructor(public readonly capability: string) {
     super(`No model configured for capability: ${capability}`);
-    this.name = 'CapabilityNotConfiguredError';
   }
 }

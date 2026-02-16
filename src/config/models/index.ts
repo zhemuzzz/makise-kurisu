@@ -11,22 +11,22 @@ import {
   type ModelConfig,
   ModelNotFoundError,
   CapabilityNotConfiguredError,
-} from './types';
-import { AnthropicCompatibleModel } from './providers/anthropic';
+} from "./types";
+import { AnthropicCompatibleModel } from "./providers/anthropic";
 
 // 导出类型和错误
-export * from './types';
-export { injectEnvVars, EnvResolver } from './env';
-export { YamlConfigLoader, loadConfig, loadConfigFromString } from './loader';
-export { AnthropicCompatibleModel } from './providers/anthropic';
+export * from "./types";
+export { injectEnvVars, EnvResolver } from "./env";
+export { YamlConfigLoader, loadConfig, loadConfigFromString } from "./loader";
+export { AnthropicCompatibleModel } from "./providers/anthropic";
 
 /**
  * Provider 工厂：根据配置创建模型实例
  */
 function createModel(config: ModelConfig): IModel {
   switch (config.provider) {
-    case 'anthropic':
-    case 'anthropic-compatible':
+    case "anthropic":
+    case "anthropic-compatible":
       return new AnthropicCompatibleModel(config);
 
     // 未来扩展其他 provider
@@ -49,7 +49,10 @@ export class ModelProvider implements IModelProvider {
   private readonly models: Map<string, IModel> = new Map();
   private defaults: Record<string, string>;
 
-  constructor(configs: ModelConfig[] = [], defaults: Record<string, string> = {}) {
+  constructor(
+    configs: ModelConfig[] = [],
+    defaults: Record<string, string> = {},
+  ) {
     this.defaults = { ...defaults };
     configs.forEach((config) => this.registerModel(config));
   }
@@ -82,10 +85,10 @@ export class ModelProvider implements IModelProvider {
   getByTask(taskType: string): IModel {
     // 任务类型映射到能力
     const taskToCapability: Record<string, string> = {
-      conversation: 'conversation',
-      code: 'code',
-      reasoning: 'reasoning',
-      embedding: 'embedding',
+      conversation: "conversation",
+      code: "code",
+      reasoning: "reasoning",
+      embedding: "embedding",
     };
 
     const capability = taskToCapability[taskType] ?? taskType;
@@ -119,19 +122,72 @@ export class ModelProvider implements IModelProvider {
   }
 
   /**
-   * 健康检查
+   * 检查模型能力（不发起 API 调用）
+   * 用于快速验证模型配置是否有效
    */
-  async healthCheck(): Promise<Map<string, boolean>> {
-    const results = new Map<string, boolean>();
+  checkCapabilities(): Map<
+    string,
+    { streaming: boolean; vision: boolean; functionCalling: boolean }
+  > {
+    const results = new Map<
+      string,
+      { streaming: boolean; vision: boolean; functionCalling: boolean }
+    >();
 
     for (const [name, model] of this.models) {
       try {
-        // 简单的可用性检查
-        results.set(name, model.supportsStreaming());
+        results.set(name, {
+          streaming: model.supportsStreaming(),
+          vision: model.supportsVision(),
+          functionCalling: model.supportsFunctionCalling(),
+        });
       } catch {
-        results.set(name, false);
+        results.set(name, {
+          streaming: false,
+          vision: false,
+          functionCalling: false,
+        });
       }
     }
+
+    return results;
+  }
+
+  /**
+   * 健康检查（可选发起 API 调用验证连通性）
+   * @param options.verifyConnectivity - 是否发起 API 调用验证连通性（默认 false）
+   */
+  async healthCheck(options?: {
+    verifyConnectivity?: boolean;
+  }): Promise<Map<string, boolean>> {
+    const results = new Map<string, boolean>();
+
+    // 如果不验证连通性，只检查模型是否注册
+    if (!options?.verifyConnectivity) {
+      for (const [name] of this.models) {
+        results.set(name, true);
+      }
+      return results;
+    }
+
+    // 验证连通性：对每个模型发起最小化 API 调用
+    await Promise.all(
+      Array.from(this.models.entries()).map(async ([name, model]) => {
+        try {
+          // 发起最小化请求验证连通性
+          await model.chat([{ role: "user", content: "ping" }], {
+            maxTokens: 1,
+          });
+          results.set(name, true);
+        } catch (error) {
+          console.debug(
+            `[ModelProvider] Health check failed for ${name}:`,
+            error,
+          );
+          results.set(name, false);
+        }
+      }),
+    );
 
     return results;
   }
@@ -142,7 +198,7 @@ export class ModelProvider implements IModelProvider {
  */
 export function createModelProvider(
   configs: ModelConfig[] = [],
-  defaults: Record<string, string> = {}
+  defaults: Record<string, string> = {},
 ): IModelProvider {
   return new ModelProvider(configs, defaults);
 }
