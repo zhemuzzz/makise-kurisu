@@ -33,6 +33,9 @@ coverage/
 *.sqlite
 *.sqlite3
 
+# Claude Code - local settings (permissions, sandbox config)
+.claude/settings.local.json
+
 # Temporary
 .tmp/
 tmp/
