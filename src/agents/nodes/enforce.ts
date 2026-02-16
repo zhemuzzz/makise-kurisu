@@ -29,12 +29,12 @@ export function createEnforceNode(deps: EnforceNodeDeps) {
     memoryEngine.addSessionMessage(sessionId, state.currentInput, "user");
     memoryEngine.addSessionMessage(sessionId, enforcedResponse, "assistant");
 
-    // 更新消息列表中的响应
+    // 更新消息列表中的响应（创建新对象确保不可变性）
     const updatedMessages = messages.map((msg) => {
       if (msg.role === "assistant" && msg.content === currentResponse) {
         return { ...msg, content: enforcedResponse };
       }
-      return msg;
+      return { ...msg };
     });
 
     return {

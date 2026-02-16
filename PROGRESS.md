@@ -47,6 +47,12 @@ START → context_build → route → conversation/task → validate → enforce
 
 **测试状态**: ✅ 21 通过
 
+**Code Review** (2026-02-17):
+- CRITICAL: 0
+- HIGH: 3 (测试覆盖率不足, 意图路由简单, enforce mutation 风险 - 已修复)
+- MEDIUM: 5 (待后续优化)
+- LOW: 3 (LangGraph as any 已知问题)
+
 **API**:
 ```typescript
 const orchestrator = new AgentOrchestrator(deps, config);
@@ -135,9 +141,10 @@ embedding: glm-5
 
 **待确认**: 请指定下一个开发任务
 
-**建议优先级** (按依赖顺序):
-1. **L3 Agent 编排** - 单 Agent 对话
-2. **L1 交互网关** - 文本流式
+**建议优先级**:
+1. **L1 交互网关** - 文本流式
+2. **L3 测试覆盖率** - 补充到 80%+
+3. **L3 意图路由** - 改进分类算法
 
 ## 待办
 
