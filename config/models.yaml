@@ -5,12 +5,12 @@
 defaults:
   conversation: glm-5
   task: glm-5
-  reasoning: glm-5
+  reasoning: claude-opus-4-6
   embedding: glm-5
 
 # 模型定义
 models:
-  # 主模型 (glm-5 via Anthropic 兼容 API)
+  # ============ glm-5 (智谱 GLM via Anthropic 兼容 API) ============
   - name: glm-5
     type: api
     provider: anthropic
@@ -29,9 +29,70 @@ models:
       cost: low
     costPerMillionTokens: 0.5
 
+  # ============ Claude Opus 4.6 (官方 API) ============
+  - name: claude-opus-4-6
+    type: api
+    provider: anthropic
+    endpoint: ${CLAUDE_BASE_URL}
+    apiKey: ${CLAUDE_API_KEY}
+    model: claude-opus-4-6-20250528
+    maxTokens: 32768
+    defaultTemperature: 0.7
+    timeout: 120000
+    capabilities:
+      maxTokens: 32768
+      supportsStreaming: true
+      supportsVision: true
+      supportsFunctionCalling: true
+      quality: excellent
+      speed: slow
+      cost: high
+    costPerMillionTokens: 15.0
+
+  # ============ Claude Sonnet 4.5 (官方 API) ============
+  - name: claude-sonnet-4-5
+    type: api
+    provider: anthropic
+    endpoint: ${CLAUDE_BASE_URL}
+    apiKey: ${CLAUDE_API_KEY}
+    model: claude-sonnet-4-5-20250929
+    maxTokens: 16384
+    defaultTemperature: 0.7
+    timeout: 90000
+    capabilities:
+      maxTokens: 16384
+      supportsStreaming: true
+      supportsVision: true
+      supportsFunctionCalling: true
+      quality: excellent
+      speed: fast
+      cost: medium
+    costPerMillionTokens: 3.0
+
+  # ============ minimax2.5 (minimax API) ============
+  - name: minimax2.5
+    type: api
+    provider: anthropic-compatible
+    endpoint: ${MINIMAX_BASE_URL}
+    apiKey: ${MINIMAX_API_KEY}
+    model: minimax2.5
+    maxTokens: 8192
+    defaultTemperature: 0.7
+    timeout: 60000
+    capabilities:
+      maxTokens: 8192
+      supportsStreaming: true
+      supportsVision: false
+      supportsFunctionCalling: true
+      quality: good
+      speed: fast
+      cost: low
+    costPerMillionTokens: 0.3
+
 # 路由规则
 routing:
   rules:
     conversation: glm-5
-    code: glm-5
-    reasoning: glm-5
+    code: claude-sonnet-4-5
+    reasoning: claude-opus-4-6
+    embedding: glm-5
