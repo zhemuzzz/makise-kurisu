@@ -6,9 +6,52 @@
 ## 当前状态
 
 **阶段**: MVP 开发
-**焦点**: L4 记忆系统 - ✅ 测试修复完成
+**焦点**: L3 Agent 编排 - ✅ 完成
 
 ## 已完成
+
+### ✅ L3 Agent 编排层 (2026-02-17)
+
+**架构**: LangGraph 状态机 + 依赖注入
+
+**文件结构**:
+```
+src/agents/
+├── types.ts              # 类型定义 (AgentState, AgentRole, etc.)
+├── errors.ts             # 错误类
+├── state.ts              # 状态通道 + 辅助函数
+├── nodes/                # 状态机节点
+│   ├── context-build.ts  # 上下文构建
+│   ├── route.ts          # 意图路由
+│   ├── generate.ts       # 响应生成
+│   ├── validate.ts       # 人设校验
+│   └── enforce.ts        # 人设强化
+├── routers/              # 条件路由
+│   └── intent-router.ts
+├── workflow.ts           # LangGraph 工作流
+├── orchestrator.ts       # 编排器主类
+└── index.ts              # 导出
+```
+
+**状态流转**:
+```
+START → context_build → route → conversation/task → validate → enforce → END
+                                         ↑                    |
+                                         └────────────────────┘ (retry)
+```
+
+**集成**:
+- L2 人设引擎: `PersonaEngine.validate()`, `enforcePersona()`, `getSystemPrompt()`
+- L4 记忆系统: `HybridMemoryEngine.buildContext()`, `getRecentMessages()`, `addSessionMessage()`
+- L5 模型配置: `ModelProvider.getByTask('conversation')`
+
+**测试状态**: ✅ 21 通过
+
+**API**:
+```typescript
+const orchestrator = new AgentOrchestrator(deps, config);
+const result = await orchestrator.process(sessionId, userId, input);
+```
 
 ### ✅ L2 人设引擎 - 核心模块 (2026-02-16)
 
@@ -120,7 +163,7 @@ embedding: glm-5
 | 模块 | 范围 | 状态 | 优先级 |
 |------|------|------|--------|
 | L2 人设引擎 | 核心硬约束 + 基础校验 | ✅ 已完成 | P0 |
-| L3 Agent 编排 | 单 Agent 对话 | ⏳ 待开始 | P1 |
+| L3 Agent 编排 | 单 Agent 对话 | ✅ 已完成 | P1 |
 | L4 记忆系统 | 瞬时 + 短期记忆 | ✅ 已完成 | P1 |
 | L1 交互网关 | 文本流式 | ⏳ 待开始 | P2 |
 
