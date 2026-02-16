@@ -1,23 +1,13 @@
 {
-  "$comment": "kurisu 项目自动化权限配置",
+  "$comment": "kurisu 项目 - 完全自动化权限（可通过 git 回滚）",
+  "dangerouslyDisableSandbox": true,
   "permissions": {
     "allow": [
+      "Bash(dangerous:*)",
       "Bash(*)",
-      "Bash(git:*)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
-      "Bash(git push:*)",
-      "Bash(npm:*)",
-      "Bash(pnpm:*)",
-      "Bash(bun:*)",
-      "Bash(npx:*)",
       "Write(**)",
       "Edit(**)",
       "mcp__*"
-    ],
-    "deny": [
-      "Bash(rm -rf /*)",
-      "Bash(rm -rf ~)"
     ]
   },
   "automation": {
