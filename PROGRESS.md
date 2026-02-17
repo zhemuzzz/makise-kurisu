@@ -1,14 +1,46 @@
 # Kurisu 项目进度追踪
 
-> 最后更新: 2026-02-17
+> 最后更新: 2026-02-18
 > 状态: 开发中
 
 ## 当前状态
 
-**阶段**: MVP 后续增强
-**焦点**: 待定 - 可选择生产部署准备
+**阶段**: 生产部署准备
+**焦点**: Docker + CI/CD 配置完成
 
 ## 已完成
+
+### ✅ KURISU-011 生产部署配置 (2026-02-18)
+
+**任务**: 添加 Docker 容器化 + GitHub Actions CI/CD
+
+**新增文件**:
+| 文件 | 用途 |
+|------|------|
+| `Dockerfile` | 多阶段构建，非 root 用户，健康检查 |
+| `docker-compose.yml` | 容器编排配置 |
+| `.dockerignore` | Docker 构建排除 |
+| `.github/workflows/ci.yml` | CI/CD 流水线 |
+| `src/bin/cli.ts` | CLI 命令行入口 |
+| `src/bin/server.ts` | HTTP API 服务入口 |
+
+**HTTP API 端点**:
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/health` | GET | 健康检查 |
+| `/ready` | GET | 就绪检查 |
+| `/api/sessions` | POST | 创建会话 |
+| `/api/sessions/:id/messages` | POST | 发送消息 |
+| `/api/sessions/:id/stream` | POST | 流式消息 (SSE) |
+
+**新增 npm 脚本**:
+- `dev:cli` / `dev:server` - 开发模式
+- `start:cli` / `start:server` - 生产模式
+- `docker:build` / `docker:run` / `docker:compose` - Docker 操作
+
+**CI/CD 流水线**:
+- Push 到 main: 自动测试 + 构建 Docker 镜像
+- PR: 测试 + 安全扫描
 
 ### ✅ KURISU-010 人设文档修正 (2026-02-17)
 
