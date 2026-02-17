@@ -5,10 +5,55 @@
 
 ## 当前状态
 
-**阶段**: MVP 开发
-**焦点**: E2E 测试 - ✅ 完成
+**阶段**: MVP 后续增强
+**焦点**: Lore 集成 PromptBuilder - ✅ 完成
 
 ## 已完成
+
+### ✅ Code Review 5 个 HIGH 级别问题修复 (2026-02-17)
+
+**任务**: 修复人设引擎代码质量问题
+
+**修复内容**:
+| ID | 问题 | 修复方案 |
+|----|------|----------|
+| H1 | PersonaEngine 与子模块职责重叠 | 改为 facade 模式，委托给 Validator/Enforcer/PromptBuilder |
+| H2 | enforcePersona 使用 Math.random() | 委托给 enforcer（确定性 seededRandom） |
+| H3 | reflectsRelationshipLevel 硬编码亲密词 | 删除方法，使用 INTIMATE_KEYWORDS 常量 |
+| H4 | enforce 使用 let 可变模式 | 新增 `pipe()` 管道函数，改为不可变模式 |
+| H5 | checkRelationshipConsistency 硬编码 | 改用 INTIMATE_KEYWORDS 常量 |
+
+**新增功能**:
+- `PersonaEnforcer.pipe<T>()` - 管道函数，支持不可变数据流
+
+**修改文件**:
+- `src/core/persona/index.ts` - facade 模式重构
+- `src/core/persona/enforcer.ts` - 管道模式 + 不可变
+- `src/core/persona/validator.ts` - 使用常量
+
+**测试状态**: ✅ 304 通过 (7 files)
+
+### ✅ KURISU-008 Lore 集成 PromptBuilder (2026-02-17)
+
+**任务**: 将 Steins;Gate 术语库集成到 RP 提示词
+
+**修改文件**:
+| 文件 | 变更 |
+|------|------|
+| `src/core/persona/prompt-builder.ts` | 新增 `buildLoreSection()` + `formatLoreTerm()` |
+| `tests/unit/persona/prompt-builder.test.ts` | 新增 8 个 lore 集成测试 |
+
+**实现方案**: 两层独立 Lore 注入
+- **静态背景**: 高重要性术语 (importance >= 4)，最多 8 个
+- **上下文相关**: 根据用户输入 `searchLore()` 匹配，去重 + 按重要性排序，最多 3 个
+
+**Code Review 修复**:
+- 消除双重 `getHighImportanceLore()` 调用
+- 两层独立组合（不再互相阻断）
+- `let line +=` 改为 immutable ternary
+- 搜索查询截断 500 字符
+
+**测试状态**: ✅ 839 passed (原 831 + 新增 8)
 
 ### ✅ Kurisu 人设参考文档 (2026-02-17)
 
