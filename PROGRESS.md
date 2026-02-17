@@ -1,12 +1,12 @@
 # Kurisu 项目进度追踪
 
 > 最后更新: 2026-02-18
-> 状态: MVP 完成，生产部署准备中
+> 状态: MVP 完成，多平台接入开发中
 
 ## 当前状态
 
-**阶段**: 生产部署准备
-**焦点**: 微信/Telegram 渠道接入
+**阶段**: KURISU-013 多平台接入
+**焦点**: Phase 0 完成，Phase 1 统一 Server 开发中
 
 ## 已完成模块
 
@@ -21,7 +21,18 @@
 | E2E | 端到端测试 | 67 | - |
 | L5 | 基础设施 | - | - |
 
-**总计**: 862 tests, 83.25% coverage
+**总计**: 902 tests, 83.25% coverage
+
+### KURISU-013 多平台接入 (2026-02-18)
+
+**Phase 0 完成** ✅
+- 扩展 `ChannelType` 枚举: WECHAT/WECOM/QQ/TELEGRAM/FEISHU/DINGTALK
+- 统一消息格式: `InboundMessage`/`OutboundMessage` 接口
+- `BaseChannel` 抽象基类: 生命周期管理 + 工具方法
+- `MockChannel` 实现: 用于测试 Server 和 Gateway
+- +40 测试用例
+
+**下一步**: Phase 1 统一 Server 骨架
 
 ### 近期完成 (2026-02-17~18)
 
