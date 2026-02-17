@@ -9,6 +9,13 @@ import {
   TSUNDERE_PREFIXES,
   EMOTIONAL_KEYWORDS,
   TSUNDERE_KEYWORDS,
+  TRIGGER_KEYWORDS,
+  TRIGGER_PRIORITY,
+  TRIGGER_INTENSITY,
+  TRIGGER_RESPONSES,
+  TriggerType,
+  TriggerMatch,
+  TriggerResponse,
 } from "./constants";
 
 /**
@@ -57,9 +64,10 @@ export class PersonaEnforcer {
   /**
    * 强化响应的人设特征
    * @param response 要强化的响应文本
+   * @param userInput 可选的用户输入（用于触发检测）
    * @returns 强化后的响应
    */
-  enforce(response: string): string {
+  enforce(response: string, userInput?: string): string {
     // 输入验证
     if (response === null || response === undefined) {
       return DEFAULT_RESPONSE;
@@ -75,11 +83,14 @@ export class PersonaEnforcer {
     }
 
     // 重置种子以确保相同输入产生相同输出
-    this.seed = this.hashString(trimmed);
+    this.seed = this.hashString(trimmed + (userInput || ""));
 
     // 使用管道模式（不可变）
     // 先检查傲娇特征（在 OOC 移除前）
     const hasTsundere = this.hasTsundereMarkers(trimmed);
+
+    // 检测用户输入中的触发词
+    const trigger = userInput ? this.detectTrigger(userInput) : null;
 
     // 管道处理
     const result = this.pipe(
@@ -89,6 +100,8 @@ export class PersonaEnforcer {
         this.hasEmotionalContent(text)
           ? this.addEmotionalHesitation(text)
           : text,
+      // 应用触发响应
+      (text) => (trigger ? this.applyTriggerResponse(trigger, text) : text),
       (text) => (hasTsundere ? text : this.addTsunderePrefix(text)),
       (text) => this.adjustForRelationship(text),
     );
@@ -131,6 +144,78 @@ export class PersonaEnforcer {
    */
   private hasEmotionalContent(text: string): boolean {
     return EMOTIONAL_KEYWORDS.some((keyword) => text.includes(keyword));
+  }
+
+  /**
+   * 检测用户输入中的触发关键词
+   * @param userInput 用户输入
+   * @returns 触发匹配结果，可能为 null
+   */
+  detectTrigger(userInput: string): TriggerMatch | null {
+    if (!userInput || typeof userInput !== "string") {
+      return null;
+    }
+
+    const lowerInput = userInput.toLowerCase();
+
+    // 按优先级顺序检查触发类型
+    for (const type of TRIGGER_PRIORITY) {
+      const keywords = TRIGGER_KEYWORDS[type];
+      for (const keyword of keywords) {
+        if (lowerInput.includes(keyword.toLowerCase())) {
+          return {
+            type,
+            matchedKeyword: keyword,
+            intensity: TRIGGER_INTENSITY[type],
+          };
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * 根据触发类型生成响应
+   * @param trigger 触发匹配结果
+   * @param originalResponse 原始响应
+   * @returns 转换后的响应
+   */
+  applyTriggerResponse(
+    trigger: TriggerMatch,
+    originalResponse: string,
+  ): string {
+    const responses = TRIGGER_RESPONSES[trigger.type];
+
+    // 确定性选择响应模板
+    const index = Math.floor(this.seededRandom() * responses.length);
+    const selected = responses[index];
+
+    // 构建触发反应
+    const triggerReaction = this.buildTriggerReaction(selected);
+
+    // 如果原响应已有傲娇标记，只添加触发反应前缀
+    if (this.hasTsundereMarkers(originalResponse)) {
+      return `${triggerReaction} ${originalResponse}`;
+    }
+
+    // 对于强触发，反应占主导
+    if (trigger.intensity === "strong") {
+      return triggerReaction;
+    }
+
+    // 对于中等和轻微触发，组合反应和原响应
+    return `${triggerReaction} ${originalResponse}`;
+  }
+
+  /**
+   * 构建触发反应文本
+   */
+  private buildTriggerReaction(response: TriggerResponse): string {
+    const parts = [response.prefix, response.template, response.suffix].filter(
+      (part): part is string => Boolean(part),
+    );
+    return parts.join("");
   }
 
   /**

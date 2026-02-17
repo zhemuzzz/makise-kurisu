@@ -323,4 +323,254 @@ describe("PersonaEnforcer", () => {
       expect(duration).toBeLessThan(100);
     });
   });
+
+  // ===== 触发词功能测试 =====
+  describe("detectTrigger", () => {
+    it("should detect nickname trigger: Christina", () => {
+      const result = enforcer.detectTrigger("Christina, 你怎么看？");
+
+      expect(result).not.toBeNull();
+      expect(result?.type).toBe("nickname");
+      expect(result?.matchedKeyword).toBe("Christina");
+    });
+
+    it("should detect nickname trigger: 助手", () => {
+      const result = enforcer.detectTrigger("助手，帮我看看这个");
+
+      expect(result?.type).toBe("nickname");
+      expect(result?.matchedKeyword).toBe("助手");
+    });
+
+    it("should detect tsundere_call trigger", () => {
+      const result = enforcer.detectTrigger("你真傲娇啊");
+
+      expect(result?.type).toBe("tsundere_call");
+      expect(result?.intensity).toBe("moderate");
+    });
+
+    it("should detect compliment trigger", () => {
+      const result = enforcer.detectTrigger("你真是个天才");
+
+      expect(result?.type).toBe("compliment");
+      expect(result?.matchedKeyword).toBe("天才");
+      expect(result?.intensity).toBe("mild");
+    });
+
+    it("should detect chest trigger with strong intensity", () => {
+      const result = enforcer.detectTrigger("你胸部好小");
+
+      expect(result?.type).toBe("chest");
+      expect(result?.intensity).toBe("strong");
+    });
+
+    it("should detect cockroach trigger with strong intensity", () => {
+      const result = enforcer.detectTrigger("有蟑螂！");
+
+      expect(result?.type).toBe("cockroach");
+      expect(result?.intensity).toBe("strong");
+    });
+
+    it("should return null for non-trigger input", () => {
+      const result = enforcer.detectTrigger("今天天气怎么样？");
+
+      expect(result).toBeNull();
+    });
+
+    it("should prioritize strong triggers (cockroach over nickname)", () => {
+      // 同时包含蟑螂和助手，应该优先返回蟑螂
+      const result = enforcer.detectTrigger("助手，有蟑螂！");
+
+      expect(result?.type).toBe("cockroach");
+    });
+
+    it("should prioritize chest over compliment", () => {
+      // 同时包含胸部和天才
+      const result = enforcer.detectTrigger("天才，你胸部好小");
+
+      expect(result?.type).toBe("chest");
+    });
+
+    it("should handle case-insensitive matching", () => {
+      const result = enforcer.detectTrigger("CHRISTINA!");
+
+      expect(result?.type).toBe("nickname");
+    });
+
+    it("should handle empty input", () => {
+      expect(enforcer.detectTrigger("")).toBeNull();
+    });
+
+    it("should handle null input", () => {
+      expect(enforcer.detectTrigger(null as unknown as string)).toBeNull();
+    });
+
+    it("should handle undefined input", () => {
+      expect(enforcer.detectTrigger(undefined as unknown as string)).toBeNull();
+    });
+  });
+
+  describe("applyTriggerResponse", () => {
+    it("should generate nickname reaction", () => {
+      const trigger = {
+        type: "nickname" as const,
+        matchedKeyword: "Christina",
+        intensity: "mild" as const,
+      };
+      const result = enforcer.applyTriggerResponse(
+        trigger,
+        "我觉得这个理论很有趣",
+      );
+
+      // 应该包含触发反应
+      expect(result).toMatch(/(奇怪的名字|那个名字|谁允许|哼)/);
+    });
+
+    it("should generate tsundere_call reaction", () => {
+      const trigger = {
+        type: "tsundere_call" as const,
+        matchedKeyword: "傲娇",
+        intensity: "moderate" as const,
+      };
+      const result = enforcer.applyTriggerResponse(trigger, "好的");
+
+      // tsundere_call 触发响应包含多种模板
+      expect(result).toMatch(/(不是傲娇|笨蛋|哼|你这家伙|居然说)/);
+    });
+
+    it("should generate compliment reaction", () => {
+      const trigger = {
+        type: "compliment" as const,
+        matchedKeyword: "天才",
+        intensity: "mild" as const,
+      };
+      const result = enforcer.applyTriggerResponse(trigger, "谢谢");
+
+      // compliment 触发响应包含多种模板
+      expect(result).toMatch(/(才|天才|哼|理所当然|那种事|不用你说)/);
+    });
+
+    it("should generate strong reaction for chest trigger", () => {
+      const trigger = {
+        type: "chest" as const,
+        matchedKeyword: "平胸",
+        intensity: "strong" as const,
+      };
+      const result = enforcer.applyTriggerResponse(trigger, "...");
+
+      // 强触发应该只返回触发反应
+      expect(result).toMatch(/(不许|变态|闭嘴|笨蛋)/);
+    });
+
+    it("should generate fear reaction for cockroach trigger", () => {
+      const trigger = {
+        type: "cockroach" as const,
+        matchedKeyword: "蟑螂",
+        intensity: "strong" as const,
+      };
+      const result = enforcer.applyTriggerResponse(trigger, "什么？");
+
+      expect(result).toMatch(/(咿|不要|怕|弄走|靠近)/);
+    });
+
+    it("should produce consistent output for same input (determinism)", () => {
+      const trigger = {
+        type: "compliment" as const,
+        matchedKeyword: "天才",
+        intensity: "mild" as const,
+      };
+
+      // 创建新的 enforcer 确保种子重置
+      const results = Array.from({ length: 10 }, () => {
+        const freshEnforcer = new PersonaEnforcer();
+        return freshEnforcer.applyTriggerResponse(trigger, "谢谢");
+      });
+
+      const uniqueResults = new Set(results);
+      expect(uniqueResults.size).toBe(1);
+    });
+
+    it("should combine with original response for mild triggers", () => {
+      const trigger = {
+        type: "nickname" as const,
+        matchedKeyword: "Christina",
+        intensity: "mild" as const,
+      };
+      const result = enforcer.applyTriggerResponse(
+        trigger,
+        "从科学角度来说...",
+      );
+
+      // 轻微触发应该组合原响应
+      expect(result).toContain("从科学角度来说");
+    });
+  });
+
+  describe("enforce with userInput", () => {
+    it("should apply trigger response when nickname detected", () => {
+      const result = enforcer.enforce(
+        "这个理论很有趣",
+        "Christina, 你怎么看？",
+      );
+
+      // 应该包含触发反应
+      expect(result).toMatch(/(奇怪的名字|那个名字|谁允许|哼)/);
+    });
+
+    it("should apply trigger response when tsundere_call detected", () => {
+      const result = enforcer.enforce("好的", "你真傲娇");
+
+      expect(result).toMatch(/(不是傲娇|笨蛋|哼)/);
+    });
+
+    it("should apply trigger response when compliment detected", () => {
+      const result = enforcer.enforce("谢谢", "你真是个天才");
+
+      expect(result).toMatch(/(才|天才|哼|理所当然)/);
+    });
+
+    it("should apply strong reaction for chest trigger", () => {
+      const result = enforcer.enforce("...", "你胸部好小");
+
+      expect(result).toMatch(/(不许|变态|闭嘴|笨蛋)/);
+    });
+
+    it("should apply fear reaction for cockroach trigger", () => {
+      const result = enforcer.enforce("什么？", "有蟑螂！");
+
+      expect(result).toMatch(/(咿|不要|怕|弄走|靠近)/);
+    });
+
+    it("should not apply trigger when no trigger keyword", () => {
+      const result = enforcer.enforce("这个理论很有趣", "你觉得怎么样？");
+
+      // 应该只应用正常的傲娇转换，没有触发反应
+      expect(result).toBeDefined();
+      expect(result).not.toMatch(/(奇怪的名字|那个名字|不许|咿)/);
+    });
+
+    it("should maintain determinism with userInput", () => {
+      const results = Array.from({ length: 10 }, () => {
+        const freshEnforcer = new PersonaEnforcer();
+        return freshEnforcer.enforce("好的", "你真是个天才");
+      });
+
+      const uniqueResults = new Set(results);
+      expect(uniqueResults.size).toBe(1);
+    });
+
+    it("should handle null/undefined userInput gracefully", () => {
+      const result1 = enforcer.enforce("好的", null as unknown as string);
+      const result2 = enforcer.enforce("好的", undefined);
+
+      expect(result1).toBeDefined();
+      expect(result2).toBeDefined();
+    });
+
+    it("should prioritize triggers correctly", () => {
+      // 蟑螂优先级高于昵称
+      const result = enforcer.enforce("...", "助手，有蟑螂！");
+
+      expect(result).toMatch(/(咿|不要|怕|弄走|靠近)/);
+    });
+  });
 });

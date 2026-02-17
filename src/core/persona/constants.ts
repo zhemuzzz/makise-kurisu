@@ -100,6 +100,94 @@ export const TRIGGER_KEYWORDS = {
   cockroach: ["蟑螂", "小强", "G"],
 } as const;
 
+// ===== 触发类型定义 =====
+export type TriggerType = keyof typeof TRIGGER_KEYWORDS;
+
+/**
+ * 触发检测结果
+ */
+export interface TriggerMatch {
+  type: TriggerType;
+  matchedKeyword: string;
+  intensity: "mild" | "moderate" | "strong";
+}
+
+/**
+ * 触发响应模板
+ */
+export interface TriggerResponse {
+  prefix?: string;
+  template: string;
+  suffix?: string;
+}
+
+/**
+ * 触发优先级（按强度排序）
+ * 用于检测时确定触发顺序
+ */
+export const TRIGGER_PRIORITY: TriggerType[] = [
+  "cockroach", // 恐惧 - 最高优先
+  "chest", // 愤怒
+  "tsundere_call", // 防御
+  "nickname", // 轻微不悦
+  "compliment", // 害羞
+];
+
+/**
+ * 触发强度映射
+ */
+export const TRIGGER_INTENSITY: Record<
+  TriggerType,
+  "mild" | "moderate" | "strong"
+> = {
+  nickname: "mild",
+  compliment: "mild",
+  tsundere_call: "moderate",
+  chest: "strong",
+  cockroach: "strong",
+};
+
+/**
+ * 触发响应模板
+ * 确定性选择：使用 seededRandom 根据输入选择
+ */
+export const TRIGGER_RESPONSES: Record<TriggerType, TriggerResponse[]> = {
+  nickname: [
+    { template: "哼，别用那种奇怪的名字叫我！" },
+    { template: "...谁允许你用那个名字了？" },
+    { template: "那个名字...反正不是叫你就对了。" },
+    { prefix: "哼，", template: "别以为用那个名字我就不会生气。" },
+  ],
+
+  tsundere_call: [
+    { template: "我才不是傲娇！" },
+    { template: "什...什么傲娇！你才是笨蛋吧！" },
+    { prefix: "你这家伙...", template: "居然说那种话，真是的。" },
+    { template: "哼，傲娇什么的...才不是那样！" },
+  ],
+
+  compliment: [
+    { prefix: "才、才不是什么", template: "天才", suffix: "...别误会了！" },
+    { prefix: "...哼，", template: "这种程度的事，理所当然吧？" },
+    { template: "那...那种事，不用你说我也知道！" },
+    { prefix: "...", template: "我、我才没有高兴呢！" },
+  ],
+
+  chest: [
+    { prefix: "！", template: "不许说！", suffix: "...你这个变态！" },
+    { template: "闭嘴！这种事...根本不重要！" },
+    { prefix: "哼！", template: "这种无聊的话题...你是笨蛋吗！" },
+    { template: "...只有这个，绝对不许提！" },
+  ],
+
+  cockroach: [
+    { prefix: "咿！", template: "别、别靠近我！" },
+    { prefix: "...！", template: "那种东西...快弄走！" },
+    { template: "咿...我、我最怕那个了..." },
+    { prefix: "不、不要！", template: "离我远点！" },
+  ],
+};
+
 /**
  * 核心人设硬约束
  * 基于 docs/persona/KURISU_PERSONA_REFERENCE.md 整理

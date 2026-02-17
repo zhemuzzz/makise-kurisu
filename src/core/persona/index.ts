@@ -99,9 +99,11 @@ export class PersonaEngine {
   /**
    * 强化响应的人设特征
    * 委托给 PersonaEnforcer（确定性 seededRandom）
+   * @param response AI 生成的响应
+   * @param userInput 可选的用户输入（用于触发词检测）
    */
-  enforcePersona(response: string): string {
-    return this.enforcer.enforce(response);
+  enforcePersona(response: string, userInput?: string): string {
+    return this.enforcer.enforce(response, userInput);
   }
 
   /**
