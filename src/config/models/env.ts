@@ -3,7 +3,7 @@
  * 位置: src/config/models/env.ts
  */
 
-import { EnvVarMissingError } from './types';
+import { EnvVarMissingError } from "./types";
 
 /**
  * 环境变量解析器
@@ -17,9 +17,15 @@ export class EnvResolver {
    */
   static resolve(value: string, env: NodeJS.ProcessEnv = process.env): string {
     return value.replace(this.ENV_VAR_PATTERN, (_, varExpr: string) => {
-      const [varName, defaultValue] = varExpr.split(':-');
+      const parts = varExpr.split(":-");
+      const varName = parts[0] ?? "";
+      const defaultValue = parts[1];
 
-      const envValue = env[varName];
+      if (!varName) {
+        return "";
+      }
+
+      const envValue = env[varName] as string | undefined;
 
       if (envValue === undefined) {
         if (defaultValue !== undefined) {
@@ -36,7 +42,7 @@ export class EnvResolver {
    * 深度遍历对象，解析所有字符串中的环境变量
    */
   static resolveDeep<T>(obj: T, env: NodeJS.ProcessEnv = process.env): T {
-    if (typeof obj === 'string') {
+    if (typeof obj === "string") {
       return this.resolve(obj, env) as T;
     }
 
@@ -44,7 +50,7 @@ export class EnvResolver {
       return obj.map((item) => this.resolveDeep(item, env)) as T;
     }
 
-    if (obj !== null && typeof obj === 'object') {
+    if (obj !== null && typeof obj === "object") {
       const result: Record<string, unknown> = {};
       for (const [key, value] of Object.entries(obj)) {
         result[key] = this.resolveDeep(value, env);
@@ -61,10 +67,10 @@ export class EnvResolver {
  */
 export function injectEnvVars<T extends Record<string, unknown>>(
   config: T,
-  env: NodeJS.ProcessEnv = process.env
+  env: NodeJS.ProcessEnv = process.env,
 ): T {
   return EnvResolver.resolveDeep(config, env);
 }
 
 // 导出错误类
-export { EnvVarMissingError } from './types';
+export { EnvVarMissingError } from "./types";

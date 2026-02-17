@@ -19,9 +19,9 @@ import type {
  */
 interface HttpClientConfig {
   baseURL: string;
-  apiKey?: string;
-  authType?: "x-api-key" | "bearer";
-  timeout?: number;
+  apiKey?: string | undefined;
+  authType?: "x-api-key" | "bearer" | undefined;
+  timeout?: number | undefined;
 }
 
 /**
@@ -29,7 +29,7 @@ interface HttpClientConfig {
  */
 class HttpClient {
   private readonly baseURL: string;
-  private readonly apiKey?: string;
+  private readonly apiKey: string | undefined;
   private readonly authType: "x-api-key" | "bearer";
   private readonly timeout: number;
 
@@ -65,7 +65,7 @@ class HttpClient {
       throw new Error(`API error: ${response.status} - ${error}`);
     }
 
-    return response.json();
+    return response.json() as Promise<T>;
   }
 
   async *postStream(
@@ -219,10 +219,10 @@ export class AnthropicCompatibleModel implements IModel {
     });
 
     for await (const chunk of stream) {
-      const chunkType = chunk.type as string;
+      const chunkType = chunk["type"] as string;
 
       if (chunkType === "content_block_delta") {
-        const delta = chunk.delta as { text?: string };
+        const delta = chunk["delta"] as { text?: string };
         if (delta.text) {
           yield {
             content: delta.text,
@@ -259,7 +259,8 @@ export class AnthropicCompatibleModel implements IModel {
       medium: 1000,
       fast: 500,
     };
-    return speedMap[this.config.capabilities?.speed ?? "medium"];
+    const speed = this.config.capabilities?.speed ?? "medium";
+    return speedMap[speed] ?? 1000;
   }
 }
 

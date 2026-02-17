@@ -74,7 +74,9 @@ export class YamlConfigLoader implements IConfigLoader {
    * 解析配置中的环境变量
    */
   resolveEnvVars(config: ModelsYamlConfig): ModelsYamlConfig {
-    return injectEnvVars(config);
+    return injectEnvVars(
+      config as unknown as Record<string, unknown>,
+    ) as unknown as ModelsYamlConfig;
   }
 
   /**
