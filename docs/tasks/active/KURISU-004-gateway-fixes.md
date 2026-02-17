@@ -86,10 +86,10 @@ const getChunks = () => chunksCache ??= (async () => { ... })();
 ## 审查问题追踪
 | ID | 问题 | 修复 commit | 状态 |
 |----|------|-------------|------|
-| R01 | teeStream 资源泄漏 | TBD | ✅ 已修复 |
-| R02 | processStream 返回值不一致 | TBD | ✅ 已修复 |
-| R03 | CLIChannel 错误状态恢复 | TBD | ✅ 已修复 |
-| R04 | 会话 ID 长度限制 | TBD | ✅ 已修复 |
+| R01 | teeStream 资源泄漏 | 456a43b | ✅ 已修复 |
+| R02 | processStream 返回值不一致 | 456a43b | ✅ 已修复 |
+| R03 | CLIChannel 错误状态恢复 | 456a43b | ✅ 已修复 |
+| R04 | 会话 ID 长度限制 | 456a43b | ✅ 已修复 |
 
 ## 最终产出
 - 修改文件: 4 个源文件 + 1 个测试文件
