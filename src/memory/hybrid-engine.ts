@@ -138,7 +138,7 @@ export class HybridMemoryEngine {
   getSession(sessionId: string): SessionMemory | undefined {
     this._validateSessionId(sessionId);
 
-    let session = this._sessions.get(sessionId);
+    const session = this._sessions.get(sessionId);
     if (!session) {
       return undefined;
     }

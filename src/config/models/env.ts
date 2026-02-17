@@ -25,7 +25,7 @@ export class EnvResolver {
         return "";
       }
 
-      const envValue = env[varName] as string | undefined;
+      const envValue = env[varName];
 
       if (envValue === undefined) {
         if (defaultValue !== undefined) {

@@ -6,7 +6,6 @@
 import {
   StreamEventType,
   type TextDeltaEvent,
-  type MetadataEvent,
   type AnyStreamEvent,
   type StreamCallbacks,
   type GatewayStreamResult,
@@ -71,7 +70,7 @@ export class StreamHandler {
           if (isErrorEvent(item)) {
             callbacks.onError?.(new Error(item.message));
           } else if (item.type === StreamEventType.METADATA) {
-            callbacks.onMetadata?.((item as MetadataEvent).data);
+            callbacks.onMetadata?.(item.data);
           }
           yield item;
         }
