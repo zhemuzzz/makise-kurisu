@@ -98,12 +98,11 @@ jobs:
           cache-to: type=gha,mode=max
 
   # ============================================
-  # Security Scan
+  # Security Scan (Snyk + npm audit)
   # ============================================
   security:
     needs: build
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
 
     steps:
       - name: Checkout code
