@@ -252,16 +252,37 @@ embedding: glm-5
 
 **测试状态**: ✅ 76 通过
 
+### ✅ L2 人设引擎 - PersonaEnforcer (2026-02-17)
+
+**任务**: KURISU-006
+
+**文件**:
+- `src/core/persona/enforcer.ts` - PersonaEnforcer 类
+- `tests/unit/persona/enforcer.test.ts` - 单元测试 (45 tests)
+
+**核心功能**:
+- `enforce()` - 主方法：傲娇转换 + OOC 移除 + 关系感知
+- `addTsunderePrefix()` - 添加傲娇前缀
+- `convertToRhetorical()` - 转换为反问句
+- `addEmotionalHesitation()` - 添加情感犹豫
+- `removeOOCPhrases()` - 移除 OOC 短语（含 ReDoS 防护）
+
+**Code Review 修复**:
+- 添加正则转义防止 ReDoS
+- 移除死代码（空分支）
+- 统一输入验证返回值
+
+**测试状态**: ✅ 45 通过
+
 ## 进行中
 
 ### 🔄 下一个任务
 
-**当前**: L2 人设引擎扩展 - PersonaValidator ✅ 完成
+**当前**: L2 人设引擎扩展 - PersonaEnforcer ✅ 完成
 
 **剩余模块**:
-1. **PersonaEnforcer** - 45 tests (P2)
-2. **PromptBuilder** - 40 tests (P2)
-3. **集成测试** - 14 tests (P2)
+1. **PromptBuilder** - 40 tests (P2)
+2. **集成测试** - 14 tests (P2)
 
 ## 待办
 
@@ -271,7 +292,7 @@ embedding: glm-5
 | 文件 | 类 | 测试数 | 优先级 | 状态 |
 |------|-----|--------|--------|------|
 | `src/core/persona/validator.ts` | PersonaValidator | 76 tests | P2 | ✅ 完成 |
-| `src/core/persona/enforcer.ts` | PersonaEnforcer | 45 tests | P2 | 待实现 |
+| `src/core/persona/enforcer.ts` | PersonaEnforcer | 45 tests | P2 | ✅ 完成 |
 | `src/core/persona/prompt-builder.ts` | PromptBuilder | 40 tests | P2 | 待实现 |
 | 集成测试 `persona-flow.test.ts` | - | 14 tests | P2 | 待实现 |
 
