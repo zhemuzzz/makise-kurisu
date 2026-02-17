@@ -5,6 +5,7 @@
 
 import { MentalModel } from "./types";
 import { PERSONA_HARDCODED } from "./constants";
+import { searchLore, getHighImportanceLore, LoreTerm } from "./lore";
 
 /**
  * 记忆截断数量
@@ -56,6 +57,7 @@ export class PromptBuilder {
     // 构建各部分
     const sections = [
       this.buildPersonaSection(),
+      this.buildLoreSection(safeUserMessage),
       this.buildCurrentStateSection(),
       this.buildSharedMemoriesSection(),
       this.buildRecentDialogSection(recentMemories),
@@ -101,6 +103,59 @@ export class PromptBuilder {
    */
   private buildPersonaSection(): string {
     return PERSONA_HARDCODED;
+  }
+
+  /** Lore 搜索查询最大长度 */
+  private static readonly LORE_SEARCH_MAX_QUERY = 500;
+  /** 静态 Lore 最大术语数 */
+  private static readonly LORE_STATIC_MAX = 8;
+  /** 上下文 Lore 最大术语数 */
+  private static readonly LORE_CONTEXT_MAX = 3;
+
+  /**
+   * 构建 Lore 世界观段落
+   * 包含静态高重要性术语 + 上下文相关低重要性术语
+   * 两层独立组合，互不影响
+   */
+  private buildLoreSection(userMessage: string): string {
+    // 静态背景 Lore (importance >= 4)，只调用一次
+    const staticTerms = getHighImportanceLore().slice(
+      0,
+      PromptBuilder.LORE_STATIC_MAX,
+    );
+    const staticIds = new Set(staticTerms.map((t) => t.id));
+
+    // 上下文相关搜索 — 独立于静态 Lore，去重 + 限数
+    const query = userMessage.slice(0, PromptBuilder.LORE_SEARCH_MAX_QUERY);
+    const contextTerms = query
+      ? searchLore(query)
+          .filter((t) => !staticIds.has(t.id))
+          .sort((a, b) => b.importance - a.importance)
+          .slice(0, PromptBuilder.LORE_CONTEXT_MAX)
+      : [];
+
+    const allTerms = [...staticTerms, ...contextTerms];
+
+    if (allTerms.length === 0) {
+      return "";
+    }
+
+    const lines = [
+      "## 世界观术语（Steins;Gate）",
+      ...allTerms.map((term) => this.formatLoreTerm(term)),
+    ];
+
+    return lines.join("\n");
+  }
+
+  /**
+   * 格式化单个 Lore 术语为提示词行
+   */
+  private formatLoreTerm(term: LoreTerm): string {
+    const perspective = term.kurisuPerspective
+      ? ` [Kurisu: ${term.kurisuPerspective}]`
+      : "";
+    return `- **${term.nameZh}** (${term.nameEn}): ${term.description}${perspective}`;
   }
 
   /**

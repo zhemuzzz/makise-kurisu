@@ -358,4 +358,84 @@ describe("PromptBuilder", () => {
       expect(model.relationship_graph.familiarity).toBe(originalFamiliarity);
     });
   });
+
+  describe("lore integration", () => {
+    it("should include lore section in build output", () => {
+      const prompt = builder.build("你好", []);
+
+      expect(prompt).toContain("世界观术语");
+    });
+
+    it("should include high-importance lore terms", () => {
+      const prompt = builder.build("你好", []);
+
+      // importance >= 4 的术语应该出现
+      expect(prompt).toContain("世界线");
+      expect(prompt).toContain("D-Mail");
+      expect(prompt).toContain("未来道具实验室");
+    });
+
+    it("should place lore section between persona and current state", () => {
+      const prompt = builder.build("你好", []);
+      const personaIndex = prompt.indexOf("牧濑红莉栖");
+      const loreIndex = prompt.indexOf("世界观术语");
+      const stateIndex = prompt.indexOf("当前状态");
+
+      expect(personaIndex).toBeLessThan(loreIndex);
+      expect(loreIndex).toBeLessThan(stateIndex);
+    });
+
+    it("should add context-relevant low-importance terms when user mentions them", () => {
+      // "叉子与勺子" importance=3, 不在静态 Lore 中
+      const prompt = builder.build("你知道叉子与勺子的故事吗？", []);
+
+      expect(prompt).toContain("叉子与勺子");
+    });
+
+    it("should not add context terms when user input is unrelated", () => {
+      const prompt = builder.build("今天天气真好", []);
+      const loreStart = prompt.indexOf("## 世界观术语");
+      const loreEnd = prompt.indexOf("## 当前状态");
+      const loreSection = prompt.substring(loreStart, loreEnd);
+
+      // importance=3 的术语不应在 Lore section 中
+      expect(loreSection).not.toContain("叉子与勺子");
+      expect(loreSection).not.toContain("牧濑章一");
+    });
+
+    it("should not duplicate terms already in static lore", () => {
+      // "世界线" importance=5, 已在静态 Lore 中
+      const prompt = builder.build("世界线是什么？", []);
+
+      // 计算 "世界线" 出现次数（在 Lore section 内）
+      const loreStart = prompt.indexOf("## 世界观术语");
+      const loreEnd = prompt.indexOf("## 当前状态");
+      expect(loreStart).toBeGreaterThan(-1);
+      expect(loreEnd).toBeGreaterThan(loreStart);
+      const loreSection = prompt.substring(loreStart, loreEnd);
+      const matches = loreSection.match(/\*\*世界线\*\*/g);
+
+      // 只出现一次（静态 Lore 中）
+      expect(matches).toHaveLength(1);
+    });
+
+    it("should handle empty user message with lore", () => {
+      const prompt = builder.build("", []);
+
+      // 静态 Lore 仍然包含
+      expect(prompt).toContain("世界观术语");
+    });
+
+    it("should not impact build performance", () => {
+      const start = performance.now();
+
+      for (let i = 0; i < 100; i++) {
+        builder.build("世界线收束", SAMPLE_MEMORIES);
+      }
+
+      const duration = performance.now() - start;
+      // 100次构建应该在 200ms 内完成（含 Lore 搜索）
+      expect(duration).toBeLessThan(200);
+    });
+  });
 });
