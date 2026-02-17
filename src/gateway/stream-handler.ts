@@ -6,8 +6,6 @@
 import {
   StreamEventType,
   type TextDeltaEvent,
-  type TextCompleteEvent,
-  type ErrorEvent,
   type MetadataEvent,
   type AnyStreamEvent,
   type StreamCallbacks,
@@ -184,7 +182,7 @@ export class StreamHandler {
       yield {
         type: StreamEventType.ERROR,
         message: err.message,
-        code: err.code,
+        code: err.code ?? "UNKNOWN_ERROR",
         timestamp: new Date(),
       };
     }
@@ -324,7 +322,7 @@ export class StreamHandler {
       }
 
       // Keep the last incomplete part in buffer
-      buffer = parts[parts.length - 1];
+      buffer = parts[parts.length - 1] ?? "";
     }
 
     // Yield remaining buffer

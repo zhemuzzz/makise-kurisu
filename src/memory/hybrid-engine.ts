@@ -40,6 +40,8 @@ export class HybridMemoryEngine {
   private readonly _shortTermMemories: Map<string, ShortTermMemory>;
   private readonly _sessionConfig: SessionConfig;
   private readonly _contextConfig: ContextBuildOptions;
+  // Used by static factory methods via type assertion
+  // @ts-expect-error - _personaEngine is used by static factory methods
   private readonly _personaEngine: PersonaEngineLike | null;
   private readonly _contextBuilder: ContextBuilder;
   private readonly _mem0Client: Mem0Client | null;
@@ -58,7 +60,7 @@ export class HybridMemoryEngine {
       includeMemories: config?.contextConfig?.includeMemories ?? true,
     };
     this._personaEngine = null;
-    this._contextBuilder = new ContextBuilder(null, this._contextConfig);
+    this._contextBuilder = new ContextBuilder(undefined, this._contextConfig);
     this._mem0Client = null;
   }
 
@@ -70,9 +72,10 @@ export class HybridMemoryEngine {
     config?: HybridMemoryEngineConfig,
   ): HybridMemoryEngine {
     const engine = new HybridMemoryEngine(config);
-    (engine as { _personaEngine: PersonaEngineLike | null })._personaEngine =
-      personaEngine;
-    (engine as { _contextBuilder: ContextBuilder })._contextBuilder =
+    (
+      engine as unknown as { _personaEngine: PersonaEngineLike | null }
+    )._personaEngine = personaEngine;
+    (engine as unknown as { _contextBuilder: ContextBuilder })._contextBuilder =
       new ContextBuilder(personaEngine, engine._contextConfig);
     return engine;
   }
@@ -85,7 +88,8 @@ export class HybridMemoryEngine {
     config?: HybridMemoryEngineConfig,
   ): HybridMemoryEngine {
     const engine = new HybridMemoryEngine(config);
-    (engine as { _mem0Client: Mem0Client | null })._mem0Client = mem0Client;
+    (engine as unknown as { _mem0Client: Mem0Client | null })._mem0Client =
+      mem0Client;
     return engine;
   }
 
@@ -98,10 +102,12 @@ export class HybridMemoryEngine {
     config?: HybridMemoryEngineConfig,
   ): HybridMemoryEngine {
     const engine = new HybridMemoryEngine(config);
-    (engine as { _personaEngine: PersonaEngineLike | null })._personaEngine =
-      personaEngine;
-    (engine as { _mem0Client: Mem0Client | null })._mem0Client = mem0Client;
-    (engine as { _contextBuilder: ContextBuilder })._contextBuilder =
+    (
+      engine as unknown as { _personaEngine: PersonaEngineLike | null }
+    )._personaEngine = personaEngine;
+    (engine as unknown as { _mem0Client: Mem0Client | null })._mem0Client =
+      mem0Client;
+    (engine as unknown as { _contextBuilder: ContextBuilder })._contextBuilder =
       new ContextBuilder(personaEngine, engine._contextConfig);
     return engine;
   }

@@ -13,7 +13,6 @@ import {
   TRIGGER_PRIORITY,
   TRIGGER_INTENSITY,
   TRIGGER_RESPONSES,
-  TriggerType,
   TriggerMatch,
   TriggerResponse,
 } from "./constants";
@@ -189,7 +188,7 @@ export class PersonaEnforcer {
 
     // 确定性选择响应模板
     const index = Math.floor(this.seededRandom() * responses.length);
-    const selected = responses[index];
+    const selected = responses[index] ?? responses[0]!;
 
     // 构建触发反应
     const triggerReaction = this.buildTriggerReaction(selected);

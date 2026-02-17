@@ -6,15 +6,10 @@
 import {
   type SessionInfo,
   type CreateSessionParams,
-  ChannelType,
   createSessionInfo,
   type SessionManagerConfig,
 } from "./types";
-import {
-  SessionAlreadyExistsError,
-  SessionNotFoundError,
-  InputValidationError,
-} from "./errors";
+import { SessionAlreadyExistsError, InputValidationError } from "./errors";
 
 /**
  * 默认会话 TTL (30分钟)
@@ -39,7 +34,7 @@ export class SessionManager {
   private sessions: Map<string, SessionInfo> = new Map();
   private readonly ttl: number;
   private readonly cleanupInterval: number;
-  private cleanupTimer?: ReturnType<typeof setInterval>;
+  private cleanupTimer: ReturnType<typeof setInterval> | undefined;
 
   constructor(config: SessionManagerConfig) {
     this.ttl = config.ttl ?? DEFAULT_TTL;
@@ -202,7 +197,9 @@ export class SessionManager {
   stopCleanup(): void {
     if (this.cleanupTimer) {
       clearInterval(this.cleanupTimer);
-      this.cleanupTimer = undefined;
+      this.cleanupTimer = undefined as
+        | ReturnType<typeof setInterval>
+        | undefined;
     }
   }
 

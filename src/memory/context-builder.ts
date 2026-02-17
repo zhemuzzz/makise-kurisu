@@ -15,10 +15,10 @@ import {
   Message,
   MemorySearchResult,
   PersonaEngineLike,
-} from './types';
-import { SessionMemory } from './session-memory';
-import { ShortTermMemory } from './short-term-memory';
-import { ContextBuildError, ValidationError } from './errors';
+} from "./types";
+import { SessionMemory } from "./session-memory";
+import { ShortTermMemory } from "./short-term-memory";
+import { ContextBuildError, ValidationError } from "./errors";
 
 /**
  * ContextBuilder 类
@@ -28,7 +28,10 @@ export class ContextBuilder {
   private readonly _personaEngine: PersonaEngineLike | null;
   private readonly _defaultOptions: ContextBuildOptions;
 
-  constructor(personaEngine?: PersonaEngineLike, options?: Partial<ContextBuildOptions>) {
+  constructor(
+    personaEngine?: PersonaEngineLike,
+    options?: Partial<ContextBuildOptions>,
+  ) {
     this._personaEngine = personaEngine ?? null;
     this._defaultOptions = { ...DEFAULT_CONTEXT_CONFIG, ...options };
   }
@@ -40,25 +43,32 @@ export class ContextBuilder {
     sessionMemory: SessionMemory,
     shortTermMemory: ShortTermMemory | null,
     currentMessage: string,
-    options?: Partial<ContextBuildOptions>
+    options?: Partial<ContextBuildOptions>,
   ): Promise<BuildContext> {
     const opts = { ...this._defaultOptions, ...options };
 
     // Validate input
-    if (!currentMessage || typeof currentMessage !== 'string') {
-      throw new ValidationError('currentMessage', 'Current message must be a non-empty string');
+    if (!currentMessage || typeof currentMessage !== "string") {
+      throw new ValidationError(
+        "currentMessage",
+        "Current message must be a non-empty string",
+      );
     }
 
     try {
       // 1. Get persona prompt
-      const systemPrompt = opts.includePersonaPrompt && this._personaEngine
-        ? this._personaEngine.getSystemPrompt()
-        : '';
+      const systemPrompt =
+        opts.includePersonaPrompt && this._personaEngine
+          ? this._personaEngine.getSystemPrompt()
+          : "";
 
       // 2. Search relevant memories
       let relevantMemories: MemorySearchResult[] = [];
       if (opts.includeMemories && shortTermMemory) {
-        relevantMemories = await shortTermMemory.searchMemory(currentMessage, 5);
+        relevantMemories = await shortTermMemory.searchMemory(
+          currentMessage,
+          5,
+        );
       }
 
       // 3. Get recent messages
@@ -69,14 +79,14 @@ export class ContextBuilder {
         systemPrompt,
         relevantMemories,
         recentMessages,
-        currentMessage
+        currentMessage,
       );
 
-      // 5. Estimate token count (simplified: use character count / 4)
-      const tokenCount = this._estimateTokens(fullContext);
-
-      // 6. Truncate if exceeds limit
-      const truncatedContext = this._truncateContext(fullContext, opts.maxTokens);
+      // 5. Truncate if exceeds limit
+      const truncatedContext = this._truncateContext(
+        fullContext,
+        opts.maxTokens,
+      );
       const finalTokenCount = this._estimateTokens(truncatedContext);
 
       return {
@@ -93,7 +103,7 @@ export class ContextBuilder {
       throw new ContextBuildError(
         sessionMemory.sessionId,
         (error as Error).message,
-        error as Error
+        error as Error,
       );
     }
   }
@@ -104,19 +114,23 @@ export class ContextBuilder {
   buildSync(
     sessionMemory: SessionMemory,
     currentMessage: string,
-    options?: Partial<ContextBuildOptions>
+    options?: Partial<ContextBuildOptions>,
   ): BuildContext {
     const opts = { ...this._defaultOptions, ...options };
 
     // Validate input
-    if (!currentMessage || typeof currentMessage !== 'string') {
-      throw new ValidationError('currentMessage', 'Current message must be a non-empty string');
+    if (!currentMessage || typeof currentMessage !== "string") {
+      throw new ValidationError(
+        "currentMessage",
+        "Current message must be a non-empty string",
+      );
     }
 
     // 1. Get persona prompt
-    const systemPrompt = opts.includePersonaPrompt && this._personaEngine
-      ? this._personaEngine.getSystemPrompt()
-      : '';
+    const systemPrompt =
+      opts.includePersonaPrompt && this._personaEngine
+        ? this._personaEngine.getSystemPrompt()
+        : "";
 
     // 2. Get recent messages
     const recentMessages = sessionMemory.getRecentMessages(opts.maxMessages);
@@ -126,7 +140,7 @@ export class ContextBuilder {
       systemPrompt,
       [], // No memories in sync mode
       recentMessages,
-      currentMessage
+      currentMessage,
     );
 
     // 4. Estimate and truncate
@@ -149,7 +163,7 @@ export class ContextBuilder {
     systemPrompt: string,
     memories: MemorySearchResult[],
     recentMessages: readonly Message[],
-    currentMessage: string
+    currentMessage: string,
   ): string {
     const sections: string[] = [];
 
@@ -160,28 +174,32 @@ export class ContextBuilder {
 
     // Add relevant memories
     if (memories.length > 0) {
-      sections.push('\n## Relevant Memories');
+      sections.push("\n## Relevant Memories");
       sections.push(
-        ...memories.map((m, i) => `${i + 1}. ${m.content} (relevance: ${(m.score * 100).toFixed(0)}%)`)
+        ...memories.map(
+          (m, i) =>
+            `${i + 1}. ${m.content} (relevance: ${(m.score * 100).toFixed(0)}%)`,
+        ),
       );
     }
 
     // Add recent conversation
     if (recentMessages.length > 0) {
-      sections.push('\n## Recent Conversation');
+      sections.push("\n## Recent Conversation");
       sections.push(
         ...recentMessages.map((msg) => {
-          const roleLabel = msg.role.charAt(0).toUpperCase() + msg.role.slice(1);
+          const roleLabel =
+            msg.role.charAt(0).toUpperCase() + msg.role.slice(1);
           return `${roleLabel}: ${msg.content}`;
-        })
+        }),
       );
     }
 
     // Add current message
-    sections.push('\n## Current Message');
+    sections.push("\n## Current Message");
     sections.push(`User: ${currentMessage}`);
 
-    return sections.join('\n');
+    return sections.join("\n");
   }
 
   /**
@@ -212,11 +230,15 @@ export class ContextBuilder {
 
     // Simple truncation: cut from the beginning of the conversation history
     // Keep system prompt and current message intact
-    const lines = context.split('\n');
+    const lines = context.split("\n");
 
     // Find key sections
-    const currentMessageIdx = lines.findIndex((line) => line.startsWith('## Current Message'));
-    const recentConversationIdx = lines.findIndex((line) => line.startsWith('## Recent Conversation'));
+    const currentMessageIdx = lines.findIndex((line) =>
+      line.startsWith("## Current Message"),
+    );
+    const recentConversationIdx = lines.findIndex((line) =>
+      line.startsWith("## Recent Conversation"),
+    );
 
     if (currentMessageIdx === -1 || recentConversationIdx === -1) {
       // Fallback: simple character truncation
@@ -230,25 +252,33 @@ export class ContextBuilder {
 
     // Add system prompt and memories (keep these)
     for (let i = 0; i < recentConversationIdx; i++) {
-      result.push(lines[i]);
-      currentTokensCount += this._estimateTokens(lines[i] + '\n');
+      const line = lines[i];
+      if (line !== undefined) {
+        result.push(line);
+        currentTokensCount += this._estimateTokens(line + "\n");
+      }
     }
 
-    result.push(lines[recentConversationIdx]); // ## Recent Conversation header
-    currentTokensCount += this._estimateTokens(lines[recentConversationIdx] + '\n');
+    const conversationHeader =
+      lines[recentConversationIdx] ?? "## Recent Conversation";
+    result.push(conversationHeader); // ## Recent Conversation header
+    currentTokensCount += this._estimateTokens(conversationHeader + "\n");
 
     // Add recent conversation lines from the end until we hit the limit
     const conversationLines: string[] = [];
     for (let i = currentMessageIdx - 1; i > recentConversationIdx; i--) {
-      const lineTokens = this._estimateTokens(lines[i] + '\n');
+      const line = lines[i];
+      if (line === undefined) continue;
+
+      const lineTokens = this._estimateTokens(line + "\n");
       const currentMessageTokens = this._estimateTokens(
-        lines.slice(currentMessageIdx).join('\n')
+        lines.slice(currentMessageIdx).join("\n"),
       );
 
       if (currentTokensCount + lineTokens + currentMessageTokens > maxTokens) {
         break;
       }
-      conversationLines.unshift(lines[i]);
+      conversationLines.unshift(line);
       currentTokensCount += lineTokens;
     }
 
@@ -257,6 +287,6 @@ export class ContextBuilder {
     // Add current message (always keep)
     result.push(...lines.slice(currentMessageIdx));
 
-    return result.join('\n');
+    return result.join("\n");
   }
 }

@@ -10,14 +10,13 @@
 
 import {
   Memory,
-  MemoryInput,
   MemoryMetadata,
   MemorySearchResult,
   Mem0Client,
   Mem0Memory,
   ShortTermMemoryConfig,
-} from './types';
-import { InvalidSessionIdError, Mem0APIError, ValidationError } from './errors';
+} from "./types";
+import { InvalidSessionIdError, Mem0APIError, ValidationError } from "./errors";
 
 /**
  * ShortTermMemory 类
@@ -30,13 +29,17 @@ export class ShortTermMemory {
 
   constructor(config: ShortTermMemoryConfig) {
     // Validate session ID
-    if (!config.sessionId || typeof config.sessionId !== 'string' || config.sessionId.trim() === '') {
+    if (
+      !config.sessionId ||
+      typeof config.sessionId !== "string" ||
+      config.sessionId.trim() === ""
+    ) {
       throw new InvalidSessionIdError(config.sessionId);
     }
 
     // Validate Mem0 client
     if (!config.mem0Client) {
-      throw new ValidationError('mem0Client', 'Mem0 client is required');
+      throw new ValidationError("mem0Client", "Mem0 client is required");
     }
 
     this._client = config.mem0Client;
@@ -48,15 +51,21 @@ export class ShortTermMemory {
    * 添加记忆
    * 返回记忆 ID
    */
-  async addMemory(content: string, metadata?: Partial<MemoryMetadata>): Promise<string> {
-    if (!content || typeof content !== 'string' || content.trim() === '') {
-      throw new ValidationError('content', 'Content must be a non-empty string');
+  async addMemory(
+    content: string,
+    metadata?: Partial<MemoryMetadata>,
+  ): Promise<string> {
+    if (!content || typeof content !== "string" || content.trim() === "") {
+      throw new ValidationError(
+        "content",
+        "Content must be a non-empty string",
+      );
     }
 
     const memoryMetadata: MemoryMetadata = {
       timestamp: metadata?.timestamp ?? Date.now(),
       importance: metadata?.importance ?? this._defaultImportance,
-      role: metadata?.role ?? 'user',
+      role: metadata?.role ?? "user",
       sessionId: this._sessionId,
       ...metadata,
     };
@@ -69,25 +78,29 @@ export class ShortTermMemory {
 
       // Handle different response formats
       if (Array.isArray(result) && result.length > 0) {
-        return result[0].id;
+        const first = result[0];
+        return first?.id ?? `mem-${Date.now()}`;
       }
-      if (result && typeof result === 'object' && 'id' in result) {
+      if (result && typeof result === "object" && "id" in result) {
         return (result as { id: string }).id;
       }
 
       // Generate a fallback ID if none returned
       return `mem-${Date.now()}-${Math.random().toString(36).substring(7)}`;
     } catch (error) {
-      throw new Mem0APIError('add', (error as Error).message, error as Error);
+      throw new Mem0APIError("add", (error as Error).message, error as Error);
     }
   }
 
   /**
    * 搜索记忆
    */
-  async searchMemory(query: string, limit: number = 10): Promise<MemorySearchResult[]> {
-    if (!query || typeof query !== 'string') {
-      throw new ValidationError('query', 'Query must be a non-empty string');
+  async searchMemory(
+    query: string,
+    limit: number = 10,
+  ): Promise<MemorySearchResult[]> {
+    if (!query || typeof query !== "string") {
+      throw new ValidationError("query", "Query must be a non-empty string");
     }
 
     try {
@@ -98,7 +111,11 @@ export class ShortTermMemory {
 
       return results.map((item) => this._convertToMemory(item));
     } catch (error) {
-      throw new Mem0APIError('search', (error as Error).message, error as Error);
+      throw new Mem0APIError(
+        "search",
+        (error as Error).message,
+        error as Error,
+      );
     }
   }
 
@@ -113,7 +130,11 @@ export class ShortTermMemory {
 
       return results.map((item) => this._convertToMemory(item));
     } catch (error) {
-      throw new Mem0APIError('getAll', (error as Error).message, error as Error);
+      throw new Mem0APIError(
+        "getAll",
+        (error as Error).message,
+        error as Error,
+      );
     }
   }
 
@@ -121,14 +142,18 @@ export class ShortTermMemory {
    * 删除记忆
    */
   async deleteMemory(id: string): Promise<void> {
-    if (!id || typeof id !== 'string') {
-      throw new ValidationError('id', 'Memory ID must be a non-empty string');
+    if (!id || typeof id !== "string") {
+      throw new ValidationError("id", "Memory ID must be a non-empty string");
     }
 
     try {
       await this._client.delete(id);
     } catch (error) {
-      throw new Mem0APIError('delete', (error as Error).message, error as Error);
+      throw new Mem0APIError(
+        "delete",
+        (error as Error).message,
+        error as Error,
+      );
     }
   }
 
@@ -136,22 +161,32 @@ export class ShortTermMemory {
    * 更新记忆
    */
   async updateMemory(id: string, content: string): Promise<void> {
-    if (!id || typeof id !== 'string') {
-      throw new ValidationError('id', 'Memory ID must be a non-empty string');
+    if (!id || typeof id !== "string") {
+      throw new ValidationError("id", "Memory ID must be a non-empty string");
     }
 
-    if (!content || typeof content !== 'string') {
-      throw new ValidationError('content', 'Content must be a non-empty string');
+    if (!content || typeof content !== "string") {
+      throw new ValidationError(
+        "content",
+        "Content must be a non-empty string",
+      );
     }
 
     if (!this._client.update) {
-      throw new Mem0APIError('update', 'Update operation not supported by client');
+      throw new Mem0APIError(
+        "update",
+        "Update operation not supported by client",
+      );
     }
 
     try {
       await this._client.update(id, content);
     } catch (error) {
-      throw new Mem0APIError('update', (error as Error).message, error as Error);
+      throw new Mem0APIError(
+        "update",
+        (error as Error).message,
+        error as Error,
+      );
     }
   }
 
@@ -171,13 +206,17 @@ export class ShortTermMemory {
    * 将 Mem0 响应转换为统一的 Memory 类型
    */
   private _convertToMemory(item: Mem0Memory): MemorySearchResult {
-    const content = item.memory ?? item.data?.memory ?? '';
+    const content = item.memory ?? item.data?.memory ?? "";
+    const itemMetadata = item.metadata ?? {};
     const metadata: MemoryMetadata = {
-      timestamp: (item.metadata?.timestamp as number) ?? Date.now(),
-      importance: (item.metadata?.importance as number) ?? 0.5,
-      role: (item.metadata?.role as MemoryMetadata['role']) ?? 'user',
-      sessionId: (item.metadata?.sessionId as string) ?? item.user_id ?? this._sessionId,
-      ...(item.metadata ?? {}),
+      timestamp: (itemMetadata["timestamp"] as number) ?? Date.now(),
+      importance: (itemMetadata["importance"] as number) ?? 0.5,
+      role: (itemMetadata["role"] as MemoryMetadata["role"]) ?? "user",
+      sessionId:
+        (itemMetadata["sessionId"] as string) ??
+        item.user_id ??
+        this._sessionId,
+      ...itemMetadata,
     };
 
     return {

@@ -15,25 +15,25 @@ import type {
 } from "../types";
 
 /**
- * HTTP 客户端配置
+ * HTTP 客户端配置（用于赋值时，允许显式 undefined）
  */
-interface HttpClientConfig {
+type HttpClientConfigInput = {
   baseURL: string;
-  apiKey?: string;
-  timeout?: number;
-}
+  apiKey?: string | undefined;
+  timeout?: number | undefined;
+};
 
 /**
  * 简单 HTTP 客户端
  */
 class HttpClient {
   private readonly baseURL: string;
-  private readonly apiKey?: string;
+  private readonly apiKey?: string | undefined;
   private readonly timeout: number;
 
-  constructor(config: HttpClientConfig) {
+  constructor(config: HttpClientConfigInput) {
     this.baseURL = config.baseURL;
-    this.apiKey = config.apiKey;
+    this.apiKey = config.apiKey ?? undefined;
     this.timeout = config.timeout ?? 30000;
   }
 
@@ -53,7 +53,7 @@ class HttpClient {
       throw new Error(`API error: ${response.status} - ${error}`);
     }
 
-    return response.json();
+    return response.json() as Promise<T>;
   }
 
   async *postStream(
@@ -128,8 +128,8 @@ export class OpenAICompatibleModel implements IModel {
     this.config = config;
     this.client = new HttpClient({
       baseURL: config.endpoint ?? "https://api.openai.com",
-      apiKey: config.apiKey,
-      timeout: config.timeout,
+      apiKey: config.apiKey ?? undefined,
+      timeout: config.timeout ?? undefined,
     });
   }
 
@@ -159,7 +159,8 @@ export class OpenAICompatibleModel implements IModel {
       model: this.config.model ?? this.name,
       messages: openaiMessages,
       max_tokens: options?.maxTokens ?? this.config.maxTokens ?? 4096,
-      temperature: options?.temperature ?? this.config.defaultTemperature ?? 0.7,
+      temperature:
+        options?.temperature ?? this.config.defaultTemperature ?? 0.7,
     });
 
     const content = response.choices[0]?.message?.content ?? "";
@@ -197,11 +198,12 @@ export class OpenAICompatibleModel implements IModel {
       model: this.config.model ?? this.name,
       messages: openaiMessages,
       max_tokens: options?.maxTokens ?? this.config.maxTokens ?? 4096,
-      temperature: options?.temperature ?? this.config.defaultTemperature ?? 0.7,
+      temperature:
+        options?.temperature ?? this.config.defaultTemperature ?? 0.7,
     });
 
     for await (const chunk of stream) {
-      const choices = chunk.choices as
+      const choices = chunk["choices"] as
         | Array<{ delta?: { content?: string }; finish_reason?: string }>
         | undefined;
 
@@ -247,7 +249,8 @@ export class OpenAICompatibleModel implements IModel {
       medium: 1000,
       fast: 500,
     };
-    return speedMap[this.config.capabilities?.speed ?? "medium"];
+    const speed = this.config.capabilities?.speed ?? "medium";
+    return speedMap[speed] ?? 1000;
   }
 }
 

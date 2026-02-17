@@ -10,9 +10,9 @@ export class MemoryError extends Error {
   public readonly code: string;
   public readonly timestamp: number;
 
-  constructor(message: string, code: string = 'MEMORY_ERROR') {
+  constructor(message: string, code: string = "MEMORY_ERROR") {
     super(message);
-    this.name = 'MemoryError';
+    this.name = "MemoryError";
     this.code = code;
     this.timestamp = Date.now();
 
@@ -30,8 +30,8 @@ export class SessionNotFoundError extends MemoryError {
   public readonly sessionId: string;
 
   constructor(sessionId: string) {
-    super(`Session not found: ${sessionId}`, 'SESSION_NOT_FOUND');
-    this.name = 'SessionNotFoundError';
+    super(`Session not found: ${sessionId}`, "SESSION_NOT_FOUND");
+    this.name = "SessionNotFoundError";
     this.sessionId = sessionId;
   }
 }
@@ -45,9 +45,9 @@ export class InvalidSessionIdError extends MemoryError {
   constructor(sessionId: unknown) {
     super(
       `Invalid session ID: must be a non-empty string, got: ${typeof sessionId}`,
-      'INVALID_SESSION_ID'
+      "INVALID_SESSION_ID",
     );
-    this.name = 'InvalidSessionIdError';
+    this.name = "InvalidSessionIdError";
     this.sessionId = sessionId;
   }
 }
@@ -59,8 +59,8 @@ export class InvalidMessageError extends MemoryError {
   public readonly messageData: unknown;
 
   constructor(reason: string, messageData?: unknown) {
-    super(`Invalid message: ${reason}`, 'INVALID_MESSAGE');
-    this.name = 'InvalidMessageError';
+    super(`Invalid message: ${reason}`, "INVALID_MESSAGE");
+    this.name = "InvalidMessageError";
     this.messageData = messageData;
   }
 }
@@ -70,13 +70,13 @@ export class InvalidMessageError extends MemoryError {
  */
 export class Mem0APIError extends MemoryError {
   public readonly operation: string;
-  public readonly cause?: Error;
+  public override readonly cause?: Error | undefined;
 
   constructor(operation: string, message: string, cause?: Error) {
-    super(`Mem0 API error during ${operation}: ${message}`, 'MEM0_API_ERROR');
-    this.name = 'Mem0APIError';
+    super(`Mem0 API error during ${operation}: ${message}`, "MEM0_API_ERROR");
+    this.name = "Mem0APIError";
     this.operation = operation;
-    this.cause = cause;
+    this.cause = cause ?? undefined;
   }
 }
 
@@ -84,9 +84,9 @@ export class Mem0APIError extends MemoryError {
  * Error thrown when Mem0 API key is missing or invalid
  */
 export class Mem0AuthError extends MemoryError {
-  constructor(message: string = 'Mem0 API key is required') {
-    super(message, 'MEM0_AUTH_ERROR');
-    this.name = 'Mem0AuthError';
+  constructor(message: string = "Mem0 API key is required") {
+    super(message, "MEM0_AUTH_ERROR");
+    this.name = "Mem0AuthError";
   }
 }
 
@@ -95,13 +95,16 @@ export class Mem0AuthError extends MemoryError {
  */
 export class ContextBuildError extends MemoryError {
   public readonly sessionId: string;
-  public readonly cause?: Error;
+  public override readonly cause?: Error | undefined;
 
   constructor(sessionId: string, message: string, cause?: Error) {
-    super(`Failed to build context for session ${sessionId}: ${message}`, 'CONTEXT_BUILD_ERROR');
-    this.name = 'ContextBuildError';
+    super(
+      `Failed to build context for session ${sessionId}: ${message}`,
+      "CONTEXT_BUILD_ERROR",
+    );
+    this.name = "ContextBuildError";
     this.sessionId = sessionId;
-    this.cause = cause;
+    this.cause = cause ?? undefined;
   }
 }
 
@@ -115,9 +118,9 @@ export class MemoryLimitExceededError extends MemoryError {
   constructor(limit: number, current: number) {
     super(
       `Memory limit exceeded: ${current} messages, limit is ${limit}`,
-      'MEMORY_LIMIT_EXCEEDED'
+      "MEMORY_LIMIT_EXCEEDED",
     );
-    this.name = 'MemoryLimitExceededError';
+    this.name = "MemoryLimitExceededError";
     this.limit = limit;
     this.current = current;
   }
@@ -131,8 +134,8 @@ export class ValidationError extends MemoryError {
   public readonly value: unknown;
 
   constructor(field: string, reason: string, value?: unknown) {
-    super(`Validation failed for ${field}: ${reason}`, 'VALIDATION_ERROR');
-    this.name = 'ValidationError';
+    super(`Validation failed for ${field}: ${reason}`, "VALIDATION_ERROR");
+    this.name = "ValidationError";
     this.field = field;
     this.value = value;
   }

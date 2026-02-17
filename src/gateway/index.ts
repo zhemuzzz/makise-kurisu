@@ -14,11 +14,7 @@ import {
 } from "./types";
 import { SessionManager } from "./session-manager";
 import { StreamHandler } from "./stream-handler";
-import {
-  GatewayError,
-  InputValidationError,
-  SessionAlreadyExistsError,
-} from "./errors";
+import { GatewayError, InputValidationError } from "./errors";
 
 /**
  * 默认会话 TTL (30分钟)
@@ -131,7 +127,7 @@ export class Gateway {
       sessionId,
       userId,
       channelType,
-      metadata,
+      ...(metadata ? { metadata } : {}),
     });
 
     // 通知 orchestrator
@@ -230,11 +226,12 @@ export class Gateway {
     this.sessionManager!.touch(sessionId);
 
     // 调用 orchestrator
+    const session = this.sessionManager!.get(sessionId);
     const result = await this.orchestrator.processStream({
       sessionId,
       input: trimmedInput,
-      userId,
-      channelType: this.sessionManager!.get(sessionId)?.channelType,
+      ...(userId ? { userId } : {}),
+      ...(session?.channelType ? { channelType: session.channelType } : {}),
     });
 
     // 如果返回字符串，包装为流结果

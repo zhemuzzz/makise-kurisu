@@ -16,11 +16,7 @@ import {
   DEFAULT_SESSION_CONFIG,
   MessageRole,
 } from "./types";
-import {
-  InvalidSessionIdError,
-  InvalidMessageError,
-  MemoryLimitExceededError,
-} from "./errors";
+import { InvalidSessionIdError, InvalidMessageError } from "./errors";
 
 /**
  * SessionMemory 类

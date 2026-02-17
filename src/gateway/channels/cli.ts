@@ -4,8 +4,8 @@
  */
 
 import * as readline from "readline";
-import { ChannelType, type IOrchestrator, type SessionInfo } from "../types";
-import { ChannelError, InputValidationError } from "../errors";
+import { ChannelType, type IOrchestrator } from "../types";
+import { ChannelError } from "../errors";
 
 /**
  * CLI 渠道配置
@@ -33,14 +33,26 @@ export interface CLIChannelConfig {
 const DEFAULT_CONFIG: Required<
   Omit<CLIChannelConfig, "welcomeMessage" | "goodbyeMessage">
 > & {
-  welcomeMessage?: string;
-  goodbyeMessage?: string;
+  welcomeMessage?: string | undefined;
+  goodbyeMessage?: string | undefined;
 } = {
   prompt: "> ",
   exitCommands: ["/quit", "/exit"],
   streamOutput: true,
   showTypingIndicator: true,
   multilineEnabled: false,
+  welcomeMessage: undefined,
+  goodbyeMessage: undefined,
+};
+
+/**
+ * CLI 渠道内部配置类型
+ */
+type CLIChannelInternalConfig = Required<
+  Omit<CLIChannelConfig, "welcomeMessage" | "goodbyeMessage">
+> & {
+  welcomeMessage?: string | undefined;
+  goodbyeMessage?: string | undefined;
 };
 
 /**
@@ -51,10 +63,10 @@ export class CLIChannel {
   readonly channelType = ChannelType.CLI;
 
   private readonly orchestrator: IOrchestrator;
-  private readonly config: Required<CLIChannelConfig>;
+  private readonly config: CLIChannelInternalConfig;
   private rl?: readline.Interface;
   private _isRunning = false;
-  private currentSessionId?: string;
+  private currentSessionId: string | undefined;
   private userId: string;
 
   constructor(orchestrator: IOrchestrator, config: CLIChannelConfig = {}) {
@@ -184,7 +196,7 @@ export class CLIChannel {
         err.code === "SESSION_EXPIRED" ||
         err.message.toLowerCase().includes("session")
       ) {
-        this.currentSessionId = undefined;
+        this.currentSessionId = undefined as string | undefined;
       }
     }
   }
