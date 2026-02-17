@@ -8,22 +8,35 @@
 
 /**
  * 支持的渠道类型
+ * @description KURISU-013 扩展多平台支持
  */
 export enum ChannelType {
   CLI = 0,
   REST = 1,
   DISCORD = 2,
   WEBSOCKET = 3,
+  WECHAT = 4, // 微信公众号
+  WECOM = 5, // 企业微信
+  QQ = 6, // QQ Bot
+  TELEGRAM = 7, // Telegram
+  FEISHU = 8, // 飞书
+  DINGTALK = 9, // 钉钉
 }
 
 /**
  * 渠道类型名称映射
  */
 export const CHANNEL_TYPE_NAMES: Record<ChannelType, string> = {
-  [ChannelType.CLI]: 'cli',
-  [ChannelType.REST]: 'rest',
-  [ChannelType.DISCORD]: 'discord',
-  [ChannelType.WEBSOCKET]: 'websocket',
+  [ChannelType.CLI]: "cli",
+  [ChannelType.REST]: "rest",
+  [ChannelType.DISCORD]: "discord",
+  [ChannelType.WEBSOCKET]: "websocket",
+  [ChannelType.WECHAT]: "wechat",
+  [ChannelType.WECOM]: "wecom",
+  [ChannelType.QQ]: "qq",
+  [ChannelType.TELEGRAM]: "telegram",
+  [ChannelType.FEISHU]: "feishu",
+  [ChannelType.DINGTALK]: "dingtalk",
 };
 
 // ===========================================
@@ -44,10 +57,10 @@ export enum StreamEventType {
  * 流事件类型名称映射
  */
 export const STREAM_EVENT_TYPE_NAMES: Record<StreamEventType, string> = {
-  [StreamEventType.TEXT_DELTA]: 'text_delta',
-  [StreamEventType.TEXT_COMPLETE]: 'text_complete',
-  [StreamEventType.ERROR]: 'error',
-  [StreamEventType.METADATA]: 'metadata',
+  [StreamEventType.TEXT_DELTA]: "text_delta",
+  [StreamEventType.TEXT_COMPLETE]: "text_complete",
+  [StreamEventType.ERROR]: "error",
+  [StreamEventType.METADATA]: "metadata",
 };
 
 // ===========================================
@@ -158,7 +171,7 @@ export type AnyStreamEvent =
 export function isTextDeltaEvent(event: unknown): event is TextDeltaEvent {
   return (
     event !== null &&
-    typeof event === 'object' &&
+    typeof event === "object" &&
     (event as TextDeltaEvent).type === StreamEventType.TEXT_DELTA
   );
 }
@@ -166,10 +179,12 @@ export function isTextDeltaEvent(event: unknown): event is TextDeltaEvent {
 /**
  * 检查是否为文本完成事件
  */
-export function isTextCompleteEvent(event: unknown): event is TextCompleteEvent {
+export function isTextCompleteEvent(
+  event: unknown,
+): event is TextCompleteEvent {
   return (
     event !== null &&
-    typeof event === 'object' &&
+    typeof event === "object" &&
     (event as TextCompleteEvent).type === StreamEventType.TEXT_COMPLETE
   );
 }
@@ -180,7 +195,7 @@ export function isTextCompleteEvent(event: unknown): event is TextCompleteEvent 
 export function isErrorEvent(event: unknown): event is ErrorEvent {
   return (
     event !== null &&
-    typeof event === 'object' &&
+    typeof event === "object" &&
     (event as ErrorEvent).type === StreamEventType.ERROR
   );
 }
@@ -191,7 +206,7 @@ export function isErrorEvent(event: unknown): event is ErrorEvent {
 export function isMetadataEvent(event: unknown): event is MetadataEvent {
   return (
     event !== null &&
-    typeof event === 'object' &&
+    typeof event === "object" &&
     (event as MetadataEvent).type === StreamEventType.METADATA
   );
 }
@@ -285,4 +300,51 @@ export interface SessionManagerConfig {
   ttl: number;
   /** 清理间隔 (毫秒) */
   cleanupInterval?: number;
+}
+
+// ===========================================
+// 统一消息格式 (KURISU-013)
+// ===========================================
+
+/**
+ * 消息类型
+ */
+export type MessageType = "text" | "image" | "voice" | "file";
+
+/**
+ * 统一入站消息格式
+ * @description 各平台消息转换为统一格式，便于后续处理
+ */
+export interface InboundMessage {
+  /** 渠道类型 */
+  channelType: ChannelType;
+  /** 会话 ID，格式: {platform}-{userId} */
+  sessionId: string;
+  /** 用户 ID */
+  userId: string;
+  /** 消息内容 */
+  content: string;
+  /** 消息类型 */
+  messageType: MessageType;
+  /** 时间戳 (毫秒) */
+  timestamp: number;
+  /** 平台特定元数据 */
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * 统一出站消息格式
+ * @description 统一响应格式，各平台 Channel 负责转换为平台特定格式
+ */
+export interface OutboundMessage {
+  /** 渠道类型 */
+  channelType: ChannelType;
+  /** 会话 ID */
+  sessionId: string;
+  /** 响应内容 */
+  content: string;
+  /** 回复的消息 ID (可选) */
+  replyTo?: string;
+  /** 平台特定元数据 */
+  metadata?: Record<string, unknown>;
 }

@@ -23,6 +23,12 @@ export const VALID_CHANNEL_TYPES: ChannelType[] = [
   ChannelType.REST,
   ChannelType.DISCORD,
   ChannelType.WEBSOCKET,
+  ChannelType.WECHAT,
+  ChannelType.WECOM,
+  ChannelType.QQ,
+  ChannelType.TELEGRAM,
+  ChannelType.FEISHU,
+  ChannelType.DINGTALK,
 ];
 
 // ===========================================
