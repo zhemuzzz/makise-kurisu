@@ -10,6 +10,20 @@
 
 ## 已完成
 
+### ✅ KURISU-012 Snyk 安全扫描配置 (2026-02-18)
+
+**任务**: 启用 GitHub Actions 中的 Snyk 安全扫描
+
+**配置内容**:
+| 配置项 | 说明 |
+|--------|------|
+| SNYK_TOKEN secret | Snyk PAT (90天过期，需 2026-05-19 轮换) |
+| 扫描触发条件 | Push + PR (原仅 PR) |
+| npm audit | 高危级别审计 |
+
+**修改文件**:
+- `.github/workflows/ci.yml` - 移除 PR-only 限制
+
 ### ✅ KURISU-011 生产部署配置 (2026-02-18)
 
 **任务**: 添加 Docker 容器化 + GitHub Actions CI/CD
