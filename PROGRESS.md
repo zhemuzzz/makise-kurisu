@@ -274,15 +274,32 @@ embedding: glm-5
 
 **测试状态**: ✅ 45 通过
 
+### ✅ L2 人设引擎 - PromptBuilder (2026-02-17)
+
+**任务**: KURISU-006
+
+**文件**:
+- `src/core/persona/prompt-builder.ts` - PromptBuilder 类
+- `tests/unit/persona/prompt-builder.test.ts` - 单元测试 (40 tests)
+
+**核心功能**:
+- `build()` - 构建 RP 提示词（人设→状态→记忆→对话→输入→要求）
+- `updateMentalModel()` - 更新心智模型（防御性深合并）
+- `getMentalModel()` - 获取深拷贝
+
+**Code Review 修复**:
+- 修复 updateMentalModel 浅合并 bug
+
+**测试状态**: ✅ 40 通过
+
 ## 进行中
 
 ### 🔄 下一个任务
 
-**当前**: L2 人设引擎扩展 - PersonaEnforcer ✅ 完成
+**当前**: L2 人设引擎扩展 - PromptBuilder ✅ 完成
 
 **剩余模块**:
-1. **PromptBuilder** - 40 tests (P2)
-2. **集成测试** - 14 tests (P2)
+1. **集成测试** - 14 tests (P2)
 
 ## 待办
 
@@ -293,7 +310,7 @@ embedding: glm-5
 |------|-----|--------|--------|------|
 | `src/core/persona/validator.ts` | PersonaValidator | 76 tests | P2 | ✅ 完成 |
 | `src/core/persona/enforcer.ts` | PersonaEnforcer | 45 tests | P2 | ✅ 完成 |
-| `src/core/persona/prompt-builder.ts` | PromptBuilder | 40 tests | P2 | 待实现 |
+| `src/core/persona/prompt-builder.ts` | PromptBuilder | 40 tests | P2 | ✅ 完成 |
 | 集成测试 `persona-flow.test.ts` | - | 14 tests | P2 | 待实现 |
 
 **说明**: 上述测试文件已使用 `describe.skip()` 跳过，待源文件实现后启用。
