@@ -6,9 +6,52 @@
 ## 当前状态
 
 **阶段**: MVP 开发
-**焦点**: L1 交互网关 - ✅ 完成
+**焦点**: E2E 测试 - ✅ 完成
 
 ## 已完成
+
+### ✅ E2E 端到端测试 (2026-02-17)
+
+**任务**: KURISU-005
+
+**架构**: Vitest Integration Test + Mock 策略
+
+**文件结构**:
+```
+tests/e2e/
+├── setup.ts                      # 全局工具函数
+├── fixtures/
+│   └── e2e-fixtures.ts           # Mock 工厂 + 测试数据
+└── scenarios/
+    ├── e01-basic-conversation.test.ts   # 基础对话 (7 tests)
+    ├── e02-session-management.test.ts   # 会话管理 (18 tests)
+    ├── e03-memory-persistence.test.ts   # 记忆持久化 (11 tests)
+    ├── e04-persona-consistency.test.ts  # 人设一致性 (14 tests)
+    └── e05-error-recovery.test.ts       # 错误恢复 (17 tests)
+```
+
+**测试状态**: ✅ 67 通过
+
+**Mock 策略**:
+- ✅ 真实: PersonaEngine, HybridMemoryEngine (核心逻辑)
+- 🔧 Mock: IModelProvider, Mem0Client (外部服务)
+
+**Code Review** (2026-02-17):
+- CRITICAL: 0
+- HIGH: 4 → 0 (已修复)
+  - Gateway config 传参错误 → 修复为 `(deps, config)` 格式
+  - 清理测试缺少断言 → 添加 `toBeNull()` 断言
+- MEDIUM: 5 (文档性建议)
+- LOW: 3
+
+**覆盖场景**:
+| 场景 | 测试数 | 描述 |
+|------|--------|------|
+| E01 基础对话 | 7 | 流式响应、多轮对话、并发请求 |
+| E02 会话管理 | 18 | CRUD、TTL 清理、会话限制 |
+| E03 记忆持久化 | 11 | 会话记忆、上下文构建、流式存储 |
+| E04 人设一致性 | 14 | 系统提示词、校验、强化、OOC 检测 |
+| E05 错误恢复 | 17 | 输入校验、API 错误、会话错误、恢复 |
 
 ### ✅ L1 交互网关层 (2026-02-17)
 
@@ -192,13 +235,13 @@ embedding: glm-5
 
 ### 🔄 下一个任务
 
-**待确认**: 请指定下一个开发任务
+**待确认**: MVP 核心功能 + E2E 测试已完成，准备下一阶段
 
 **建议优先级**:
-1. **E2E 测试** - 完整对话流程验证
-2. **L2 人设引擎扩展** - PersonaValidator, PersonaEnforcer
-3. **L3 意图路由改进** - 更智能的分类算法
-4. **MVP 优化** - 性能优化、错误处理改进
+1. **L2 人设引擎扩展** - PersonaValidator, PersonaEnforcer
+2. **L3 意图路由改进** - 更智能的分类算法
+3. **MVP 优化** - 性能优化、错误处理改进
+4. **文档完善** - API 文档、部署指南
 
 ## 待办
 
