@@ -6,9 +6,23 @@
 ## 当前状态
 
 **阶段**: MVP 后续增强
-**焦点**: TRIGGER_KEYWORDS 触发词功能 - ✅ 完成
+**焦点**: 待定 - 可选择生产部署准备
 
 ## 已完成
+
+### ✅ KURISU-010 人设文档修正 (2026-02-17)
+
+**任务**: 更新 CLAUDE.md 核心人设硬约束
+
+**修改内容**:
+- 去掉"病娇"，Kurisu 只有傲娇（非病娇）
+- 添加维克多·孔多利亚大学、Lab Mem No.004、网名等身份信息
+- 添加 KURISU_PERSONA_REFERENCE.md 参考链接
+- 完善性格核心、说话习惯、禁止行为描述
+
+**相关文件**:
+- `CLAUDE.md` - 人设约束示例更新
+- `docs/persona/KURISU_PERSONA_REFERENCE.md` - 详细人设参考
 
 ### ✅ KURISU-009 TRIGGER_KEYWORDS 触发词功能 (2026-02-17)
 
