@@ -1,25 +1,22 @@
 /**
  * PromptBuilder 提示词构建器单元测试
  * @vitest-environment node
- *
- * TODO: 源文件 src/core/persona/prompt-builder.ts 尚未实现
- * 待实现 PromptBuilder 类后启用测试
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-// import { PromptBuilder } from '../../../src/core/persona/prompt-builder';
+import { PromptBuilder } from "../../../src/core/persona/prompt-builder";
 import {
   SAMPLE_MENTAL_MODELS,
   SAMPLE_MEMORIES,
   BOUNDARY_TEST_DATA,
 } from "../../fixtures/persona-fixtures";
 
-describe.skip("PromptBuilder", () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let builder: any;
+describe("PromptBuilder", () => {
+  let builder: PromptBuilder;
 
   beforeEach(() => {
-    builder = null;
+    // 使用 friend model 作为默认（包含冈部、65%熟悉度）
+    builder = new PromptBuilder(SAMPLE_MENTAL_MODELS.friend);
   });
 
   describe("build", () => {
