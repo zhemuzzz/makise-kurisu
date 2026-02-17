@@ -443,6 +443,11 @@ describe("Gateway", () => {
         // Expected error
       }
 
+      // Handle finalResponse rejection to avoid unhandled rejection warning
+      result.finalResponse.catch(() => {
+        // Expected - stream failed
+      });
+
       expect(onError).toHaveBeenCalled();
     });
 
