@@ -10,6 +10,37 @@
 
 ## 已完成
 
+### ✅ TypeScript 严格模式 + ESLint 配置 (2026-02-18)
+
+**任务**: 修复 CI 中 44 个 TypeScript 类型错误，配置 ESLint
+
+**TypeScript 修复**:
+| 问题类型 | 数量 | 修复方案 |
+|----------|------|----------|
+| exactOptionalPropertyTypes | 15+ | 显式 `\| undefined` 类型 |
+| noPropertyAccessFromIndexSignature | 10+ | 括号访问 `['key']` |
+| 未使用导入 | 5+ | 删除 |
+| prefer-const | 3 | let → const |
+| override 修饰符 | 2 | 添加 override |
+
+**ESLint 配置**:
+| 文件 | 用途 |
+|------|------|
+| `.eslintrc.js` | 主配置文件，TypeScript 严格规则 |
+| `.eslintignore` | 忽略 dist, node_modules 等 |
+
+**覆盖规则** (针对已知类型问题):
+- `src/agents/**/*.ts` - LangGraph 类型系统需 `any`
+- `src/gateway/**/*.ts` - async 方法无 await
+- `src/memory/session-memory.ts` - JSON 序列化需 `any`
+- `src/config/models/**/*.ts` - stream reader 返回 `any`
+- `src/bin/server.ts` - HTTP chunk 是 `any`
+
+**测试修复**:
+- `tests/gateway/index.test.ts` - 修复流错误测试的 unhandled rejection
+
+**CI 结果**: ✅ 全部通过 (typecheck + lint + test)
+
 ### ✅ KURISU-012 Snyk 安全扫描配置 (2026-02-18)
 
 **任务**: 启用 GitHub Actions 中的 Snyk 安全扫描
