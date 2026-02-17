@@ -231,29 +231,49 @@ embedding: glm-5
 | `.claude/` | `settings.local.json` | ❌ | 本地权限/沙箱配置 |
 | `.claude/` | `rules/`, `agents/`, etc. | ✅ | Claude Code 行为规则 |
 
+### ✅ L2 人设引擎 - PersonaValidator (2026-02-17)
+
+**任务**: KURISU-006
+
+**文件**:
+- `src/core/persona/validator.ts` - PersonaValidator 类
+- `tests/unit/persona/validator.test.ts` - 单元测试 (76 tests)
+
+**核心功能**:
+- `detectOOC()` - 检测 OOC (Out of Character) 关键词
+- `checkToneConsistency()` - 检查语气一致性
+- `checkRelationshipConsistency()` - 检查关系一致性
+- `validate()` - 综合校验，返回详细结果
+
+**Code Review 修复**:
+- 添加输入验证处理 null/undefined
+- 统一大小写不敏感匹配
+- 添加关键词设计说明注释
+
+**测试状态**: ✅ 76 通过
+
 ## 进行中
 
 ### 🔄 下一个任务
 
-**待确认**: MVP 核心功能 + E2E 测试已完成，准备下一阶段
+**当前**: L2 人设引擎扩展 - PersonaValidator ✅ 完成
 
-**建议优先级**:
-1. **L2 人设引擎扩展** - PersonaValidator, PersonaEnforcer
-2. **L3 意图路由改进** - 更智能的分类算法
-3. **MVP 优化** - 性能优化、错误处理改进
-4. **文档完善** - API 文档、部署指南
+**剩余模块**:
+1. **PersonaEnforcer** - 45 tests (P2)
+2. **PromptBuilder** - 40 tests (P2)
+3. **集成测试** - 14 tests (P2)
 
 ## 待办
 
 ### L2 人设引擎 - 待实现模块
 
 **源文件** (测试已就绪，待实现):
-| 文件 | 类 | 测试数 | 优先级 |
-|------|-----|--------|--------|
-| `src/core/persona/validator.ts` | PersonaValidator | 76 tests | P2 |
-| `src/core/persona/enforcer.ts` | PersonaEnforcer | 45 tests | P2 |
-| `src/core/persona/prompt-builder.ts` | PromptBuilder | 40 tests | P2 |
-| 集成测试 `persona-flow.test.ts` | - | 14 tests | P2 |
+| 文件 | 类 | 测试数 | 优先级 | 状态 |
+|------|-----|--------|--------|------|
+| `src/core/persona/validator.ts` | PersonaValidator | 76 tests | P2 | ✅ 完成 |
+| `src/core/persona/enforcer.ts` | PersonaEnforcer | 45 tests | P2 | 待实现 |
+| `src/core/persona/prompt-builder.ts` | PromptBuilder | 40 tests | P2 | 待实现 |
+| 集成测试 `persona-flow.test.ts` | - | 14 tests | P2 | 待实现 |
 
 **说明**: 上述测试文件已使用 `describe.skip()` 跳过，待源文件实现后启用。
 
