@@ -1,13 +1,10 @@
 /**
  * Validator 校验器单元测试
  * @vitest-environment node
- *
- * TODO: 源文件 src/core/persona/validator.ts 尚未实现
- * 待实现 PersonaValidator 类后启用测试
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-// import { PersonaValidator } from '../../../src/core/persona/validator';
+import { PersonaValidator } from "../../../src/core/persona/validator";
 import {
   SAMPLE_MENTAL_MODELS,
   VALID_KURISU_RESPONSES,
@@ -19,12 +16,11 @@ import {
   BOUNDARY_TEST_DATA,
 } from "../../fixtures/persona-fixtures";
 
-describe.skip("PersonaValidator", () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let validator: any;
+describe("PersonaValidator", () => {
+  let validator: PersonaValidator;
 
   beforeEach(() => {
-    validator = null;
+    validator = new PersonaValidator();
   });
 
   describe("detectOOC", () => {
