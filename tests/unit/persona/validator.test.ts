@@ -146,7 +146,7 @@ describe("PersonaValidator", () => {
       });
 
       it("should reject overly intimate expressions", () => {
-        const intimateExpressions = ["亲爱的", "宝贝", "最喜欢你了", "人家"];
+        const intimateExpressions = ["亲爱的", "宝贝", "最喜欢你了"];
 
         intimateExpressions.forEach((expr) => {
           const result = validator.checkRelationshipConsistency(`...${expr}`);

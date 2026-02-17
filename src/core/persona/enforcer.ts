@@ -4,42 +4,12 @@
  */
 
 import { MentalModel } from "./types";
-
-/**
- * OOC 短语列表（需要移除）
- */
-const OOC_PHRASES = [
-  "作为AI",
-  "作为人工智能",
-  "我是一个程序",
-  "我是一个AI",
-  "作为助手",
-  "我无法",
-  "我是一种",
-  "AI助手",
-  "人工智能助手",
-  "人工智能程序",
-  "语言模型",
-  "Anthropic",
-  "Claude",
-];
-
-/**
- * 傲娇前缀列表（以 "哼" 开头）
- */
-const TSUNDERE_PREFIXES = ["哼，", "哼 ", "哼"];
-
-/**
- * 情感关键词列表
- */
-const EMOTIONAL_KEYWORDS = [
-  "喜欢你",
-  "爱你",
-  "在乎你",
-  "关心你",
-  "想你",
-  "担心你",
-];
+import {
+  OOC_PHRASES,
+  TSUNDERE_PREFIXES,
+  EMOTIONAL_KEYWORDS,
+  TSUNDERE_KEYWORDS,
+} from "./constants";
 
 /**
  * 默认响应
@@ -148,15 +118,7 @@ export class PersonaEnforcer {
    * 检查是否已有傲娇标记
    */
   private hasTsundereMarkers(text: string): boolean {
-    const markers = [
-      "哼",
-      "笨蛋",
-      "才不是",
-      "才没有",
-      "你这家伙",
-      "你是笨蛋吗",
-    ];
-    return markers.some((marker) => text.includes(marker));
+    return TSUNDERE_KEYWORDS.some((marker) => text.includes(marker));
   }
 
   /**

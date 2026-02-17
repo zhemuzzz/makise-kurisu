@@ -4,7 +4,7 @@
  */
 
 import { MentalModel, PersonaHardcoded, ValidationResult } from "./types";
-import { PERSONA_HARDCODED, OOC_PHRASES } from "./constants";
+import { PERSONA_HARDCODED, OOC_PHRASES, TSUNDERE_KEYWORDS } from "./constants";
 
 export class PersonaEngine {
   private mentalModel: MentalModel;
@@ -139,8 +139,7 @@ ${userMessage}
     let enforced = response;
 
     // 检查是否已有傲娇标记
-    const tsundereMarkers = ["哼", "笨蛋", "才不是", "才没有", "你这家伙"];
-    const hasTsundereMarker = tsundereMarkers.some((marker) =>
+    const hasTsundereMarker = TSUNDERE_KEYWORDS.some((marker) =>
       enforced.includes(marker),
     );
 

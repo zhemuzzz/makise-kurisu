@@ -4,6 +4,12 @@
  */
 
 import { MentalModel, ValidationResult } from "./types";
+import {
+  OOC_PHRASES,
+  MOE_KEYWORDS,
+  INTIMATE_KEYWORDS,
+  TSUNDERE_KEYWORDS,
+} from "./constants";
 
 /**
  * OOC 检测结果
@@ -39,50 +45,6 @@ export interface DetailedValidationResult extends ValidationResult {
     relationship: RelationshipResult;
   };
 }
-
-/**
- * OOC 关键词列表（保持原始大小写用于返回）
- * 注意: "我无法" 虽然可能误报（如 "我无法理解"），但它是 AI 拒绝的典型模式，
- * 保留以确保检测 "我无法访问互联网" 等 OOC 情况
- */
-const OOC_KEYWORDS = [
-  "作为AI",
-  "作为人工智能",
-  "我是一个程序",
-  "我是一个AI",
-  "作为助手",
-  "我无法",
-  "我是一种",
-  "AI助手",
-  "人工智能助手",
-  "人工智能程序",
-  "语言模型",
-  "Anthropic",
-  "Claude",
-];
-
-/**
- * 卖萌关键词列表
- */
-const MOE_KEYWORDS = ["喵", "主人~", "嘻嘻~", "人家", "呜呜呜", "~"];
-
-/**
- * 过度热情/亲密关键词列表
- */
-const INTIMATE_KEYWORDS = ["亲爱的", "宝贝", "最喜欢你了", "我好想你", "人家"];
-
-/**
- * 傲娇关键词列表
- */
-const TSUNDERE_KEYWORDS = [
-  "哼",
-  "笨蛋",
-  "你是笨蛋吗",
-  "才不是",
-  "才...才不是",
-  "...才不是",
-  "你这家伙",
-];
 
 /**
  * PersonaValidator 类
@@ -126,7 +88,7 @@ export class PersonaValidator {
     const detectedKeywords: string[] = [];
     const lowerResponse = response.toLowerCase();
 
-    for (const keyword of OOC_KEYWORDS) {
+    for (const keyword of OOC_PHRASES) {
       // 不区分大小写匹配
       if (lowerResponse.includes(keyword.toLowerCase())) {
         detectedKeywords.push(keyword);

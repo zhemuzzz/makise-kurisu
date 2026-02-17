@@ -10,6 +10,96 @@
 
 ## 已完成
 
+### ✅ Kurisu 人设参考文档 (2026-02-17)
+
+**任务**: 人设资料收集与文档化
+
+**数据来源**:
+- Steins;Gate Wiki (Fandom)
+- 萌娘百科、灰机百科
+- dialogue.moe 台词库
+
+**文件**: `docs/persona/KURISU_PERSONA_REFERENCE.md`
+
+**内容概要**:
+| 章节 | 内容 |
+|------|------|
+| 基础信息 | 年龄、职业、学历、昵称 |
+| 外貌特征 | 发色、体型、着装 |
+| 性格特征 | 理智×傲娇×好强×内向 |
+| 背景故事 | 父女关系、学术成就 |
+| 人际关系 | Lab Members、Maho |
+| 说话习惯 | 口头禅、语气变化规则 |
+| 经典台词 | 名言、对话示例 (中英) |
+| 行为禁忌 | OOC 列表 |
+| 世界观设定 | 术语、Gadgets |
+| 配置示例 | System Prompt、YAML 配置 |
+
+**用途**: 为 PersonaEngine 提供详细的人设参考，支持 Lore 扩展
+
+### ✅ KURISU-007 人设引擎增强 (2026-02-17)
+
+**任务**: OOC 列表统一 + Lore 术语库 + PERSONA_HARDCODED 增强
+
+**修改文件**:
+| 文件 | 变更 |
+|------|------|
+| `src/core/persona/constants.ts` | 统一常量定义 (OOC, MOE, INTIMATE, TSUNDERE 等) |
+| `src/core/persona/lore.ts` | 新增 Steins;Gate 术语库 (15 terms / 5 categories) |
+| `src/core/persona/validator.ts` | 改为从 constants.ts 导入 |
+| `src/core/persona/enforcer.ts` | 改为从 constants.ts 导入 |
+| `src/core/persona/index.ts` | 改为从 constants.ts 导入 |
+
+**新增测试**:
+- `tests/unit/persona/constants.test.ts` - 24 tests
+- `tests/unit/persona/lore.test.ts` - 33 tests
+
+**Lore 术语库结构**:
+```
+LORE_TERMS
+├── world_mechanism (3): world-line, attractor-field, reading-steiner
+├── technology (3): d-mail, time-leap, amadeus
+├── organization (2): future-gadget-lab, sern
+├── item (3): phone-microwave, ibn-5100, fork-spoon
+└── character (5): okabe, mayuri, maho, shouichi, kurisu
+```
+
+**修复问题**:
+| 问题 | 修复 |
+|------|------|
+| lore.ts 中文引号语法错误 | 改为单引号 |
+| searchLore 大小写敏感 | description 也转小写 |
+| "人家" 重复定义 | 移除自 INTIMATE_KEYWORDS |
+
+**Code Review**: APPROVED (0 CRITICAL/HIGH/MEDIUM, 1 LOW)
+
+**测试状态**: ✅ 831 通过, 28 files
+
+**任务**: 人设资料收集与文档化
+
+**数据来源**:
+- Steins;Gate Wiki (Fandom)
+- 萌娘百科、灰机百科
+- dialogue.moe 台词库
+
+**文件**: `docs/persona/KURISU_PERSONA_REFERENCE.md`
+
+**内容概要**:
+| 章节 | 内容 |
+|------|------|
+| 基础信息 | 年龄、职业、学历、昵称 |
+| 外貌特征 | 发色、体型、着装 |
+| 性格特征 | 理智×傲娇×好强×内向 |
+| 背景故事 | 父女关系、学术成就 |
+| 人际关系 | Lab Members、Maho |
+| 说话习惯 | 口头禅、语气变化规则 |
+| 经典台词 | 名言、对话示例 (中英) |
+| 行为禁忌 | OOC 列表 |
+| 世界观设定 | 术语、Gadgets |
+| 配置示例 | System Prompt、YAML 配置 |
+
+**用途**: 为 PersonaEngine 提供详细的人设参考，支持 Lore 扩展
+
 ### ✅ E2E 端到端测试 (2026-02-17)
 
 **任务**: KURISU-005
