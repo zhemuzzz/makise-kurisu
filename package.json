@@ -4,16 +4,27 @@
   "description": "拟人化实时交互优先的个人 AI 数字分身",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "kurisu-cli": "./dist/bin/cli.js",
+    "kurisu-server": "./dist/bin/server.js"
+  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "dev:cli": "tsx src/bin/cli.ts",
+    "dev:server": "tsx src/bin/server.ts",
     "build": "tsc",
     "start": "node dist/index.js",
+    "start:cli": "node dist/bin/cli.js",
+    "start:server": "node dist/bin/server.js",
     "test": "vitest",
     "test:coverage": "vitest --coverage",
     "test:models": "tsx scripts/test-models.ts",
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "docker:build": "docker build -t kurisu:latest .",
+    "docker:run": "docker run -p 3000:3000 --env-file .env kurisu:latest",
+    "docker:compose": "docker-compose up -d"
   },
   "keywords": [
     "ai",

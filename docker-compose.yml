@@ -1,0 +1,80 @@
+# Kurisu Docker Compose
+# Development and Production configuration
+
+version: "3.8"
+
+services:
+  # ============================================
+  # Kurisu HTTP Server
+  # ============================================
+  kurisu:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: kurisu:latest
+    container_name: kurisu-server
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOST=0.0.0.0
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    volumes:
+      # Persist logs
+      - kurisu-logs:/app/logs
+      # Mount config for hot-reload (development)
+      - ./config:/app/config:ro
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - kurisu-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+
+  # ============================================
+  # Redis (Optional - for distributed sessions)
+  # ============================================
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: kurisu-redis
+  #   restart: unless-stopped
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis-data:/data
+  #   networks:
+  #     - kurisu-network
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 3
+
+networks:
+  kurisu-network:
+    driver: bridge
+
+volumes:
+  kurisu-logs:
+    driver: local
+  # redis-data:
+  #   driver: local

@@ -40,3 +40,10 @@ coverage/
 .tmp/
 tmp/
 temp/
+
+# Docker
+.docker/
+
+# Kubernetes
+*.kubeconfig
+kubeconfig*
