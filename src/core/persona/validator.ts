@@ -198,8 +198,7 @@ export class PersonaValidator {
 
     // 熟人阶段 (21-50): 仍不能使用过于亲密的表达
     if (familiarity > 20 && familiarity <= 50) {
-      const tooIntimate = ["亲爱的", "宝贝", "最喜欢你了"];
-      for (const keyword of tooIntimate) {
+      for (const keyword of INTIMATE_KEYWORDS) {
         if (response.includes(keyword)) {
           return {
             consistent: false,

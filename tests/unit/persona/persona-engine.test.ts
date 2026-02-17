@@ -260,7 +260,7 @@ describe("PersonaEngine", () => {
         const result = engine.validate("作为AI，我认为这个问题很有趣");
 
         expect(result.isValid).toBe(false);
-        expect(result.violations).toContain("包含不符合人设的表达");
+        expect(result.violations.some((v) => v.includes("作为AI"))).toBe(true);
       });
 
       it('should detect "我是一个程序" phrase', () => {
@@ -282,7 +282,7 @@ describe("PersonaEngine", () => {
         const result = engine.validate("亲爱的，我来帮你");
 
         expect(result.isValid).toBe(false);
-        expect(result.violations).toContain("未反映正确的关系程度");
+        expect(result.violations.some((v) => v.includes("亲爱的"))).toBe(true);
       });
 
       it("should allow friendly phrase for close relationship", () => {
@@ -363,14 +363,17 @@ describe("PersonaEngine", () => {
     });
 
     it("should truncate memories to last 5", () => {
-      const memories = Array.from({ length: 10 }, (_, i) => `Memory ${i}`);
+      const memories = Array.from(
+        { length: 10 },
+        (_, i) => `Recall-${i}`,
+      );
       const prompt = engine.buildRPPrompt("测试", memories);
 
       // 应该只包含最后5条
-      expect(prompt).toContain("Memory 5");
-      expect(prompt).toContain("Memory 9");
-      expect(prompt).not.toContain("Memory 0");
-      expect(prompt).not.toContain("Memory 4");
+      expect(prompt).toContain("Recall-5");
+      expect(prompt).toContain("Recall-9");
+      expect(prompt).not.toContain("Recall-0");
+      expect(prompt).not.toContain("Recall-4");
     });
 
     it("should include relationship familiarity", () => {

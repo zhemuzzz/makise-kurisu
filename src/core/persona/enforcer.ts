@@ -77,28 +77,33 @@ export class PersonaEnforcer {
     // 重置种子以确保相同输入产生相同输出
     this.seed = this.hashString(trimmed);
 
-    let enforced = trimmed;
+    // 使用管道模式（不可变）
+    // 先检查傲娇特征（在 OOC 移除前）
+    const hasTsundere = this.hasTsundereMarkers(trimmed);
 
-    // 1. 移除 OOC 短语
-    enforced = this.removeOOCPhrases(enforced);
+    // 管道处理
+    const result = this.pipe(
+      trimmed,
+      (text) => this.removeOOCPhrases(text),
+      (text) =>
+        this.hasEmotionalContent(text)
+          ? this.addEmotionalHesitation(text)
+          : text,
+      (text) => (hasTsundere ? text : this.addTsunderePrefix(text)),
+      (text) => this.adjustForRelationship(text),
+    );
 
-    // 2. 检查是否已有傲娇特征
-    const hasTsundere = this.hasTsundereMarkers(enforced);
+    return result;
+  }
 
-    // 3. 如果有情感内容，添加犹豫
-    if (this.hasEmotionalContent(enforced)) {
-      enforced = this.addEmotionalHesitation(enforced);
-    }
-
-    // 4. 如果没有傲娇特征，添加前缀
-    if (!hasTsundere) {
-      enforced = this.addTsunderePrefix(enforced);
-    }
-
-    // 5. 根据关系程度调整
-    enforced = this.adjustForRelationship(enforced);
-
-    return enforced;
+  /**
+   * 管道函数：将多个转换函数串联执行
+   * @param initial 初始值
+   * @param fns 转换函数数组
+   * @returns 最终结果
+   */
+  private pipe<T>(initial: T, ...fns: Array<(arg: T) => T>): T {
+    return fns.reduce((acc, fn) => fn(acc), initial);
   }
 
   /**

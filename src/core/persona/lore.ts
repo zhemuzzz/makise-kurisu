@@ -371,30 +371,3 @@ export function searchLore(query: string): LoreTerm[] {
   return results;
 }
 
-/**
- * 构建用于 Prompt 的 Lore 片段
- * 只包含高重要性术语，限制数量
- */
-export function buildLorePromptSection(maxTerms: number = 10): string {
-  if (maxTerms <= 0) {
-    return "";
-  }
-
-  const importantTerms = getHighImportanceLore().slice(0, maxTerms);
-
-  if (importantTerms.length === 0) {
-    return "";
-  }
-
-  const lines = ["## 世界观术语（Steins;Gate）"];
-
-  for (const term of importantTerms) {
-    let line = `- **${term.nameZh}** (${term.nameEn}): ${term.description}`;
-    if (term.kurisuPerspective) {
-      line += ` [Kurisu: ${term.kurisuPerspective}]`;
-    }
-    lines.push(line);
-  }
-
-  return lines.join("\n");
-}

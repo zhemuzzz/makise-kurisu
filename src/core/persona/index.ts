@@ -1,13 +1,24 @@
 /**
- * 人设一致性引擎
+ * 人设一致性引擎 (Facade)
  * 三层管控：硬约束 → 心智模型 → 合规校验
+ *
+ * 委托给专用子模块：
+ * - PersonaValidator: OOC 检测、语气/关系一致性
+ * - PersonaEnforcer: 傲娇转换、OOC 移除、情感犹豫
+ * - PromptBuilder: RP 提示词构建 + Lore 世界观
  */
 
-import { MentalModel, PersonaHardcoded, ValidationResult } from "./types";
-import { PERSONA_HARDCODED, OOC_PHRASES, TSUNDERE_KEYWORDS } from "./constants";
+import { MentalModel, PersonaHardcoded } from "./types";
+import { PERSONA_HARDCODED } from "./constants";
+import { PersonaValidator, DetailedValidationResult } from "./validator";
+import { PersonaEnforcer } from "./enforcer";
+import { PromptBuilder } from "./prompt-builder";
 
 export class PersonaEngine {
   private mentalModel: MentalModel;
+  private validator: PersonaValidator;
+  private enforcer: PersonaEnforcer;
+  private promptBuilder: PromptBuilder;
 
   constructor(initialModel?: Partial<MentalModel>) {
     this.mentalModel = {
@@ -30,6 +41,10 @@ export class PersonaEngine {
         ...initialModel?.shared_memories,
       },
     };
+
+    this.validator = new PersonaValidator(this.mentalModel);
+    this.enforcer = new PersonaEnforcer(this.mentalModel);
+    this.promptBuilder = new PromptBuilder(this.mentalModel);
   }
 
   /**
@@ -49,136 +64,59 @@ export class PersonaEngine {
   }
 
   /**
-   * 更新心智模型
+   * 更新心智模型（防御性深合并）
    */
   updateMentalModel(updates: Partial<MentalModel>): void {
     this.mentalModel = {
-      ...this.mentalModel,
-      ...updates,
+      user_profile: updates.user_profile
+        ? { ...this.mentalModel.user_profile, ...updates.user_profile }
+        : this.mentalModel.user_profile,
+      relationship_graph: updates.relationship_graph
+        ? {
+            ...this.mentalModel.relationship_graph,
+            ...updates.relationship_graph,
+          }
+        : this.mentalModel.relationship_graph,
+      shared_memories: updates.shared_memories
+        ? { ...this.mentalModel.shared_memories, ...updates.shared_memories }
+        : this.mentalModel.shared_memories,
     };
+
+    // 重建子模块以反映新状态
+    this.validator = new PersonaValidator(this.mentalModel);
+    this.enforcer = new PersonaEnforcer(this.mentalModel);
+    this.promptBuilder = new PromptBuilder(this.mentalModel);
   }
 
   /**
    * 验证人设一致性
+   * 委托给 PersonaValidator
    */
-  validate(response: string): ValidationResult {
-    const violations: string[] = [];
-
-    // 检查是否违反核心人设
-    if (this.containsOutOfCharacterPhrases(response)) {
-      violations.push("包含不符合人设的表达");
-    }
-
-    // 检查是否记住关系状态
-    if (!this.reflectsRelationshipLevel(response)) {
-      violations.push("未反映正确的关系程度");
-    }
-
-    return {
-      isValid: violations.length === 0,
-      violations,
-      shouldRegenerate: violations.length > 0,
-    };
-  }
-
-  /**
-   * 构建 RP Prompt
-   */
-  buildRPPrompt(userMessage: string, memories: string[]): string {
-    const persona = this.getHardcodedPersona();
-    const model = this.getMentalModel();
-
-    return `
-${persona.content}
-
-## 当前状态
-- 与用户关系：${model.relationship_graph.familiarity}%熟悉度
-- 用户偏好：${model.user_profile.preferences.join("、")}
-
-## 最近对话
-${memories.slice(-5).join("\n")}
-
-## 当前用户输入
-${userMessage}
-
-## 生成回复的要求
-1. 保持人设：傲娇、理性、科学
-2. 反映关系：根据熟悉度调整态度
-3. 禁止出戏：
-   - 不要说"作为AI"、"我无法..."
-   - 始终保持在 Kurisu 的角色中
-
-现在，以牧濑红莉栖的身份回复：
-`;
-  }
-
-  private containsOutOfCharacterPhrases(text: string): boolean {
-    return OOC_PHRASES.some((phrase) => text.includes(phrase));
-  }
-
-  private reflectsRelationshipLevel(text: string): boolean {
-    // 简化实现：根据熟悉度检查语气
-    const familiarity = this.mentalModel.relationship_graph.familiarity;
-    if (familiarity < 20) {
-      // 陌生阶段：应该更冷淡
-      const tooFriendly = ["亲爱的", "宝贝", "最喜欢你了"];
-      return !tooFriendly.some((phrase) => text.includes(phrase));
-    }
-    return true;
+  validate(response: string): DetailedValidationResult {
+    return this.validator.validate(response);
   }
 
   /**
    * 强化响应的人设特征
-   * 添加傲娇标记、调整语气
+   * 委托给 PersonaEnforcer（确定性 seededRandom）
    */
   enforcePersona(response: string): string {
-    if (!response || response.trim() === "") {
-      return response;
-    }
-
-    let enforced = response;
-
-    // 检查是否已有傲娇标记
-    const hasTsundereMarker = TSUNDERE_KEYWORDS.some((marker) =>
-      enforced.includes(marker),
-    );
-
-    // 如果没有傲娇标记，添加一个
-    if (!hasTsundereMarker) {
-      const prefix = Math.random() > 0.5 ? "哼，" : "";
-      const suffix =
-        Math.random() > 0.5
-          ? ""
-          : Math.random() > 0.5
-            ? "。笨蛋。"
-            : "。你这家伙。";
-      enforced = prefix + enforced + suffix;
-    }
-
-    return enforced;
+    return this.enforcer.enforce(response);
   }
 
   /**
    * 获取系统提示词
-   * 用于注入到对话上下文
+   * 委托给 PromptBuilder（包含 Lore 世界观）
    */
   getSystemPrompt(): string {
-    const persona = this.getHardcodedPersona();
-    const model = this.getMentalModel();
+    return this.promptBuilder.build("", []);
+  }
 
-    return `${persona.content}
-
-## 当前状态
-- 与用户关系：${model.user_profile.relationship} (${model.relationship_graph.familiarity}%熟悉度)
-- 用户偏好：${model.user_profile.preferences.length > 0 ? model.user_profile.preferences.join("、") : "未知"}
-
-## 回复要求
-1. 保持人设：傲娇、理性、科学
-2. 反映关系：根据熟悉度调整态度
-3. 禁止出戏：
-   - 不要说"作为AI"、"我无法..."
-   - 始终保持在 Kurisu 的角色中
-
-现在，你已完全沉浸在牧濑红莉栖的角色中。`;
+  /**
+   * 构建 RP Prompt
+   * @deprecated 使用 getSystemPrompt() 代替
+   */
+  buildRPPrompt(userMessage: string, memories: string[]): string {
+    return this.promptBuilder.build(userMessage, memories);
   }
 }

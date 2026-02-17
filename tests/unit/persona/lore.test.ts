@@ -250,54 +250,6 @@ describe("Lore Term Library", () => {
     });
   });
 
-  describe("buildLorePromptSection()", () => {
-    it("should return non-empty string", async () => {
-      const { buildLorePromptSection } = await import("../../../src/core/persona/lore");
-
-      const section = buildLorePromptSection(5);
-      expect(section.length).toBeGreaterThan(0);
-    });
-
-    it("should start with markdown header", async () => {
-      const { buildLorePromptSection } = await import("../../../src/core/persona/lore");
-
-      const section = buildLorePromptSection(5);
-      expect(section).toContain("##");
-    });
-
-    it("should contain Chinese term names", async () => {
-      const { buildLorePromptSection } = await import("../../../src/core/persona/lore");
-
-      const section = buildLorePromptSection(5);
-      expect(section).toContain("世界线");
-    });
-
-    it("should respect maxTerms parameter", async () => {
-      const { buildLorePromptSection } = await import("../../../src/core/persona/lore");
-
-      const section3 = buildLorePromptSection(3);
-      const section10 = buildLorePromptSection(10);
-
-      // 更多术语应该产生更长的输出
-      expect(section10.length).toBeGreaterThanOrEqual(section3.length);
-    });
-
-    it("should include kurisuPerspective when available", async () => {
-      const { buildLorePromptSection } = await import("../../../src/core/persona/lore");
-
-      const section = buildLorePromptSection(10);
-      // 某些术语有 kurisuPerspective
-      expect(section).toContain("Kurisu:");
-    });
-
-    it("should return empty string when maxTerms is 0", async () => {
-      const { buildLorePromptSection } = await import("../../../src/core/persona/lore");
-
-      const section = buildLorePromptSection(0);
-      expect(section).toBe("");
-    });
-  });
-
   describe("Immutability", () => {
     it("should not allow modifying returned arrays", async () => {
       const { getLoreByCategory, LORE_TERMS } = await import(
