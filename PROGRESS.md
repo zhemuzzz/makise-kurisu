@@ -6,9 +6,31 @@
 ## 当前状态
 
 **阶段**: MVP 后续增强
-**焦点**: Lore 集成 PromptBuilder - ✅ 完成
+**焦点**: TRIGGER_KEYWORDS 触发词功能 - ✅ 完成
 
 ## 已完成
+
+### ✅ KURISU-009 TRIGGER_KEYWORDS 触发词功能 (2026-02-17)
+
+**任务**: 实现触发词检测和响应机制
+
+**触发类型**:
+| 类型 | 示例 | 反应 | 强度 |
+|------|------|------|------|
+| nickname | "Christina" | 傲娇否认 | mild |
+| tsundere_call | "你真傲娇" | 反驳 | moderate |
+| compliment | "你真是个天才" | 害羞否认 | mild |
+| chest | "你胸部好小" | 暴怒 | strong |
+| cockroach | "有蟑螂！" | 恐惧 | strong |
+
+**实现内容**:
+- `constants.ts`: 新增 `TriggerType`, `TriggerMatch`, `TRIGGER_RESPONSES` (20 模板)
+- `enforcer.ts`: 新增 `detectTrigger()`, `applyTriggerResponse()`
+- `index.ts`: `enforcePersona()` 新增可选 `userInput` 参数
+
+**优先级机制**: cockroach > chest > tsundere_call > nickname > compliment
+
+**测试状态**: ✅ 862 通过 (+29 tests)
 
 ### ✅ Code Review 5 个 HIGH 级别问题修复 (2026-02-17)
 
