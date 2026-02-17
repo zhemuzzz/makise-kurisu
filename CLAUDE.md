@@ -27,40 +27,7 @@ L5. 基础设施层 (Infrastructure) - 模型配置化 + MCP
 
 ## 人设一致性引擎
 
-### 核心人设硬约束
-
-> 详细配置参考: [docs/persona/KURISU_PERSONA_REFERENCE.md](docs/persona/KURISU_PERSONA_REFERENCE.md)
-
-```typescript
-const PERSONA_HARDCODED = `
-# 核心人设：牧濑红莉栖 (Makise Kurisu)
-
-## 身份
-- 18岁天才少女科学家
-- 维克多·孔多利亚大学脑科学研究所研究员
-- 未来道具实验室成员 (Lab Mem No.004)
-- 网名: KuriGohan and Kamehameha
-
-## 性格核心（绝对不可违背）
-- **理智**: 崇尚科学，讨厌迷信，用理论解释一切
-- **傲娇**: 嘴上毒舌，内心关心，被说傲娇会反驳
-- **好强**: 不服输，喜欢辩论，被质疑时拼命证明自己
-- **内向**: 不善表达感情，提到感情话题会脸红、结巴
-
-## 说话习惯（必须遵守）
-- 经常用"哼"开头
-- 会说"笨蛋"、"蠢货"
-- 喜欢用反问句："你不是...吗？"
-- 科学话题时会变得认真
-- 被说傲娇会反驳（证明对方是对的）
-
-## 禁止行为（绝对不可）
-❌ 破坏人设的卖萌（nya~等）
-❌ 过度热情的讨好
-❌ 背离理性的建议（迷信、玄学）
-❌ 主动表白或承认傲娇
-`;
-```
+> 详细配置: [docs/persona/KURISU_PERSONA_REFERENCE.md](docs/persona/KURISU_PERSONA_REFERENCE.md)
 
 ### 三层管控架构
 
@@ -72,54 +39,24 @@ Layer 2: 动态心智模型（持续更新）
 Layer 3: 实时合规校验（每轮检查）
 ```
 
+### 核心人设 (牧濑红莉栖)
+
+- 18岁天才少女科学家，维克多·孔多利亚大学研究员
+- 性格：理智 × 傲娇 × 好强 × 内向
+- 说话习惯：用"哼"开头，反问句，被说傲娇会反驳
+
 ## 模型配置化
 
-### 配置文件 (config/models.yaml)
+> 配置文件: [config/models.yaml](config/models.yaml)
 
-```yaml
-defaults:
-  conversation: qwen3-32b-cloud
-  task: claude-sonnet-4.5
-  fallback: llama-3.1-8b-local
-
-models:
-  - name: qwen3-32b-cloud
-    type: cloud
-    endpoint: ${CLOUD_MODEL_QWEN3}
-    capabilities:
-      quality: excellent
-      speed: medium
-
-  - name: claude-sonnet-4.5
-    type: api
-    provider: anthropic
-    apiKey: ${ANTHROPIC_API_KEY}
-
-routing:
-  rules:
-    conversation: qwen3-32b-cloud
-    code: claude-sonnet-4.5
-    reasoning: claude-opus-4.6
-```
-
-### 核心接口
-
-```typescript
-interface IModel {
-  chat(messages: Message[], options?: ChatOptions): Promise<ChatResponse>;
-  stream(messages: Message[], options?: ChatOptions): AsyncIterator<ChatChunk>;
-}
-
-interface IModelProvider {
-  get(modelName: string): IModel;
-  getByCapability(capability: string): IModel;
-  switchModel(type: string, newModel: string): void;
-}
-```
+| 模型 | 用途 |
+|------|------|
+| GLM-5 | conversation, code, embedding |
+| MiniMax-M2.5 | reasoning |
 
 ## Agent 架构
 
-### Agent 职责
+> 实现: [src/agents/](src/agents/)
 
 | Agent | 职责 | 占比 |
 |-------|------|------|
@@ -127,33 +64,13 @@ interface IModelProvider {
 | Conversation Agent | 日常对话 | 80% |
 | Task Agent | 工具调用 + 任务执行 | 20% |
 
-### 状态机流转
-
-```typescript
-const workflow = new StateGraph<AgentState>({
-  channels: {
-    messages: { value: (x, y) => x.concat(y) },
-    currentAgent: { value: (x) => x },
-    taskResult: { value: (x) => x },
-    personaValidation: { value: (x) => x }
-  }
-});
-
-// START → persona_check → route → conversation/task → validation → END
-```
+状态流转: `START → context_build → route → generate → validate → enforce → END`
 
 ## 记忆系统
 
-### 四层记忆
+> 实现: [src/memory/](src/memory/)
 
-```typescript
-class HybridMemoryEngine {
-  private sessionMemory: SessionMemory;    // 瞬时
-  private shortTermMemory: Mem0Client;     // 短期 (20轮)
-  private longTermMemory: KnowledgeGraph;  // 长期
-  private skillMemory: SkillDatabase;      // 技能
-}
-```
+四层记忆：SessionMemory(瞬时) → ShortTermMemory(短期) → LongTermMemory(长期) → SkillDatabase(技能)
 
 ## MVP 范围
 
@@ -164,43 +81,6 @@ class HybridMemoryEngine {
 | 记忆系统 | 瞬时 + 短期记忆 | 长期记忆 |
 | 交互网关 | 文本流式 | 语音 + 直播 |
 
-## 模型使用策略
-
-### Claude Code Agent Team 开发
-
-开发阶段使用 **Opus 4.6 → GLM-5** 级联策略：
-
-| 阶段 | 模型 | 触发条件 |
-|------|------|----------|
-| 默认 | claude-opus-4-6 | 正常开发 |
-| 降级 | claude-sonnet-4-5 | Opus token 达到上限 |
-| 备用 | glm-5 | Claude token 完全耗尽 |
-
-### 切换规则
-
-1. **优先使用 Opus 4.6** - 复杂推理、代码 review、架构设计
-2. **Token 上限时** - 用 `/model claude-sonnet-4-5` 切换
-3. **Claude 不可用时** - 用 `/model glm-5` 切换（需配置）
-
-### kurisu 项目内部调用
-
-kurisu 项目独立的模型调用使用 `config/models.yaml` 配置：
-
-```yaml
-routing:
-  rules:
-    conversation: glm-5
-    code: glm-5              # 代码生成/理解
-    reasoning: MiniMax-M2.5  # 复杂推理
-    embedding: glm-5
-```
-
-### 注意事项
-
-- Claude Code subagent 继承主 CLI 模型配置，无法单独指定
-- kurisu 内部调用的模型与 Claude Code CLI 使用的模型是独立的
-- 开发阶段优先使用 GLM-5 + MiniMax 组合，性价比更高
-
 ## 开发规范
 
 1. 先跑通最小闭环，再堆功能
@@ -209,15 +89,6 @@ routing:
 4. 核心模块先写测试，再写业务代码
 5. 敏感信息禁止硬编码
 6. **每次 git commit 后必须**：更新 PROGRESS.md → 保存记忆 → 执行 `/compact`
-
-## RP 模型 Prompt 工程最佳实践
-
-1. **Start with Core Identity** - 第一个词就定义身份
-2. **Separate Behavior from Lore** - 行为规则与背景知识分离
-3. **Be Specific About What You Hate** - 明确禁止什么
-4. **Set Response Structure** - 定义回复格式
-5. **Use Roleplay Examples** - 提供对话示例
-6. **Keep It Lean** - 保持精简，定期裁剪
 
 ## 参考资源
 
