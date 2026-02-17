@@ -13,9 +13,39 @@
 ```
 □ 创建任务文档: docs/tasks/active/KURISU-XXX-[name].md
 □ 填写元信息: task_id, type, priority, layer, status
+□ planner 调研参考项目 (deepwiki + github MCP)
 □ 制定 Agent Team Plan
 □ ⛔ 等待用户确认 Plan 后再执行
 ```
+
+### 📚 Planner 调研要求 (MANDATORY)
+
+planner agent 在规划前 **必须** 使用 MCP 工具调研相关开源项目：
+
+**推荐参考项目**:
+| 项目 | 用途 | 调研重点 |
+|------|------|----------|
+| vercel/ai | 流式处理 | textStream, fullStream 模式 |
+| langchain-ai/langchainjs | Agent 编排 | AsyncGenerator, CallbackHandler |
+| OpenClaw/OpenClaw | AI VTuber 架构 | Gateway/Channel 多渠道 |
+| VedalAI/neuro-game | Neuro-sama | 交互系统、人设管理 |
+
+**调研命令**:
+```
+# DeepWiki 查询架构
+mcp__deepwiki__ask_question(repoName, question)
+
+# GitHub 搜索代码
+mcp__github__search_code(q, per_page)
+
+# GitHub 搜索仓库
+mcp__github__search_repositories(query, perPage)
+```
+
+**调研产出必须包含**:
+- 参考项目的关键模式/接口设计
+- 与任务相关的最佳实践
+- 可复用的设计决策
 
 ### 2️⃣ 执行检查点 (MANDATORY)
 
@@ -124,6 +154,7 @@ planner → □ 更新 → architect → □ 更新 → tdd-guide → □ 更新
 
 ### planner
 **时间**: [待填写]
+**调研参考**: [使用的 MCP 工具和参考项目]
 [planner 输出]
 
 ### architect
