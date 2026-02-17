@@ -2,19 +2,13 @@
  * Persona Engine 集成测试
  * 测试完整的人设引擎流程
  * @vitest-environment node
- *
- * TODO: 集成测试依赖的源文件尚未实现
- * - src/core/persona/validator.ts
- * - src/core/persona/enforcer.ts
- * - src/core/persona/prompt-builder.ts
- * 待上述文件实现后启用测试
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { PersonaEngine } from "../../../src/core/persona/index";
-// import { PersonaValidator } from '../../../src/core/persona/validator';
-// import { PersonaEnforcer } from '../../../src/core/persona/enforcer';
-// import { PromptBuilder } from '../../../src/core/persona/prompt-builder';
+import { PersonaValidator } from "../../../src/core/persona/validator";
+import { PersonaEnforcer } from "../../../src/core/persona/enforcer";
+import { PromptBuilder } from "../../../src/core/persona/prompt-builder";
 import {
   SAMPLE_MENTAL_MODELS,
   SAMPLE_MEMORIES,
@@ -22,21 +16,18 @@ import {
   OOC_RESPONSES,
 } from "../../fixtures/persona-fixtures";
 
-describe.skip("Persona Engine Integration", () => {
-  describe.skip("complete flow", () => {
+describe("Persona Engine Integration", () => {
+  describe("complete flow", () => {
     let engine: PersonaEngine;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let validator: any;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let enforcer: any;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let promptBuilder: any;
+    let validator: PersonaValidator;
+    let enforcer: PersonaEnforcer;
+    let promptBuilder: PromptBuilder;
 
     beforeEach(() => {
       engine = new PersonaEngine(SAMPLE_MENTAL_MODELS.stranger);
-      validator = null;
-      enforcer = null;
-      promptBuilder = null;
+      validator = new PersonaValidator(SAMPLE_MENTAL_MODELS.stranger);
+      enforcer = new PersonaEnforcer(SAMPLE_MENTAL_MODELS.stranger);
+      promptBuilder = new PromptBuilder(SAMPLE_MENTAL_MODELS.stranger);
     });
 
     it("should process valid conversation flow", () => {
@@ -102,18 +93,16 @@ describe.skip("Persona Engine Integration", () => {
     });
   });
 
-  describe.skip("multi-turn conversation", () => {
+  describe("multi-turn conversation", () => {
     let engine: PersonaEngine;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let promptBuilder: any;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let validator: any;
+    let promptBuilder: PromptBuilder;
+    let validator: PersonaValidator;
     let memories: string[];
 
     beforeEach(() => {
       engine = new PersonaEngine(SAMPLE_MENTAL_MODELS.stranger);
-      promptBuilder = null;
-      validator = null;
+      promptBuilder = new PromptBuilder(SAMPLE_MENTAL_MODELS.stranger);
+      validator = new PersonaValidator(SAMPLE_MENTAL_MODELS.stranger);
       memories = [];
     });
 
@@ -162,15 +151,13 @@ describe.skip("Persona Engine Integration", () => {
     });
   });
 
-  describe.skip("error recovery", () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let validator: any;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let enforcer: any;
+  describe("error recovery", () => {
+    let validator: PersonaValidator;
+    let enforcer: PersonaEnforcer;
 
     beforeEach(() => {
-      validator = null;
-      enforcer = null;
+      validator = new PersonaValidator();
+      enforcer = new PersonaEnforcer();
     });
 
     it("should handle repeated validation failures", () => {
@@ -222,7 +209,7 @@ describe.skip("Persona Engine Integration", () => {
     });
   });
 
-  describe.skip("relationship progression", () => {
+  describe("relationship progression", () => {
     it("should behave differently at each relationship level", () => {
       const levels = [
         { model: SAMPLE_MENTAL_MODELS.stranger, expectedBehavior: "distant" },
@@ -266,14 +253,13 @@ describe.skip("Persona Engine Integration", () => {
     });
   });
 
-  describe.skip("memory integration", () => {
+  describe("memory integration", () => {
     let engine: PersonaEngine;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let promptBuilder: any;
+    let promptBuilder: PromptBuilder;
 
     beforeEach(() => {
       engine = new PersonaEngine(SAMPLE_MENTAL_MODELS.friend);
-      promptBuilder = null;
+      promptBuilder = new PromptBuilder(SAMPLE_MENTAL_MODELS.friend);
     });
 
     it("should include relevant memories in prompt", () => {
@@ -316,7 +302,7 @@ describe.skip("Persona Engine Integration", () => {
     });
   });
 
-  describe.skip("persona consistency across components", () => {
+  describe("persona consistency across components", () => {
     it("should maintain Kurisu persona across all components", () => {
       const engine = new PersonaEngine();
       const validator = new PersonaValidator(engine.getMentalModel());
@@ -351,7 +337,7 @@ describe.skip("Persona Engine Integration", () => {
     });
   });
 
-  describe.skip("performance benchmarks", () => {
+  describe("performance benchmarks", () => {
     it("should complete full validation cycle within time limit", () => {
       const engine = new PersonaEngine();
       const validator = new PersonaValidator();

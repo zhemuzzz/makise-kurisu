@@ -162,13 +162,17 @@ export class PersonaValidator {
       }
     }
 
-    // 检查过度热情表达（科学热情除外）
-    for (const keyword of INTIMATE_KEYWORDS) {
-      if (lowerResponse.includes(keyword.toLowerCase())) {
-        return {
-          consistent: false,
-          reason: `过度热情的表达不符合傲娇性格: "${keyword}"`,
-        };
+    // 检查过度热情表达（亲密关系级别允许，科学热情除外）
+    const familiarity = this.mentalModel.relationship_graph.familiarity;
+    // 只有在亲密级别 (familiarity >= 80) 时才允许亲密表达
+    if (familiarity < 80) {
+      for (const keyword of INTIMATE_KEYWORDS) {
+        if (lowerResponse.includes(keyword.toLowerCase())) {
+          return {
+            consistent: false,
+            reason: `过度热情的表达不符合傲娇性格: "${keyword}"`,
+          };
+        }
       }
     }
 
