@@ -1,13 +1,10 @@
 /**
  * Enforcer 人设强化器单元测试
  * @vitest-environment node
- *
- * TODO: 源文件 src/core/persona/enforcer.ts 尚未实现
- * 待实现 PersonaEnforcer 类后启用测试
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-// import { PersonaEnforcer } from '../../../src/core/persona/enforcer';
+import { PersonaEnforcer } from "../../../src/core/persona/enforcer";
 import {
   SAMPLE_MENTAL_MODELS,
   VALID_KURISU_RESPONSES,
@@ -16,12 +13,11 @@ import {
   BOUNDARY_TEST_DATA,
 } from "../../fixtures/persona-fixtures";
 
-describe.skip("PersonaEnforcer", () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let enforcer: any;
+describe("PersonaEnforcer", () => {
+  let enforcer: PersonaEnforcer;
 
   beforeEach(() => {
-    enforcer = null;
+    enforcer = new PersonaEnforcer();
   });
 
   describe("enforce", () => {
@@ -90,9 +86,20 @@ describe.skip("PersonaEnforcer", () => {
         (response) => {
           const result = enforcer.enforce(response);
 
-          // 科学内容应该被保留
-          expect(result).toContain("根据");
-          expect(result).toContain("...");
+          // 科学内容应该被保留 - 检查原始内容中的关键元素
+          if (response.includes("根据")) {
+            expect(result).toContain("根据");
+          }
+          if (response.includes("量子力学")) {
+            expect(result).toContain("量子力学");
+          }
+          if (response.includes("SERN")) {
+            expect(result).toContain("SERN");
+          }
+          // 省略号应该保留
+          if (response.includes("...")) {
+            expect(result).toContain("...");
+          }
         },
       );
 
