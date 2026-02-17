@@ -243,18 +243,9 @@ export class Gateway {
       return this.streamHandler.createStreamResult(textStream, callbacks);
     }
 
-    // 如果提供了回调，包装流
-    if (callbacks) {
-      return {
-        ...result,
-        textStream: this.streamHandler.withCallbacks(
-          result.textStream,
-          callbacks,
-        ) as AsyncGenerator<string>,
-      };
-    }
-
-    return result;
+    // 使用 createStreamResult 统一处理，确保返回值一致
+    // 这样 callbacks 路径和非 callbacks 路径都会返回完整的 GatewayStreamResult
+    return this.streamHandler.createStreamResult(result.textStream, callbacks);
   }
 
   /**

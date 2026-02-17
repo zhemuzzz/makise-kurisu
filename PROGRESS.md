@@ -30,11 +30,11 @@ src/gateway/
 
 **Code Review** (2026-02-17):
 - CRITICAL: 0
-- HIGH: 4 (待后续修复)
-  - teeStream 资源泄漏风险
-  - processStream 返回值不一致
-  - CLIChannel 错误状态恢复
-  - 会话 ID 长度限制
+- HIGH: 4 ✅ **已修复** (KURISU-004)
+  - ~~teeStream 资源泄漏风险~~ → 懒加载模式
+  - ~~processStream 返回值不一致~~ → 统一 createStreamResult
+  - ~~CLIChannel 错误状态恢复~~ → 会话重置逻辑
+  - ~~会话 ID 长度限制~~ → 256 字符限制
 - MEDIUM: 5
 - LOW: 3
 
@@ -46,6 +46,22 @@ const { textStream, finalResponse } = await gateway.processStream(sessionId, inp
 ```
 
 **MVP 闭环完成**: L1→L2→L3→L4→L5 全链路打通
+
+### ✅ L1 Gateway HIGH Issues 修复 (2026-02-17)
+
+**任务**: KURISU-004
+
+**修复内容**:
+| ID | 问题 | 修复方案 |
+|----|------|----------|
+| R01 | teeStream 资源泄漏 | 懒加载模式，避免立即消费流 |
+| R02 | processStream 返回值不一致 | 统一使用 createStreamResult |
+| R03 | CLIChannel 错误状态恢复 | 会话相关错误时重置 sessionId |
+| R04 | 会话 ID 长度限制 | 添加 256 字符限制 |
+
+**修改文件**: stream-handler.ts, index.ts, cli.ts, session-manager.ts
+
+**测试状态**: ✅ 207 通过
 
 ### ✅ L3 Agent 编排层 (2026-02-17)
 
@@ -179,10 +195,10 @@ embedding: glm-5
 **待确认**: 请指定下一个开发任务
 
 **建议优先级**:
-1. **L1 HIGH Issues 修复** - 4 个待修复问题
-2. **E2E 测试** - 完整对话流程验证
-3. **L2 人设引擎扩展** - PersonaValidator, PersonaEnforcer
-4. **L3 意图路由改进** - 更智能的分类算法
+1. **E2E 测试** - 完整对话流程验证
+2. **L2 人设引擎扩展** - PersonaValidator, PersonaEnforcer
+3. **L3 意图路由改进** - 更智能的分类算法
+4. **MVP 优化** - 性能优化、错误处理改进
 
 ## 待办
 

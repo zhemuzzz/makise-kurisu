@@ -219,10 +219,10 @@ interface StreamCallbacks {
 ## 审查问题追踪
 | ID | 来源 | 问题 | 修复commit | 状态 |
 |----|------|------|-----------|------|
-| R01 | code-reviewer | teeStream 资源泄漏 | - | 待修复 |
-| R02 | code-reviewer | processStream 返回值不一致 | - | 待修复 |
-| R03 | code-reviewer | CLIChannel 错误状态恢复 | - | 待修复 |
-| R04 | code-reviewer | 会话 ID 长度限制 | - | 待修复 |
+| R01 | code-reviewer | teeStream 资源泄漏 | KURISU-004 | ✅ 已修复 |
+| R02 | code-reviewer | processStream 返回值不一致 | KURISU-004 | ✅ 已修复 |
+| R03 | code-reviewer | CLIChannel 错误状态恢复 | KURISU-004 | ✅ 已修复 |
+| R04 | code-reviewer | 会话 ID 长度限制 | KURISU-004 | ✅ 已修复 |
 
 ## 最终产出
 - 文件: src/gateway/ (types.ts, errors.ts, session-manager.ts, stream-handler.ts, channels/cli.ts, index.ts)

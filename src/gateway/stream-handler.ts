@@ -102,32 +102,40 @@ export class StreamHandler {
 
   /**
    * 复制流（允许流被多次消费）
-   * 使用 Promise 确保只消费一次原始流
+   * 使用懒加载模式，只在流被消费时才读取原始流
    */
   private teeStream(textStream: AsyncGenerator<string>): {
     stream1: AsyncGenerator<string>;
     stream2: AsyncGenerator<string>;
   } {
-    const chunksPromise = (async () => {
-      const results: string[] = [];
-      for await (const chunk of textStream) {
-        results.push(chunk);
+    // 懒加载缓存 - 只有在流被消费时才执行
+    let chunksCache: Promise<string[]> | null = null;
+
+    const getChunks = (): Promise<string[]> => {
+      if (!chunksCache) {
+        chunksCache = (async () => {
+          const results: string[] = [];
+          for await (const chunk of textStream) {
+            results.push(chunk);
+          }
+          return results;
+        })();
       }
-      return results;
-    })();
+      return chunksCache;
+    };
 
     const createStream = async function* (
-      promise: Promise<string[]>,
+      getChunksFn: () => Promise<string[]>,
     ): AsyncGenerator<string> {
-      const chunks = await promise;
+      const chunks = await getChunksFn();
       for (const chunk of chunks) {
         yield chunk;
       }
     };
 
     return {
-      stream1: createStream(chunksPromise),
-      stream2: createStream(chunksPromise),
+      stream1: createStream(getChunks),
+      stream2: createStream(getChunks),
     };
   }
 

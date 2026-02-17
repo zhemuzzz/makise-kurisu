@@ -174,7 +174,18 @@ export class CLIChannel {
         process.stdout.write("\r\x1b[K");
       }
 
-      console.error(`Error: ${(error as Error).message}`);
+      const err = error as Error & { code?: string };
+      console.error(`Error: ${err.message}`);
+
+      // 会话相关错误时重置会话，下次使用时重新创建
+      // 保持 CLI 可继续使用
+      if (
+        err.code === "SESSION_NOT_FOUND" ||
+        err.code === "SESSION_EXPIRED" ||
+        err.message.toLowerCase().includes("session")
+      ) {
+        this.currentSessionId = undefined;
+      }
     }
   }
 

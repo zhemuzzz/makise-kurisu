@@ -9,17 +9,22 @@ import {
   ChannelType,
   createSessionInfo,
   type SessionManagerConfig,
-} from './types';
+} from "./types";
 import {
   SessionAlreadyExistsError,
   SessionNotFoundError,
   InputValidationError,
-} from './errors';
+} from "./errors";
 
 /**
  * 默认会话 TTL (30分钟)
  */
 const DEFAULT_TTL = 30 * 60 * 1000;
+
+/**
+ * 会话 ID 最大长度
+ */
+const MAX_SESSION_ID_LENGTH = 256;
 
 /**
  * 默认清理间隔 (5分钟)
@@ -47,11 +52,16 @@ export class SessionManager {
    */
   create(params: CreateSessionParams): SessionInfo {
     // 验证参数
-    if (!params.sessionId || params.sessionId.trim() === '') {
-      throw new InputValidationError('Invalid sessionId: cannot be empty');
+    if (!params.sessionId || params.sessionId.trim() === "") {
+      throw new InputValidationError("Invalid sessionId: cannot be empty");
     }
-    if (!params.userId || params.userId.trim() === '') {
-      throw new InputValidationError('Invalid userId: cannot be empty');
+    if (params.sessionId.length > MAX_SESSION_ID_LENGTH) {
+      throw new InputValidationError(
+        `Invalid sessionId: exceeds maximum length of ${MAX_SESSION_ID_LENGTH}`,
+      );
+    }
+    if (!params.userId || params.userId.trim() === "") {
+      throw new InputValidationError("Invalid userId: cannot be empty");
     }
 
     // 检查会话是否已存在
@@ -142,7 +152,7 @@ export class SessionManager {
    */
   updateMetadata(
     sessionId: string,
-    metadata: Record<string, unknown>
+    metadata: Record<string, unknown>,
   ): SessionInfo | null {
     const session = this.sessions.get(sessionId);
     if (!session) {
