@@ -6,12 +6,12 @@
 ## 当前状态
 
 **阶段**: KURISU-013 多平台接入
-**焦点**: Phase 0 完成，Phase 1 统一 Server 开发中
+**焦点**: Phase 1 完成，Phase 2 Telegram 接入准备中
 
 ### 近期变更
 
-- **KURISU-013 计划更新**: 精简平台对比分析，调整优先级为 Telegram 先行
-- **TASK.md 更新**: 同步任务流程文档
+- **Phase 1 完成**: KurisuServer 统一 HTTP Server + Channel 插件化路由
+- **测试覆盖**: 914 tests passed
 
 ## 已完成模块
 
@@ -26,7 +26,7 @@
 | E2E | 端到端测试 | 67 | - |
 | L5 | 基础设施 | - | - |
 
-**总计**: 902 tests, 83.25% coverage
+**总计**: 914 tests, 83.25% coverage
 
 ### KURISU-013 多平台接入 (2026-02-18)
 
@@ -37,7 +37,14 @@
 - `MockChannel` 实现: 用于测试 Server 和 Gateway
 - +40 测试用例
 
-**下一步**: Phase 1 统一 Server + Cloudflare Tunnel → Phase 2 Telegram 接入
+**Phase 1 完成** ✅
+- `KurisuServer` 统一 HTTP Server: 自动注册 Channel 路由 + 健康检查
+- `BaseChannel.getRoutes()`: Channel 自声明路由 + `withTimeout()` 超时兜底
+- `MockChannel` 更新: 兼容原生 http 和 Express 风格 API
+- `src/bin/server.ts` 重构: 环境变量启用 Channel (`ENABLE_MOCK_CHANNEL=true`)
+- +12 测试用例 (Server + MockChannel getRoutes)
+
+**下一步**: Phase 2 Telegram 接入 + Cloudflare Tunnel
 
 ### 近期完成 (2026-02-17~18)
 
@@ -98,8 +105,8 @@ kurisu/
 ## 下一步
 
 ### 近期（KURISU-013 继续）
-- Phase 1 统一 Server 骨架 + Cloudflare Tunnel
 - Phase 2 Telegram 接入 (P0，最简平台先验证全链路)
+- Cloudflare Tunnel 配置 (Webhook 回调依赖)
 - Phase 3 QQ Bot 接入 (P1)
 - 启用 Redis，session 持久化
 
