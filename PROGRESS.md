@@ -11,6 +11,7 @@
 ### 近期变更
 
 - **Phase 1 完成**: KurisuServer 统一 HTTP Server + Channel 插件化路由
+- **代码审查修复**: HTTP 方法验证 + RouteHandler body 参数传递
 - **测试覆盖**: 914 tests passed
 
 ## 已完成模块
