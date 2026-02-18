@@ -6,13 +6,13 @@
 ## 当前状态
 
 **阶段**: KURISU-013 多平台接入
-**焦点**: Phase 1 完成，Phase 2 Telegram 接入准备中
+**焦点**: Phase 2 完成，Phase 3 QQ Bot 接入准备中
 
 ### 近期变更
 
-- **Phase 1 完成**: KurisuServer 统一 HTTP Server + Channel 插件化路由
-- **代码审查修复**: HTTP 方法验证 + RouteHandler body 参数传递
-- **测试覆盖**: 914 tests passed
+- **Phase 2 完成**: TelegramChannel 实现并集成到 KurisuServer
+- **新增测试**: +15 tests (Telegram Channel)
+- **测试覆盖**: 929 tests passed
 
 ## 已完成模块
 
@@ -23,11 +23,11 @@
 | L2 | 人设引擎 | 288 | - |
 | L3 | Agent 编排 | 21 | - |
 | L4 | 记忆系统 | 184 | - |
-| L1 | 交互网关 | 207 | 98.47% |
+| L1 | 交互网关 | 222 | 98%+ |
 | E2E | 端到端测试 | 67 | - |
 | L5 | 基础设施 | - | - |
 
-**总计**: 914 tests, 83.25% coverage
+**总计**: 929 tests, 83%+ coverage
 
 ### KURISU-013 多平台接入 (2026-02-18)
 
@@ -45,7 +45,14 @@
 - `src/bin/server.ts` 重构: 环境变量启用 Channel (`ENABLE_MOCK_CHANNEL=true`)
 - +12 测试用例 (Server + MockChannel getRoutes)
 
-**下一步**: Phase 2 Telegram 接入 + Cloudflare Tunnel
+**Phase 2 完成** ✅
+- `TelegramChannel` 实现: 继承 BaseChannel，支持 Webhook 接收消息
+- `sendMessage()`: 调用 Telegram Bot API 发送回复
+- 消息格式转换: Telegram Update → InboundMessage
+- Server 集成: 通过 `TELEGRAM_BOT_TOKEN` 环境变量启用
+- +15 测试用例
+
+**下一步**: Phase 3 QQ Bot 接入
 
 ### 近期完成 (2026-02-17~18)
 
@@ -106,7 +113,7 @@ kurisu/
 ## 下一步
 
 ### 近期（KURISU-013 继续）
-- Phase 2 Telegram 接入 (P0，最简平台先验证全链路)
+- ✅ Phase 2 Telegram 接入 (已完成)
 - Cloudflare Tunnel 配置 (Webhook 回调依赖)
 - Phase 3 QQ Bot 接入 (P1)
 - 启用 Redis，session 持久化
