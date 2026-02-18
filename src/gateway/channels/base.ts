@@ -3,7 +3,18 @@
  * @description KURISU-013 多平台 Channel 基础设施
  */
 
-import { ChannelType, OutboundMessage } from '../types';
+import { ChannelType, OutboundMessage } from "../types";
+
+/**
+ * Channel 路由定义
+ * @description Channel 自声明路由，Server 自动注册
+ */
+export interface ChannelRoute {
+  /** HTTP 方法 */
+  method: "GET" | "POST";
+  /** 路由路径，如 /telegram/webhook */
+  path: string;
+}
 
 /**
  * Channel 基础配置
@@ -63,6 +74,13 @@ export abstract class BaseChannel {
    */
   abstract verifySignature(req: unknown): boolean;
 
+  /**
+   * 获取 Channel 路由
+   * @description Server 自动注册这些路由
+   * @returns 路由列表
+   */
+  abstract getRoutes(): ChannelRoute[];
+
   // ===========================================
   // 生命周期方法 - 子类可选覆盖
   // ===========================================
@@ -112,5 +130,28 @@ export abstract class BaseChannel {
    */
   protected formatTimeout(): number {
     return this.config.timeout - 500;
+  }
+
+  /**
+   * 带超时的 Promise 包装
+   * @description 用于应对 QQ/企业微信等平台的 5 秒超时限制
+   * @param promise 原始 Promise
+   * @param fallback 超时时返回的兜底消息
+   * @returns 原始结果或兜底消息
+   */
+  protected async withTimeout<T>(promise: Promise<T>, fallback: T): Promise<T> {
+    const timeoutMs = this.formatTimeout();
+
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error(`Operation timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+    });
+
+    try {
+      return await Promise.race([promise, timeoutPromise]);
+    } catch {
+      return fallback;
+    }
   }
 }

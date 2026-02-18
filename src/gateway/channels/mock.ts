@@ -3,8 +3,9 @@
  * @description KURISU-013 用于测试的 Mock Channel 实现
  */
 
-import { BaseChannel, ChannelConfig } from './base';
-import { ChannelType, InboundMessage, OutboundMessage } from '../types';
+import * as http from "http";
+import { BaseChannel, ChannelConfig, ChannelRoute } from "./base";
+import { ChannelType, InboundMessage, OutboundMessage } from "../types";
 
 /**
  * Mock Channel 配置
@@ -37,23 +38,17 @@ export class MockChannel extends BaseChannel {
   /**
    * 处理请求
    */
-  async handleRequest(
-    req: { body: { content: string; userId?: string } },
-    res: {
-      status: (code: number) => { json: (data: unknown) => void };
-      json: (data: unknown) => void;
-      send: (data: unknown) => void;
-    },
-  ): Promise<void> {
-    const { content, userId = 'test-user' } = req.body;
+  async handleRequest(req: unknown, res: unknown): Promise<void> {
+    const typedReq = req as { body: { content: string; userId?: string } };
+    const { content, userId = "test-user" } = typedReq.body;
 
     // 构建入站消息
     const inbound: InboundMessage = {
       channelType: this.channelType,
-      sessionId: this.buildSessionId('mock', userId),
+      sessionId: this.buildSessionId("mock", userId),
       userId,
       content,
-      messageType: 'text',
+      messageType: "text",
       timestamp: Date.now(),
     };
 
@@ -61,14 +56,33 @@ export class MockChannel extends BaseChannel {
     this.receivedMessages.push(inbound);
 
     // 根据配置处理响应
-    if (this.mockConfig.echo) {
-      // 回显模式：直接返回原始内容
-      res.status(200).json({ reply: content });
-    } else {
-      // 非 echo 模式：模拟 Gateway 处理
-      const reply = await this.processWithGateway(inbound);
-      res.status(200).json({ reply });
+    const reply = this.mockConfig.echo
+      ? content
+      : await this.processWithGateway(inbound);
+
+    // 发送响应（兼容原生 http.ServerResponse 和 Express 风格 mock）
+    this.sendJsonResponse(res as http.ServerResponse, 200, { reply });
+  }
+
+  /**
+   * 发送 JSON 响应（兼容原生和 Express 风格）
+   */
+  private sendJsonResponse(
+    res: http.ServerResponse & {
+      status?: (code: number) => { json: (data: unknown) => void };
+    },
+    status: number,
+    data: unknown,
+  ): void {
+    // Express 风格（测试 mock）
+    if (typeof res.status === "function") {
+      res.status(status).json(data);
+      return;
     }
+
+    // 原生 http.ServerResponse
+    res.writeHead(status, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(data));
   }
 
   /**
@@ -83,6 +97,14 @@ export class MockChannel extends BaseChannel {
    */
   verifySignature(_req: unknown): boolean {
     return true;
+  }
+
+  /**
+   * 获取路由
+   * @description 返回 Mock Channel 的 Webhook 路由
+   */
+  getRoutes(): ChannelRoute[] {
+    return [{ method: "POST", path: "/mock/webhook" }];
   }
 
   /**

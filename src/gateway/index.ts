@@ -280,3 +280,6 @@ export * from "./errors";
 export { SessionManager } from "./session-manager";
 export { StreamHandler } from "./stream-handler";
 export { CLIChannel } from "./channels/cli";
+export { MockChannel } from "./channels/mock";
+export { BaseChannel, ChannelRoute } from "./channels/base";
+export { KurisuServer } from "./server";
