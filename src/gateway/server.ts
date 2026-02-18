@@ -5,8 +5,8 @@
 
 import * as http from "http";
 import * as url from "url";
-import { Gateway, ChannelType } from "./index";
-import { BaseChannel, type ChannelRoute } from "./channels/base";
+import { Gateway } from "./index";
+import { BaseChannel } from "./channels/base";
 
 const VERSION = "0.2.0";
 
@@ -52,7 +52,7 @@ export class KurisuServer {
   private readonly gateway: Gateway;
   private readonly channels: Map<string, BaseChannel> = new Map();
   private readonly routes: Map<string, RouteHandler> = new Map();
-  private server?: http.Server;
+  private server: http.Server | undefined = undefined;
   private startTime = 0;
   private config: Required<KurisuServerConfig>;
 
@@ -145,7 +145,7 @@ export class KurisuServer {
         resolve();
       }, 1000);
 
-      server.close((err) => {
+      server.close(() => {
         clearTimeout(timeout);
         this.server = undefined;
         // 忽略所有错误，确保总是 resolve

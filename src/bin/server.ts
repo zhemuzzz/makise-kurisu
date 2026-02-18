@@ -14,6 +14,7 @@ import {
   Gateway,
   KurisuServer,
   MockChannel,
+  TelegramChannel,
   type IOrchestrator,
 } from "../gateway";
 import type { MemoryEngineLike } from "../agents/types";
@@ -64,10 +65,10 @@ function createGatewayOrchestrator(
         })(),
       };
     },
-    createSession: (params) => {
+    createSession: (_params) => {
       // AgentOrchestrator 内部管理 session
     },
-    hasSession: (sessionId) => {
+    hasSession: (_sessionId) => {
       return true; // AgentOrchestrator 内部管理
     },
   };
@@ -76,8 +77,8 @@ function createGatewayOrchestrator(
 /**
  * 根据环境变量创建 Channel
  */
-function createChannels(): { mock?: MockChannel } {
-  const channels: { mock?: MockChannel } = {};
+function createChannels(): { mock?: MockChannel; telegram?: TelegramChannel } {
+  const channels: { mock?: MockChannel; telegram?: TelegramChannel } = {};
 
   // Mock Channel (开发测试用)
   if (process.env["ENABLE_MOCK_CHANNEL"] === "true") {
@@ -85,11 +86,15 @@ function createChannels(): { mock?: MockChannel } {
     console.log("  ✓ MockChannel enabled");
   }
 
-  // Phase 2: Telegram Channel
-  // if (process.env['TELEGRAM_BOT_TOKEN']) {
-  //   channels.telegram = new TelegramChannel({ ... });
-  //   console.log('  ✓ TelegramChannel enabled');
-  // }
+  // Telegram Channel (KURISU-013 Phase 2)
+  if (process.env["TELEGRAM_BOT_TOKEN"]) {
+    const webhookUrl = process.env["TELEGRAM_WEBHOOK_URL"];
+    channels.telegram = new TelegramChannel({
+      botToken: process.env["TELEGRAM_BOT_TOKEN"],
+      ...(webhookUrl && { webhookUrl }),
+    });
+    console.log("  ✓ TelegramChannel enabled");
+  }
 
   return channels;
 }
@@ -120,10 +125,7 @@ async function main(): Promise<void> {
     const gateway = new Gateway({ orchestrator: gatewayOrchestrator });
 
     // 创建 Server
-    const server = new KurisuServer(
-      { gateway },
-      { port, host },
-    );
+    const server = new KurisuServer({ gateway }, { port, host });
 
     // 注册 Channel
     const channels = createChannels();
@@ -146,6 +148,19 @@ async function main(): Promise<void> {
     // 启动服务
     await server.start();
 
+    // 构建 Channel 显示信息
+    const channelLines: string[] = [];
+    if (channels.mock) {
+      channelLines.push("POST /mock/webhook     - Mock Channel");
+    }
+    if (channels.telegram) {
+      channelLines.push("POST /telegram/webhook - Telegram Bot");
+    }
+    const channelInfo =
+      channelLines.length > 0
+        ? channelLines.join("\n║    ")
+        : "No channels enabled";
+
     console.log(`
 ╔══════════════════════════════════════════════════════════════╗
 ║  Kurisu HTTP Server v${VERSION} started                           ║
@@ -157,10 +172,7 @@ async function main(): Promise<void> {
 ║    GET  /ready         - Readiness check                     ║
 ║                                                              ║
 ║  Channels:                                                   ║
-║    ${channels.mock ? "POST /mock/webhook - Mock Channel webhook" : "No channels enabled"}${" ".repeat(36 - (channels.mock ? 37 : 19))}║
-║                                                              ║
-║  Environment:                                                ║
-║    ENABLE_MOCK_CHANNEL=${process.env["ENABLE_MOCK_CHANNEL"] ?? "false"}${" ".repeat(23 - (process.env["ENABLE_MOCK_CHANNEL"]?.length ?? 5))}║
+║    ${channelInfo}
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝
 `);
