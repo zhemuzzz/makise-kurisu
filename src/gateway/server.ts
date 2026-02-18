@@ -103,7 +103,7 @@ export class KurisuServer {
     }
 
     this.server = http.createServer((req, res) => {
-      this.handleRequest(req, res);
+      void this.handleRequest(req, res);
     });
 
     return new Promise((resolve, reject) => {
@@ -274,12 +274,12 @@ export class KurisuServer {
   private parseBody<T>(req: http.IncomingMessage): Promise<T> {
     return new Promise((resolve, reject) => {
       let body = "";
-      req.on("data", (chunk) => {
-        body += chunk.toString();
+      req.on("data", (chunk: Buffer) => {
+        body += chunk.toString("utf-8");
       });
       req.on("end", () => {
         try {
-          resolve(body ? JSON.parse(body) : ({} as T));
+          resolve(body ? (JSON.parse(body) as T) : ({} as T));
         } catch {
           reject(new Error("Invalid JSON"));
         }
