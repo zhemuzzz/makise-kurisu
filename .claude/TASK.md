@@ -97,11 +97,16 @@ planner → □ → architect → □ → tdd-guide → □ → 实现 → □ �
 planner agent 在规划前 **必须** 使用 MCP 工具调研相关开源项目：
 
 **推荐参考项目**:
-| 项目 | 用途 |
-|------|------|
-| vercel/ai | 流式处理模式 |
-| langchain-ai/langchainjs | Agent 编排 |
-| OpenClaw/OpenClaw | AI VTuber 架构 |
+| 项目 | 用途 | 调研状态 |
+|------|------|----------|
+| vercel/ai | 流式处理模式 | |
+| langchain-ai/langchainjs | Agent 编排 | |
+| openclaw/openclaw | 部署架构、Channel 插件化、Docker 一键部署 | ✅ 已调研 |
+| VedalAI/neuro-sdk | Neuro-sama 游戏集成 SDK、WebSocket 协议 | ✅ 已调研 |
+
+**已有调研结论** (详见 PROGRESS.md 调研记录):
+- OpenClaw: Gateway 常驻进程 + 运行时 Channel 注册 + docker-setup.sh 一键部署
+- Neuro-sama: 2B 自训练模型 + 低延迟本地推理 + 人设微调内化
 
 **调研命令**:
 ```
