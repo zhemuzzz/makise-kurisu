@@ -29,11 +29,20 @@ export interface KurisuServerDeps {
 
 /**
  * 路由处理器类型
+ * @param req 原始请求对象
+ * @param res 响应对象
+ * @param body 已解析的请求体
  */
 type RouteHandler = (
   req: http.IncomingMessage,
   res: http.ServerResponse,
+  body: unknown,
 ) => Promise<void>;
+
+/**
+ * 支持的 HTTP 方法
+ */
+type SupportedMethod = "GET" | "POST";
 
 /**
  * Kurisu 统一 HTTP Server
@@ -67,8 +76,12 @@ export class KurisuServer {
     const routes = channel.getRoutes();
     for (const route of routes) {
       const key = this.routeKey(route.method, route.path);
-      this.routes.set(key, async (req, res) => {
-        await channel.handleRequest(req, res);
+      this.routes.set(key, async (req, res, body) => {
+        // 将 body 附加到 req 对象以兼容现有 Channel 实现
+        // TODO: 后续重构 Channel 接口，直接传递 body 参数
+        const reqWithBody = req as http.IncomingMessage & { body: unknown };
+        reqWithBody.body = body;
+        await channel.handleRequest(reqWithBody, res);
       });
     }
   }
@@ -115,25 +128,28 @@ export class KurisuServer {
       await this.gateway.stop();
     }
 
-    if (!this.server) {
+    const server = this.server;
+    if (!server) {
       return;
     }
 
-    return new Promise((resolve, reject) => {
-      this.server!.close((err) => {
-        if (err) {
-          // 忽略 "Server is not running" 错误
-          if (
-            err instanceof Error &&
-            err.message.includes("Server is not running")
-          ) {
-            resolve();
-          } else {
-            reject(err);
-          }
-        } else {
-          resolve();
-        }
+    // 检查 server 是否正在监听
+    if (!server.listening) {
+      this.server = undefined;
+      return;
+    }
+
+    return new Promise((resolve) => {
+      // 添加超时保护，防止 close 回调永不触发
+      const timeout = setTimeout(() => {
+        resolve();
+      }, 1000);
+
+      server.close((err) => {
+        clearTimeout(timeout);
+        this.server = undefined;
+        // 忽略所有错误，确保总是 resolve
+        resolve();
       });
     });
   }
@@ -206,15 +222,20 @@ export class KurisuServer {
       }
 
       // Channel 路由
-      const method = req.method as "GET" | "POST";
+      // 验证 HTTP 方法
+      const method = req.method;
+      if (method !== "GET" && method !== "POST") {
+        this.sendJson(res, 405, { error: "Method not allowed" });
+        return;
+      }
+
       const routeKey = this.routeKey(method, pathname);
       const handler = this.routes.get(routeKey);
 
       if (handler) {
-        // 解析请求 body 并附加到 req 对象
+        // 解析请求 body 并传递给 handler
         const body = await this.parseBody(req);
-        (req as http.IncomingMessage & { body: unknown }).body = body;
-        await handler(req, res);
+        await handler(req, res, body);
         return;
       }
 
@@ -231,7 +252,7 @@ export class KurisuServer {
   /**
    * 生成路由 key
    */
-  private routeKey(method: "GET" | "POST", path: string): string {
+  private routeKey(method: SupportedMethod, path: string): string {
     return `${method} ${path}`;
   }
 
