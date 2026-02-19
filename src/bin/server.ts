@@ -76,8 +76,12 @@ function createGatewayOrchestrator(
 
 /**
  * 根据环境变量创建 Channel
+ * @param gateway Gateway 实例，用于处理消息
  */
-function createChannels(): { mock?: MockChannel; telegram?: TelegramChannel } {
+function createChannels(gateway: Gateway): {
+  mock?: MockChannel;
+  telegram?: TelegramChannel;
+} {
   const channels: { mock?: MockChannel; telegram?: TelegramChannel } = {};
 
   // Mock Channel (开发测试用)
@@ -86,11 +90,28 @@ function createChannels(): { mock?: MockChannel; telegram?: TelegramChannel } {
     console.log("  ✓ MockChannel enabled");
   }
 
-  // Telegram Channel (KURISU-013 Phase 2)
+  // Telegram Channel (KURISU-013 Phase 2.1: Gateway 集成)
   if (process.env["TELEGRAM_BOT_TOKEN"]) {
     const webhookUrl = process.env["TELEGRAM_WEBHOOK_URL"];
+
+    // 创建适配 TelegramChannel 的 Gateway 接口
+    const telegramGateway = {
+      processStream: async (
+        sessionId: string,
+        input: string,
+        userId?: string,
+      ) => {
+        const result = await gateway.processStream(sessionId, input, userId);
+        return {
+          textStream: result.textStream,
+          finalResponse: result.finalResponse,
+        };
+      },
+    };
+
     channels.telegram = new TelegramChannel({
       botToken: process.env["TELEGRAM_BOT_TOKEN"],
+      gateway: telegramGateway,
       ...(webhookUrl && { webhookUrl }),
     });
     console.log("  ✓ TelegramChannel enabled");
@@ -127,8 +148,8 @@ async function main(): Promise<void> {
     // 创建 Server
     const server = new KurisuServer({ gateway }, { port, host });
 
-    // 注册 Channel
-    const channels = createChannels();
+    // 注册 Channel (传入 Gateway)
+    const channels = createChannels(gateway);
     for (const [name, channel] of Object.entries(channels)) {
       if (channel) {
         server.registerChannel(name, channel);

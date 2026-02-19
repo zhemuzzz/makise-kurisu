@@ -92,6 +92,20 @@ interface TelegramSendMessageResponse {
 // ===========================================
 
 /**
+ * Gateway 接口（避免循环依赖）
+ */
+interface GatewayLike {
+  processStream(
+    sessionId: string,
+    input: string,
+    userId?: string,
+  ): Promise<{
+    textStream: AsyncGenerator<string>;
+    finalResponse: Promise<string>;
+  }>;
+}
+
+/**
  * TelegramChannel 配置
  */
 export interface TelegramConfig extends ChannelConfig {
@@ -99,6 +113,8 @@ export interface TelegramConfig extends ChannelConfig {
   botToken: string;
   /** Webhook URL (可选，用于设置 Webhook) */
   webhookUrl?: string;
+  /** Gateway 实例（KURISU-013 Phase 2.1） */
+  gateway?: GatewayLike;
 }
 
 // ===========================================
@@ -184,15 +200,48 @@ export class TelegramChannel extends BaseChannel {
         },
       };
 
-      // TODO: Phase 2 后续 - 调用 Gateway 处理
-      // 目前返回确认响应
-      this.sendJsonResponse(typedRes, 200, {
-        status: "ok",
-        message: "Received",
-      });
-
       // 供测试和日志使用
       this.lastInboundMessage = inbound;
+
+      // Phase 2.1: Gateway 集成
+      if (this.telegramConfig.gateway) {
+        // 先返回 200，避免 Telegram 超时重试
+        this.sendJsonResponse(typedRes, 200, { status: "ok" });
+
+        try {
+          // 调用 Gateway 处理
+          const result = await this.telegramConfig.gateway.processStream(
+            inbound.sessionId,
+            inbound.content,
+            inbound.userId,
+          );
+
+          // 累积流式响应
+          let responseText = "";
+          for await (const chunk of result.textStream) {
+            responseText += chunk;
+          }
+
+          // 发送回复到 Telegram
+          if (responseText.trim()) {
+            const outbound: OutboundMessage = {
+              channelType: this.channelType,
+              sessionId: inbound.sessionId,
+              content: responseText,
+            };
+            await this.sendMessage(outbound);
+          }
+        } catch (error) {
+          console.error("TelegramChannel Gateway error:", error);
+          // 错误已记录，不影响 HTTP 响应（已经返回 200）
+        }
+      } else {
+        // 没有 Gateway 配置时，返回基础确认（向后兼容）
+        this.sendJsonResponse(typedRes, 200, {
+          status: "ok",
+          message: "Received",
+        });
+      }
     } catch (error) {
       console.error("TelegramChannel handleRequest error:", error);
       this.sendJsonResponse(typedRes, 500, {
