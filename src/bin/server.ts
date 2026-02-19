@@ -6,7 +6,7 @@
  * KURISU-013 Phase 1: 统一 Server 骨架
  */
 
-import { ModelProvider } from "../config/models";
+import { ModelProvider, loadConfig } from "../config/models";
 import { HybridMemoryEngine } from "../memory";
 import { PersonaEngine } from "../core/persona";
 import { AgentOrchestrator } from "../agents";
@@ -35,34 +35,32 @@ function createGatewayOrchestrator(
         params.input,
       );
 
-      // 转换为 Gateway 期望的格式
+      // 直接使用 orchestrator 的 finalResponse
+      // 注意：不能同时消费 result.chunks 和 result.finalResponse
+      // 因为 AsyncGenerator 只能被消费一次
+      const textPromise = result.finalResponse;
+
+      // 创建流式生成器（基于 finalResponse，因为 chunks 已被消费）
       async function* textStream() {
-        for await (const chunk of result.chunks) {
-          yield chunk.delta ?? chunk.content ?? "";
-        }
+        const text = await textPromise;
+        // 简单地一次性返回完整文本（非真正流式）
+        yield text;
       }
 
       async function* fullStream() {
-        for await (const chunk of result.chunks) {
-          yield {
-            type: 0, // TEXT_DELTA
-            text: chunk.delta ?? chunk.content ?? "",
-            isFinal: false,
-            timestamp: new Date(),
-          };
-        }
+        const text = await textPromise;
+        yield {
+          type: 0, // TEXT_DELTA
+          text,
+          isFinal: true,
+          timestamp: new Date(),
+        };
       }
 
       return {
         textStream: textStream(),
         fullStream: fullStream(),
-        finalResponse: (async () => {
-          let full = "";
-          for await (const chunk of result.chunks) {
-            full += chunk.delta ?? chunk.content ?? "";
-          }
-          return full;
-        })(),
+        finalResponse: result.finalResponse,
       };
     },
     createSession: (_params) => {
@@ -127,8 +125,15 @@ async function main(): Promise<void> {
   console.log(`Starting Kurisu HTTP Server v${VERSION}...\n`);
 
   try {
+    // 加载模型配置
+    const configPath = process.env["MODELS_CONFIG"] ?? "config/models.yaml";
+    const modelConfig = await loadConfig(configPath);
+
     // 初始化依赖
-    const modelProvider = new ModelProvider();
+    const modelProvider = new ModelProvider(
+      modelConfig.models,
+      modelConfig.defaults,
+    );
     const personaEngine = new PersonaEngine();
     const memoryEngine = new HybridMemoryEngine({
       sessionConfig: { maxMessages: 50, ttl: 30 * 60 * 1000 },

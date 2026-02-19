@@ -94,7 +94,7 @@ models:
 # Claude 官方模型需要单独的 API Key (console.anthropic.com)
 routing:
   rules:
-    conversation: glm-5
+    conversation: MiniMax-M2.5  # 对话测试
     code: glm-5              # 代码生成/理解
     reasoning: MiniMax-M2.5  # 复杂推理
     embedding: glm-5

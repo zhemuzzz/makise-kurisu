@@ -216,11 +216,8 @@ export class TelegramChannel extends BaseChannel {
             inbound.userId,
           );
 
-          // 累积流式响应
-          let responseText = "";
-          for await (const chunk of result.textStream) {
-            responseText += chunk;
-          }
+          // 直接使用 finalResponse（避免 AsyncGenerator 重复消费问题）
+          const responseText = await result.finalResponse;
 
           // 发送回复到 Telegram
           if (responseText.trim()) {
