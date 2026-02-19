@@ -23,6 +23,10 @@ services:
       - PORT=3000
       - HOST=0.0.0.0
       - LOG_LEVEL=${LOG_LEVEL:-info}
+      # QQ Channel (NapCat OneBot11)
+      - NAPCAT_HTTP_URL=${NAPCAT_HTTP_URL:-http://napcat:3001}
+      - NAPCAT_ACCESS_TOKEN=${NAPCAT_ACCESS_TOKEN:-}
+      - QQ_POLL_INTERVAL=${QQ_POLL_INTERVAL:-1000}
     volumes:
       - kurisu-logs:/app/logs
       - ./config:/app/config:ro

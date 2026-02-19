@@ -1,4 +1,6 @@
 {
+  "$schema": "https://github.com/modelcontextprotocol/spec/blob/main/schema/schema.json",
+  "$comment": "MCP 配置说明：Claude Code 内置 WebSearch 工具与 GLM MCP 不冲突，两者可同时使用",
   "mcpServers": {
     "deepwiki": {
       "type": "http",

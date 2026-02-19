@@ -15,6 +15,7 @@ import {
   KurisuServer,
   MockChannel,
   TelegramChannel,
+  QQChannel,
   type IOrchestrator,
 } from "../gateway";
 import type { MemoryEngineLike } from "../agents/types";
@@ -79,8 +80,13 @@ function createGatewayOrchestrator(
 function createChannels(gateway: Gateway): {
   mock?: MockChannel;
   telegram?: TelegramChannel;
+  qq?: QQChannel;
 } {
-  const channels: { mock?: MockChannel; telegram?: TelegramChannel } = {};
+  const channels: {
+    mock?: MockChannel;
+    telegram?: TelegramChannel;
+    qq?: QQChannel;
+  } = {};
 
   // Mock Channel (开发测试用)
   if (process.env["ENABLE_MOCK_CHANNEL"] === "true") {
@@ -113,6 +119,36 @@ function createChannels(gateway: Gateway): {
       ...(webhookUrl && { webhookUrl }),
     });
     console.log("  ✓ TelegramChannel enabled");
+  }
+
+  // QQ Channel (KURISU-013 Phase 3: NapCat OneBot11 Polling)
+  if (process.env["NAPCAT_HTTP_URL"]) {
+    // 创建适配 QQChannel 的 Gateway 接口
+    const qqGateway = {
+      processStream: async (
+        sessionId: string,
+        input: string,
+        userId?: string,
+      ) => {
+        const result = await gateway.processStream(sessionId, input, userId);
+        return {
+          textStream: result.textStream,
+          finalResponse: result.finalResponse,
+        };
+      },
+    };
+
+    channels.qq = new QQChannel({
+      httpUrl: process.env["NAPCAT_HTTP_URL"],
+      ...(process.env["NAPCAT_ACCESS_TOKEN"] && {
+        accessToken: process.env["NAPCAT_ACCESS_TOKEN"],
+      }),
+      ...(process.env["QQ_POLL_INTERVAL"] && {
+        pollInterval: parseInt(process.env["QQ_POLL_INTERVAL"], 10),
+      }),
+      gateway: qqGateway,
+    });
+    console.log("  ✓ QQChannel enabled (Polling mode)");
   }
 
   return channels;
@@ -181,6 +217,9 @@ async function main(): Promise<void> {
     }
     if (channels.telegram) {
       channelLines.push("POST /telegram/webhook - Telegram Bot");
+    }
+    if (channels.qq) {
+      channelLines.push("QQ Polling             - QQ Bot (NapCat OneBot11)");
     }
     const channelInfo =
       channelLines.length > 0
