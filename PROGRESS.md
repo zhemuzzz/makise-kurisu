@@ -1,18 +1,18 @@
 # Kurisu 项目进度追踪
 
-> 最后更新: 2026-02-18
+> 最后更新: 2026-02-19
 > 状态: MVP 完成，多平台接入开发中
 
 ## 当前状态
 
 **阶段**: KURISU-013 多平台接入
-**焦点**: Phase 2 完成，Phase 3 QQ Bot 接入准备中
+**焦点**: Phase 2.1 Gateway 集成完成，待 Cloudflare Tunnel + 端到端测试
 
 ### 近期变更
 
-- **Phase 2 完成**: TelegramChannel 实现并集成到 KurisuServer
-- **新增测试**: +15 tests (Telegram Channel)
-- **测试覆盖**: 929 tests passed
+- **Phase 2.1 完成**: TelegramChannel 集成 Gateway，实现对话闭环（代码层面）
+- **新增测试**: +5 tests (Gateway 集成)
+- **测试覆盖**: 934 tests passed
 
 ## 已完成模块
 
@@ -52,7 +52,14 @@
 - Server 集成: 通过 `TELEGRAM_BOT_TOKEN` 环境变量启用
 - +15 测试用例
 
-**下一步**: Phase 3 QQ Bot 接入
+**Phase 2.1 完成** ✅ (2026-02-19)
+- TelegramConfig 新增可选 `gateway` 属性
+- `handleRequest` 调用 `Gateway.processStream` 处理消息
+- `server.ts` 的 `createChannels` 接收 Gateway 参数
+- 设计决策：先返回 200 避免 Telegram 超时，再异步调用 Gateway
+- +5 测试用例 (Gateway 集成测试)
+
+**下一步**: Cloudflare Tunnel + 端到端测试 → Phase 3 QQ Bot 接入
 
 ### 近期完成 (2026-02-17~18)
 
@@ -114,7 +121,8 @@ kurisu/
 
 ### 近期（KURISU-013 继续）
 - ✅ Phase 2 Telegram 接入 (已完成)
-- Cloudflare Tunnel 配置 (Webhook 回调依赖)
+- ✅ Phase 2.1 Gateway 集成 (代码完成)
+- Cloudflare Tunnel 配置 + 端到端测试 (用户操作)
 - Phase 3 QQ Bot 接入 (P1)
 - 启用 Redis，session 持久化
 
