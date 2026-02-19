@@ -1,15 +1,8 @@
-# Makise Kurisu - 项目指令
+# KURISU-014 角色真实感 + 自进化能力
 
-> Claude Code 项目专用配置和设计文档
-
-## ⚠️ 开发规范
-
-> **开发任何新任务前必须阅读**: [.claude/INDEX.md](.claude/INDEX.md)
-
-**强制流程**:
-```
-创建任务文档 → 制定 Plan → 等待用户确认 → 执行 → commit → /compact
-```
+> **任务类型**: Core Feature
+> **优先级**: P0
+> **状态**: 规划阶段
 
 ---
 
@@ -21,38 +14,30 @@
 
 | 能力 | 目标 | 参考 |
 |------|------|------|
-| **角色真实感** | 像 Neuro-sama 一样自然的交流体验 | 用户感受到的是真正的 Kurisu |
-| **自进化能力** | 通过对话自主使用/添加插件 | 想用什么功能，就能用什么功能 |
-
-### 核心价值主张
-
-- **角色真实感**：Persona Engine 2.0 + Few-Shot + 动态上下文
-- **自进化能力**：搜索 → 安装 → 使用插件，无需用户干预
-- **方便配置**：WebUI 角色配置，支持导入/导出
+| **角色真实感** | 像 Neuro-sama 一样自然的交流体验 | Persona Engine 2.0 |
+| **自进化能力** | 通过对话自主使用/添加插件 | Self-Evolution System |
 
 ---
 
-## 核心架构
+## 当前状态
 
-七层分层解耦架构：
-
-```
-L1. 交互网关层 (Gateway) - 多渠道接入，流式处理
-L2. 人设一致性引擎层 (Persona Engine 2.0) ⭐核心 - 角色真实感
-L3. Agent 编排层 (Agent Orchestrator) - LangGraph 状态机
-L4. 混合记忆引擎层 (Hybrid Memory) - 四层记忆
-L5. 基础设施层 (Infrastructure) - 模型配置化 + Docker
-L6. 工具与自进化层 (Tool & Self-Evolution) ⭐核心 - 自进化能力
-L7. 角色配置层 (Role Config System) - 角色管理与配置
-```
+| Phase | 状态 | 说明 |
+|-------|------|------|
+| Phase 1 | 🔲 待开发 | Persona Engine 2.0 核心设计 |
+| Phase 2 | 🔲 待开发 | 自进化系统基础 |
+| Phase 3 | 🔲 待开发 | 工具使用 + 人设包装 |
+| Phase 4 | 🔲 待开发 | 角色配置系统 |
+| Phase 5 | 🔲 持续 | 优化 + 微调准备 |
 
 ---
 
-## L2 Persona Engine 2.0（角色真实感）
+## Phase 1: Persona Engine 2.0（1-2周）
 
-> 目标：像 Neuro-sama 一样真实的交流体验
+### 目标
 
-### 架构设计
+提升 Kurisu 对话真实感，接近 Neuro-sama 水平
+
+### 核心设计
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -66,6 +51,9 @@ L7. 角色配置层 (Role Config System) - 角色管理与配置
 │     ├── speech.yaml         # 说话习惯                      │
 │     ├── lore.yaml           # 世界观/背景                   │
 │     └── examples/           # 对话示例库                    │
+│         ├── daily_chat.yaml                                │
+│         ├── tech_discuss.yaml                              │
+│         └── emotional.yaml                                 │
 │                                                             │
 │  2. Few-Shot 学习（对话示例注入）                            │
 │     - 分析用户意图                                          │
@@ -85,29 +73,46 @@ L7. 角色配置层 (Role Config System) - 角色管理与配置
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 三层管控架构（保留）
+### 任务清单
+
+| 任务 | 优先级 | 说明 |
+|------|--------|------|
+| 角色知识库格式定义 | P0 | YAML 结构化格式 |
+| core.yaml 编写 | P0 | Kurisu 核心设定 |
+| personality.yaml 编写 | P0 | 性格特征详细描述 |
+| speech.yaml 编写 | P0 | 说话习惯、口癖、常用语 |
+| 10+ 对话示例编写 | P0 | Few-Shot 学习基础 |
+| Few-Shot 注入机制 | P0 | 动态匹配 + Prompt 注入 |
+| 动态上下文注入 | P1 | 根据主题注入设定 |
+
+### 产出文件
 
 ```
-Layer 1: 核心人设硬约束（不可修改）
-    ↓
-Layer 2: 动态心智模型（持续更新）
-    ↓
-Layer 3: 实时合规校验（每轮检查）
+config/persona/kurisu/
+├── core.yaml           # 核心设定
+├── personality.yaml    # 性格特征
+├── speech.yaml         # 说话习惯
+├── lore.yaml           # 世界观（现有）
+└── examples/
+    ├── daily_chat.yaml     # 日常对话示例
+    ├── tech_discuss.yaml   # 技术讨论示例
+    └── emotional.yaml      # 情感交流示例
+
+src/core/persona/
+├── knowledge-base.ts   # 🆕 知识库加载器
+├── few-shot.ts         # 🆕 Few-Shot 注入
+└── context-injector.ts # 🆕 动态上下文注入
 ```
-
-### 核心人设 (牧濑红莉栖)
-
-- 18岁天才少女科学家，维克多·孔多利亚大学研究员
-- 性格：理智 × 傲娇 × 好强 × 内向
-- 说话习惯：用"哼"开头，反问句，被说傲娇会反驳
 
 ---
 
-## L6 工具与自进化层（自进化能力）
+## Phase 2: 自进化系统基础（2-3周）
 
-> 目标：通过对话自主使用/添加插件
+### 目标
 
-### 架构设计
+实现插件自动搜索和安装
+
+### 核心设计
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -124,8 +129,6 @@ Layer 3: 实时合规校验（每轮检查）
 │         ↓                   ↓                              │
 │    安装配置             调用插件                             │
 │                                                             │
-│  ─────────────────────────────────────────────────────────  │
-│                                                             │
 │  工具来源:                                                   │
 │  ├── 内置工具: web_search, shell, file, code                │
 │  ├── AstrBot 插件市场: 复用现有生态                          │
@@ -135,19 +138,56 @@ Layer 3: 实时合规校验（每轮检查）
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Agent 职责
+### Agent 设计
 
 | Agent | 职责 |
 |-------|------|
 | PluginSearchAgent | 搜索 AstrBot 插件市场 / MCP servers / npm |
 | PluginSelectAgent | 评估并选择最佳插件 |
 | PluginInstallAgent | 下载、安装依赖、配置 API Key |
-| PluginUseAgent | 调用插件 + PersonaEngine 包装输出 |
 | PluginDevAgent | 自主开发简单工具（fallback） |
 
-### 工具输出人设化
+### 任务清单
 
-**关键设计**：所有工具输出必须经过 Persona Engine 包装
+| 任务 | 优先级 | 说明 |
+|------|--------|------|
+| ToolRegistry 设计 | P0 | 统一工具注册表 |
+| PluginSearchAgent | P0 | 连接 AstrBot 插件市场 API |
+| PluginSelectAgent | P0 | 插件评估和选择逻辑 |
+| PluginInstallAgent | P0 | 下载、安装、配置 |
+| 内置工具实现 | P0 | web_search, shell, file, code |
+| AstrBot 市场 API 集成 | P1 | 复用现有生态 |
+
+### 产出文件
+
+```
+src/tools/
+├── registry.ts         # 🆕 工具注册表
+├── built-in/
+│   ├── web-search.ts   # 🆕 Web 搜索
+│   ├── shell.ts        # 🆕 Shell 命令
+│   ├── file.ts         # 🆕 文件操作
+│   └── code.ts         # 🆕 代码执行
+└── types.ts            # 🆕 工具类型定义
+
+src/evolution/
+├── plugin-search.ts    # 🆕 插件搜索 Agent
+├── plugin-select.ts    # 🆕 插件选择 Agent
+├── plugin-install.ts   # 🆕 插件安装 Agent
+└── plugin-dev.ts       # 🆕 插件开发 Agent
+```
+
+---
+
+## Phase 3: 工具使用 + 人设包装（1-2周）
+
+### 目标
+
+所有工具输出符合 Kurisu 人设
+
+### 核心设计
+
+**工具输出人设化**（关键差异化）：
 
 ```typescript
 // 工具执行流程
@@ -164,15 +204,40 @@ async function executeTool(toolName: string, input: any) {
 
   // 3. 返回人设化结果
   return wrappedResult;
-  // 例如: "哼，帮你查到了..." 或 "真是的，搜索失败了..."
 }
 ```
 
+### 对话示例
+
+```
+用户: "Kurisu，帮我查一下腾讯股票"
+
+[PluginSearchAgent 搜索插件市场]
+[PluginInstallAgent 安装 stock-query-lite]
+[PluginUseAgent 调用插件]
+
+Kurisu: "股票？这种事情你自己不会查吗..."
+        "算了，让我看看有没有现成的工具..."
+        "哼，搞定了。腾讯控股今天收盘 380.40 港元，涨了 2.15%。"
+        "以后这种小事直接问我就行。"
+```
+
+### 任务清单
+
+| 任务 | 优先级 | 说明 |
+|------|--------|------|
+| PluginUseAgent | P0 | 调用工具 + 结果处理 |
+| PersonaEngine.wrapToolOutput() | P0 | 工具输出人设化包装 |
+| 人设化模板设计 | P0 | 不同工具类型的包装模板 |
+| 错误处理人设化 | P1 | 工具失败时的人设化提示 |
+
 ---
 
-## L7 角色配置层（角色管理）
+## Phase 4: 角色配置系统（2-3周）
 
-> 目标：方便的角色配置流程
+### 目标
+
+方便用户配置和分享角色
 
 ### 功能设计
 
@@ -203,170 +268,53 @@ async function executeTool(toolName: string, input: any) {
 └─────────────────────────────────────────────────────────────┘
 ```
 
----
+### 任务清单
 
-## 模型策略
-
-> 配置文件: [config/models.yaml](config/models.yaml)
-
-### 当前阶段：GLM-5 API 验证
-
-| 模型 | 用途 |
-|------|------|
-| GLM-5 | conversation, code, embedding |
-| MiniMax-M2.5 | reasoning |
-
-### 模型演进路线
-
-```
-Phase 1: GLM-5 API 跑通全流程（当前）
-    ↓ 收集基准数据（人设遵循率、validate 重试率、端到端延迟）
-Phase 2: 本地部署开源模型（Qwen2.5-7B / GLM-4-9B）
-    ↓ 对比基准线，验证本地部署可行性
-Phase 3: LoRA 微调 Kurisu 人设
-    ↓ 人设内化，减少 validate/enforce 干预
-Phase 4: 量化压缩 + 延迟优化
-```
-
-**核心原则**：先用 API 模型跑通全流程建立基准线，再逐步切换本地模型。不同时引入多个变量。
+| 任务 | 优先级 | 说明 |
+|------|--------|------|
+| 角色配置格式定义 | P1 | YAML 格式 |
+| 角色模板库 | P1 | 内置 3-5 个角色 |
+| CLI 配置工具 | P1 | 命令行配置接口 |
+| WebUI 配置工具 | P2 | 可视化配置界面 |
+| 导入/导出功能 | P2 | YAML 文件支持 |
 
 ---
 
-## Agent 架构
+## Phase 5: 持续优化
 
-> 实现: [src/agents/](src/agents/)
+### 任务清单
 
-| Agent | 职责 | 占比 |
-|-------|------|------|
-| ConversationAgent | 日常对话 + 人设维护 | 70% |
-| TaskAgent | 工具调用 + 任务执行 | 20% |
-| SelfEvolutionAgent | 自主搜索/安装/使用插件 | 10% |
-
-状态流转: `START → context_build → route → generate → validate → enforce → END`
-
----
-
-## 记忆系统
-
-> 实现: [src/memory/](src/memory/)
-
-四层记忆：SessionMemory(瞬时) → ShortTermMemory(短期) → LongTermMemory(长期) → SkillDatabase(技能)
+| 任务 | 优先级 | 说明 |
+|------|--------|------|
+| 对话示例扩充 | P1 | 目标 100+ 示例 |
+| 微调数据集准备 | P2 | 为 LoRA 微调做准备 |
+| LoRA 微调实验 | P2 | 人设内化 |
+| 性能优化 | P2 | 延迟优化 |
 
 ---
 
-## 部署策略
+## 技术决策
 
-### 当前阶段：本地 Docker + Cloudflare Tunnel
+| ID | 决策 | 说明 |
+|----|------|------|
+| T006 | 两大核心能力 | 角色真实感 + 自进化能力 |
+| T007 | 复用 AstrBot 生态 | 不重复造轮子 |
+| T008 | 工具输出人设化 | 所有工具结果经过 Persona Engine |
 
-```
-git clone → 配置 .env → docker compose up → cloudflared tunnel
-```
+---
 
-### 部署演进路线
+## 风险与缓解
 
-| 阶段 | 内容 | 触发时机 |
+| 风险 | 影响 | 缓解措施 |
 |------|------|----------|
-| **当前** | 本地 Docker + Cloudflare Tunnel | 免费，多平台 Webhook 验证 |
-| 多人使用 | 轻量云服务器 (2C2G) + Docker | ~50 元/月 |
-| 多平台稳定后 | 基础 `setup.sh`：依赖检查 → .env 生成 → 构建 → 启动 | 准备给第二个人用时 |
-| 正式发布 | 完整 onboarding + Control UI | 面向普通用户时 |
-
----
-
-## 多平台接入 (KURISU-013)
-
-> 详细计划: [docs/tasks/active/KURISU-013-MULTI-CHANNEL-DEPLOY.md](docs/tasks/active/KURISU-013-MULTI-CHANNEL-DEPLOY.md)
-
-### 当前状态
-
-- ✅ Phase 0: BaseChannel 抽象基类 + MockChannel + 统一消息格式
-- ✅ Phase 1: KurisuServer 统一 Server + Channel 插件化路由
-- ✅ Phase 2: TelegramChannel 实现
-- ✅ Phase 2.1: Gateway 集成
-- 🔲 Phase 3: QQ Bot 接入 (P1)
-- 🔲 Phase 4: 企业微信接入 (P2)
-
-### 平台优先级
-
-| 优先级 | 平台 | 理由 |
-|--------|------|------|
-| **P0** | Telegram | API 最简，无签名验证 |
-| P1 | QQ | 国内覆盖最大 |
-| P2 | 企业微信 | 加解密复杂 |
-
----
-
-## 开发规范
-
-1. 先跑通最小闭环，再堆功能
-2. 所有模块接口抽象，强依赖注入
-3. TypeScript 严格类型，禁止 any
-4. 核心模块先写测试，再写业务代码
-5. 敏感信息禁止硬编码
-6. **每次 git commit 后必须**：更新 PROGRESS.md → 保存记忆 → 执行 `/compact`
-
----
-
-## 路线图
-
-### Phase 1: Persona Engine 2.0（1-2周）[P0]
-
-- [ ] 角色知识库格式定义
-- [ ] 10+ Kurisu 对话示例
-- [ ] Few-Shot 注入机制
-- [ ] 动态上下文注入
-
-### Phase 2: 自进化系统基础（2-3周）[P0]
-
-- [ ] PluginSearchAgent（连接 AstrBot 市场）
-- [ ] PluginInstallAgent
-- [ ] AstrBot 插件市场 API 集成
-
-### Phase 3: 工具使用 + 人设包装（1-2周）[P0]
-
-- [ ] PluginUseAgent
-- [ ] 工具输出人设化
-- [ ] 内置工具完善（web_search, shell, file, code）
-
-### Phase 4: 角色配置系统（2-3周）[P1]
-
-- [ ] WebUI 配置工具
-- [ ] 角色模板库
-- [ ] 导入/导出功能
-
-### Phase 5: 持续优化（持续）[P1]
-
-- [ ] 对话示例扩充（100+）
-- [ ] 微调数据集准备
-- [ ] LoRA 微调实验
-
----
-
-## 调研结论
-
-### Neuro-sama（对话质量参考）
-- 自训练 2B 参数模型，q2_k 量化，非 GPT/Claude
-- 核心优势是**低延迟**（本地推理 <1s）和**人设深度内化**（微调而非工程兜底）
-- 启示：对话质量瓶颈在延迟和人设内化，不在模型大小
-
-### OpenClaw（部署体验参考）
-- Docker Gateway + CLI + Sandbox 三层架构
-- `docker-setup.sh` 一键部署：依赖检查 → Token 生成 → 镜像构建 → Channel 配置 → 启动
-- 运行时插件化 Channel，WebSocket 常驻 Gateway
-- 启示：部署体验核心在自动化 onboarding
-
-### AstrBot（插件生态参考）
-- 16,716 stars，900+ 插件，15+ 平台
-- MCP 支持，Skills 系统，Agent Sandbox
-- 启示：插件生态是核心竞争力，应该复用而非重复造轮子
+| Few-Shot 效果不如微调 | 人设自然度 | 短期用 Few-Shot，长期准备微调 |
+| 自进化只能覆盖简单场景 | 功能覆盖 | 复杂插件依赖社区生态 |
+| AstrBot API 变更 | 插件搜索 | 维护 API 适配层 |
 
 ---
 
 ## 参考资源
 
-- [Claude Code Agent Teams](https://code.claude.com/docs/en/agent-teams)
-- [OpenClaw Architecture](https://ppaolo.substack.com/p/openclaw-system-architecture-overview)
-- [OpenClaw GitHub](https://github.com/openclaw/openclaw)
-- [Neuro-sama Wikipedia](https://en.wikipedia.org/wiki/Neuro-sama)
-- [AstrBot GitHub](https://github.com/Soulter/AstrBot)
-- [SillyTavern Prompt Engineering](https://www.reddit.com/r/SillyTavernAI/)
+- [Neuro-sama](https://en.wikipedia.org/wiki/Neuro-sama) - 人设内化参考
+- [AstrBot](https://github.com/Soulter/AstrBot) - 插件生态参考
+- [OpenClaw](https://github.com/openclaw/openclaw) - 工具能力参考
