@@ -11,7 +11,6 @@
 
 import type { MentalModel, PersonaHardcoded } from "./types";
 import type { RoleConfig, RoleLoadResult } from "./soul-types";
-import { PERSONA_HARDCODED } from "./constants";
 import { PersonaValidator, type DetailedValidationResult } from "./validator";
 import { PersonaEnforcer } from "./enforcer";
 import { PromptBuilder } from "./prompt-builder";
@@ -84,11 +83,15 @@ export class PersonaEngine {
   }
 
   /**
-   * 获取核心人设硬约束
+   * 获取核心人设（从已加载的角色配置）
+   * @throws Error 如果未加载角色配置
    */
   getHardcodedPersona(): PersonaHardcoded {
+    if (!this.roleConfig) {
+      throw new Error("RoleConfig not loaded. Call loadRole() first.");
+    }
     return {
-      content: PERSONA_HARDCODED,
+      content: this.roleConfig.soul.rawContent,
     };
   }
 

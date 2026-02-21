@@ -2,15 +2,11 @@
  * PromptBuilder - 提示词构建器
  * 负责构建完整的 RP (Role-Play) 提示词
  *
- * 支持两种模式:
- * - 新结构 (2.0): 三层架构 (灵魂层 L0 → 表现层 L1)
- * - 旧结构 (1.0-legacy): 使用硬编码常量
+ * 三层架构: 灵魂层 L0 → 表现层 L1
  */
 
 import type { MentalModel } from "./types";
 import type { RoleConfig } from "./soul-types";
-import { PERSONA_HARDCODED } from "./constants";
-import { searchLore, getHighImportanceLore, type LoreTerm } from "./lore";
 
 /**
  * 记忆截断数量
@@ -47,7 +43,7 @@ export class PromptBuilder {
   }
 
   /**
-   * 设置角色配置（新结构 2.0）
+   * 设置角色配置
    * @param config 角色配置
    */
   setRoleConfig(config: RoleConfig): void {
@@ -75,53 +71,34 @@ export class PromptBuilder {
     // 截断记忆到最后 N 条
     const recentMemories = safeMemories.slice(-MAX_MEMORIES);
 
-    // 根据是否有 roleConfig 选择构建模式
-    if (this.roleConfig) {
-      return this.buildNewStructure(safeUserMessage, recentMemories);
+    if (!this.roleConfig) {
+      throw new Error("RoleConfig is required. Call setRoleConfig() first.");
     }
 
-    // 旧结构
-    return this.buildLegacy(safeUserMessage, recentMemories);
+    return this.buildPrompt(safeUserMessage, recentMemories);
   }
 
   /**
-   * 构建新结构 (2.0) - 三层架构
+   * 构建提示词
    */
-  private buildNewStructure(
+  private buildPrompt(
     _userMessage: string,
     recentMemories: string[],
   ): string {
     const sections = [
       this.buildIdentitySection(),
       this.buildSoulSection(),
-      this.buildLoreSectionNew(),
-      this.buildMemorySectionNew(recentMemories),
-      this.buildPersonaSectionNew(),
+      this.buildLoreSection(),
+      this.buildMemorySection(recentMemories),
+      this.buildPersonaSection(),
       this.buildInstructionSection(),
     ];
 
     return sections.filter((section) => section.length > 0).join("\n\n---\n\n");
   }
 
-  /**
-   * 构建旧结构 (1.0-legacy)
-   */
-  private buildLegacy(userMessage: string, recentMemories: string[]): string {
-    const sections = [
-      this.buildPersonaSectionLegacy(),
-      this.buildLoreSectionLegacy(userMessage),
-      this.buildCurrentStateSection(),
-      this.buildSharedMemoriesSection(),
-      this.buildRecentDialogSection(recentMemories),
-      this.buildUserInputSection(userMessage),
-      this.buildGenerationRequirementsSection(),
-    ];
-
-    return sections.filter((section) => section.length > 0).join("\n\n");
-  }
-
   // ============================================
-  // 新结构构建方法 (2.0)
+  // 构建方法
   // ============================================
 
   /**
@@ -147,20 +124,21 @@ export class PromptBuilder {
   }
 
   /**
-   * 构建世界观部分 (新)
+   * 构建世界观部分
    */
-  private buildLoreSectionNew(): string {
+  private buildLoreSection(): string {
     if (!this.roleConfig) return "";
     return `# 你所在的世界\n\n${this.roleConfig.lore.rawContent}`;
   }
 
   /**
-   * 构建记忆部分 (新)
+   * 构建记忆部分
    */
-  private buildMemorySectionNew(recentMemories: string[]): string {
+  private buildMemorySection(recentMemories: string[]): string {
     if (!this.roleConfig) return "";
 
     const { memories } = this.roleConfig;
+    const { shared_memories, relationship_graph } = this.mentalModel;
     const lines: string[] = ["# 你的记忆"];
 
     // 最近事件
@@ -182,6 +160,25 @@ export class PromptBuilder {
       lines.push(`- 态度: ${userRel.currentFeeling}`);
     }
 
+    // 当前状态（从 mentalModel）
+    if (relationship_graph.familiarity > 0) {
+      lines.push(`- 信任度: ${relationship_graph.trust_level}%`);
+    }
+
+    // 共享记忆（从 mentalModel）
+    if (
+      shared_memories.key_events.length > 0 ||
+      shared_memories.inside_jokes.length > 0
+    ) {
+      lines.push("## 我们共同的经历");
+      if (shared_memories.key_events.length > 0) {
+        lines.push(`- 关键事件: ${shared_memories.key_events.join("、")}`);
+      }
+      if (shared_memories.inside_jokes.length > 0) {
+        lines.push(`- 共同话题: ${shared_memories.inside_jokes.join("、")}`);
+      }
+    }
+
     // 最近对话记忆
     if (recentMemories.length > 0) {
       lines.push("## 最近对话");
@@ -196,7 +193,7 @@ export class PromptBuilder {
   /**
    * 构建表现层部分 (L1)
    */
-  private buildPersonaSectionNew(): string {
+  private buildPersonaSection(): string {
     if (!this.roleConfig) return "";
 
     const { speech, behavior } = this.roleConfig.persona;
@@ -268,15 +265,8 @@ export class PromptBuilder {
   }
 
   // ============================================
-  // 旧结构构建方法 (1.0-legacy) - 重命名
+  // MentalModel 管理
   // ============================================
-
-  /**
-   * 构建人设部分（旧版）
-   */
-  private buildPersonaSectionLegacy(): string {
-    return PERSONA_HARDCODED;
-  }
 
   /**
    * 更新心智模型
@@ -308,164 +298,9 @@ export class PromptBuilder {
     return structuredClone(this.mentalModel);
   }
 
-  /** Lore 搜索查询最大长度 */
-  private static readonly LORE_SEARCH_MAX_QUERY = 500;
-  /** 静态 Lore 最大术语数 */
-  private static readonly LORE_STATIC_MAX = 8;
-  /** 上下文 Lore 最大术语数 */
-  private static readonly LORE_CONTEXT_MAX = 3;
-
-  /**
-   * 构建 Lore 世界观段落（旧版）
-   * 包含静态高重要性术语 + 上下文相关低重要性术语
-   * 两层独立组合，互不影响
-   */
-  private buildLoreSectionLegacy(userMessage: string): string {
-    // 静态背景 Lore (importance >= 4)，只调用一次
-    const staticTerms = getHighImportanceLore().slice(
-      0,
-      PromptBuilder.LORE_STATIC_MAX,
-    );
-    const staticIds = new Set(staticTerms.map((t) => t.id));
-
-    // 上下文相关搜索 — 独立于静态 Lore，去重 + 限数
-    const query = userMessage.slice(0, PromptBuilder.LORE_SEARCH_MAX_QUERY);
-    const contextTerms = query
-      ? searchLore(query)
-          .filter((t) => !staticIds.has(t.id))
-          .sort((a, b) => b.importance - a.importance)
-          .slice(0, PromptBuilder.LORE_CONTEXT_MAX)
-      : [];
-
-    const allTerms = [...staticTerms, ...contextTerms];
-
-    if (allTerms.length === 0) {
-      return "";
-    }
-
-    const lines = [
-      "## 世界观术语（Steins;Gate）",
-      ...allTerms.map((term) => this.formatLoreTerm(term)),
-    ];
-
-    return lines.join("\n");
-  }
-
-  /**
-   * 格式化单个 Lore 术语为提示词行
-   */
-  private formatLoreTerm(term: LoreTerm): string {
-    const perspective = term.kurisuPerspective
-      ? ` [Kurisu: ${term.kurisuPerspective}]`
-      : "";
-    return `- **${term.nameZh}** (${term.nameEn}): ${term.description}${perspective}`;
-  }
-
-  /**
-   * 构建当前状态部分
-   */
-  private buildCurrentStateSection(): string {
-    const { user_profile, relationship_graph } = this.mentalModel;
-
-    const lines: string[] = ["## 当前状态"];
-
-    // 用户信息
-    if (user_profile.name) {
-      lines.push(`- 用户名：${user_profile.name}`);
-    }
-
-    // 关系状态
-    lines.push(`- 与用户关系：${relationship_graph.familiarity}%熟悉度`);
-
-    // 用户偏好
-    if (user_profile.preferences.length > 0) {
-      lines.push(`- 用户偏好：${user_profile.preferences.join("、")}`);
-    }
-
-    // 情感状态（如果相关）
-    if (
-      relationship_graph.emotional_state &&
-      relationship_graph.emotional_state !== "neutral"
-    ) {
-      lines.push(`- 当前情绪：${relationship_graph.emotional_state}`);
-    }
-
-    return lines.join("\n");
-  }
-
-  /**
-   * 构建共享记忆部分
-   */
-  private buildSharedMemoriesSection(): string {
-    const { shared_memories } = this.mentalModel;
-
-    // 如果没有共享记忆，跳过此部分
-    if (
-      shared_memories.key_events.length === 0 &&
-      shared_memories.inside_jokes.length === 0 &&
-      shared_memories.repeated_topics.length === 0
-    ) {
-      return "";
-    }
-
-    const lines: string[] = ["## 共享记忆"];
-
-    // 关键事件
-    if (shared_memories.key_events.length > 0) {
-      lines.push(`- 关键事件：${shared_memories.key_events.join("、")}`);
-    }
-
-    // 内部笑话
-    if (shared_memories.inside_jokes.length > 0) {
-      lines.push(`- 共同话题：${shared_memories.inside_jokes.join("、")}`);
-    }
-
-    // 重复讨论的话题
-    if (shared_memories.repeated_topics.length > 0) {
-      lines.push(`- 常聊话题：${shared_memories.repeated_topics.join("、")}`);
-    }
-
-    return lines.join("\n");
-  }
-
-  /**
-   * 构建最近对话部分
-   */
-  private buildRecentDialogSection(memories: string[]): string {
-    if (memories.length === 0) {
-      return "";
-    }
-
-    const lines: string[] = ["## 最近对话"];
-
-    memories.forEach((memory, index) => {
-      lines.push(`Memory ${index + 1}: ${memory}`);
-    });
-
-    return lines.join("\n");
-  }
-
-  /**
-   * 构建用户输入部分
-   */
-  private buildUserInputSection(userMessage: string): string {
-    const displayMessage = userMessage.trim() || "(无内容)";
-    return `## 当前用户输入\n${displayMessage}`;
-  }
-
-  /**
-   * 构建生成要求部分
-   */
-  private buildGenerationRequirementsSection(): string {
-    return `## 生成回复的要求
-1. 保持人设：傲娇、理性、科学
-2. 反映关系：根据熟悉度调整态度
-3. 禁止出戏：
-   - 不要说"作为AI"、"我无法..."
-   - 始终保持在 Kurisu 的角色中
-
-现在，以牧濑红莉栖的身份回复：`;
-  }
+  // ============================================
+  // 工具方法
+  // ============================================
 
   /**
    * 安全处理用户输入

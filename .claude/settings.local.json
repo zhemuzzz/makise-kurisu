@@ -1,15 +1,16 @@
 {
-  "$comment": "kurisu 项目 - 完全自动化权限（可通过 git 回滚）",
-  "dangerouslyDisableSandbox": true,
   "permissions": {
     "allow": [
       "Bash(dangerous:*)",
       "Bash(*)",
       "Write(**)",
       "Edit(**)",
-      "mcp__*"
+      "mcp__*",
+      "mcp__github__search_code"
     ]
   },
+  "$comment": "kurisu 项目 - 完全自动化权限（可通过 git 回滚）",
+  "dangerouslyDisableSandbox": true,
   "automation": {
     "autoCommit": true,
     "autoPush": true,
