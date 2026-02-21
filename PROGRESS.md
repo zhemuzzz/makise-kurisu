@@ -1,7 +1,7 @@
 # Kurisu 项目进度追踪
 
 > 最后更新: 2026-02-21
-> 状态: MVP 完成，角色灵魂系统完成
+> 状态: MVP 完成，角色灵魂系统完成，CI 修复完成
 
 ---
 
@@ -177,7 +177,13 @@ docker compose --profile tunnel up   # Telegram Webhook 模式
 | L5 | 基础设施 | - | - |
 | **新增** | **角色灵魂系统** | **34** | **-** |
 
-**总计**: 987 tests, 83%+ coverage
+**总计**: 963 tests, 83%+ coverage
+
+### CI 修复 (2026-02-21)
+
+- 修复 TypeScript 类型检查错误：移除未使用的类型导入
+- 适配三层架构测试：所有测试在调用依赖 roleConfig 的方法前先加载角色
+- 修复 `PersonaEngine.updateMentalModel()` 保留 roleConfig 的 bug
 
 ### 角色灵魂系统 ✅ (2026-02-21)
 
