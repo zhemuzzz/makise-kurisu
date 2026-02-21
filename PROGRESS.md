@@ -1,7 +1,7 @@
 # Kurisu 项目进度追踪
 
 > 最后更新: 2026-02-21
-> 状态: MVP 完成，QQ Channel 测试中
+> 状态: MVP 完成，角色灵魂系统完成
 
 ---
 
@@ -175,8 +175,26 @@ docker compose --profile tunnel up   # Telegram Webhook 模式
 | L4 | 记忆系统 | 184 | - |
 | E2E | 端到端测试 | 67 | - |
 | L5 | 基础设施 | - | - |
+| **新增** | **角色灵魂系统** | **34** | **-** |
 
-**总计**: 953 tests, 83%+ coverage (+19 QQChannel tests)
+**总计**: 987 tests, 83%+ coverage
+
+### 角色灵魂系统 ✅ (2026-02-21)
+
+> 详细设计: `docs/design/ROLE-SOUL-SPEC.md`
+
+三层架构（T017）:
+- **L-1 系统安全层**: SilentSafetyInterceptor 静默拦截，返回结构化错误
+- **L0 灵魂层**: soul.md 第一人称定义（价值观、矛盾、情感深度）
+- **L1 表现层**: persona.yaml 说话习惯、行为倾向、格式化规则
+
+| 模块 | 文件 | 说明 |
+|------|------|------|
+| 类型定义 | soul-types.ts | SoulConfig, PersonaConfig, RoleConfig |
+| 配置加载 | role-loader.ts | 支持 soul.md + persona.yaml + 旧格式 |
+| 安全拦截 | silent-interceptor.ts | 静默返回结构化错误，不产生对话输出 |
+| 错误表达 | response-builder.ts | 将安全错误转为角色化表达 |
+| Kurisu 配置 | config/personas/kurisu/ | 完整灵魂配置（soul.md + persona.yaml）|
 
 ---
 
@@ -224,8 +242,9 @@ L9 Role Config（一站式创建向导）⭐重设计
 | T006 | 两大核心能力：角色真实感 + 自进化 | 2026-02-19 |
 | T007 | AstrBot 插件桥接，MCP 优先 | 2026-02-19 |
 | T008 | 工具输出人设化包装 | 2026-02-19 |
-| **T009** | **九层架构：补充多模态+表现+工具沙箱层** | **2026-02-19** |
-| **T010** | **路线图重排：语音+工具沙箱优先于 Persona 2.0** | **2026-02-19** |
+| T009 | 九层架构：补充多模态+表现+工具沙箱层 | 2026-02-19 |
+| T010 | 路线图重排：语音+工具沙箱优先于 Persona 2.0 | 2026-02-19 |
+| **T017** | **角色灵魂系统：安全层(静默)+灵魂层+表现层** | **2026-02-21** |
 
 ---
 
@@ -237,27 +256,28 @@ kurisu/
 ├── PROGRESS.md            # 本文件
 ├── config/
 │   ├── models.yaml        # 模型配置
-│   └── personas/          # 角色配置目录（L9）
-│       └── kurisu/
-│           ├── role.yaml  # 角色总配置（待创建）
-│           ├── core.yaml
-│           └── examples/
+│   ├── personas/          # 角色配置目录（L9）
+│   │   └── kurisu/
+│   │       ├── soul.md        # 灵魂层（第一人称）✅
+│   │       ├── persona.yaml   # 表现层（说话习惯）✅
+│   │       ├── lore.md        # 世界观 ✅
+│   │       └── memories/      # 记忆配置 ✅
+│   └── system/            # 系统配置
+│       └── safety.yaml        # 安全规则 ✅
 ├── src/
 │   ├── gateway/           # L1 交互网关 ✅
 │   ├── multimodal/        # L2 多模态处理 🔲 待新增
-│   ├── core/persona/      # L3 人设引擎 ✅（升级到 2.0）
+│   ├── core/
+│   │   ├── persona/       # L3 人设引擎 ✅（含灵魂系统）
+│   │   └── safety/        # L-1 安全层 ✅ 新增
 │   ├── agents/            # L4 Agent 编排 ✅
 │   ├── memory/            # L5 记忆系统 ✅
 │   ├── tools/             # L6 工具执行层 🔲 待新增
-│   ├── evolution/         # L7 自进化层 🔲 待新增
-│   ├── presentation/      # L8 表现输出层 🔲 待新增
-│   └── config/            # L9 角色配置 🔲 待新增
-└── .claude/
-    ├── tasks/
-    │   ├── KURISU-013-MULTI-CHANNEL-DEPLOY.md ✅
-    │   └── KURISU-014-PERSONA-EVOLUTION.md (重新规划)
-    ├── INDEX.md
-    └── TASK.md
+│   ├── skills/            # L7 Skill System 🔲 待新增
+│   └── presentation/      # L8 表现输出层 🔲 待新增
+└── docs/
+    ├── design/ROLE-SOUL-SPEC.md  # 灵魂系统设计 ✅
+    └── tasks/active/             # 任务文档
 ```
 
 ---
