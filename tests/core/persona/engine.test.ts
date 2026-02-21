@@ -42,8 +42,9 @@ describe("PersonaEngine", () => {
     it("should return hardcoded persona content", () => {
       const persona = engine.getHardcodedPersona();
       expect(persona.content).toContain("牧濑红莉栖");
-      expect(persona.content).toContain("傲娇");
-      expect(persona.content).toContain("18岁");
+      // 灵魂系统优化后，soul.md 不再包含标签式描述
+      // 改为检查核心内容
+      expect(persona.content).toContain("神经科学研究员");
     });
 
     it("should return immutable content", () => {

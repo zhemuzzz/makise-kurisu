@@ -7,6 +7,12 @@
 import type { StreamChunk, IModelProvider } from "../config/models";
 import type { BuildContext, Message } from "../memory";
 import type { PersonaEngine } from "../core/persona";
+import type {
+  ToolDef,
+  ToolCall,
+  ToolResult,
+  ApprovalState,
+} from "../tools/types";
 
 // ============================================
 // Agent 角色与意图
@@ -108,6 +114,26 @@ export interface AgentState {
 
   // 上下文
   readonly context: BuildContext | null;
+
+  // === 工具相关 (L6+L7) ===
+
+  /** 激活的 Skill IDs */
+  readonly activeSkills: readonly string[];
+
+  /** 可用工具定义 (来自激活的 Skills) */
+  readonly availableTools: readonly ToolDef[];
+
+  /** 待执行的工具调用 (LLM 返回的) */
+  readonly pendingToolCalls: readonly ToolCall[];
+
+  /** 工具执行结果 */
+  readonly toolResults: readonly ToolResult[];
+
+  /** 工具调用迭代次数 (防止无限循环) */
+  readonly toolCallIteration: number;
+
+  /** 审批状态 (confirm 级工具需要) */
+  readonly approvalState: ApprovalState | null;
 
   // 元数据
   readonly createdAt: number;
@@ -273,6 +299,14 @@ export function createInitialState(
     personaValidation: null,
     retryCount: 0,
     context: null,
+    // 工具相关
+    activeSkills: [],
+    availableTools: [],
+    pendingToolCalls: [],
+    toolResults: [],
+    toolCallIteration: 0,
+    approvalState: null,
+    // 元数据
     createdAt: now,
     updatedAt: now,
     metadata: {},

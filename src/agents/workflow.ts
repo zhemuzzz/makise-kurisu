@@ -1,7 +1,7 @@
 /**
  * L3 Agent 编排层 - LangGraph 工作流
  *
- * 组装状态机：START → context_build → route → conversation/task → validate → enforce → END
+ * 组装状态机：START → context_build → route → skill_activate → conversation/task → validate → enforce → END
  */
 
 import { StateGraph, END, START } from "@langchain/langgraph";
@@ -12,6 +12,7 @@ import { intentRouter, validationRouter } from "./routers";
 // 节点工厂
 import { createContextBuildNode } from "./nodes/context-build";
 import { createRouteNode } from "./nodes/route";
+import { createSkillActivateNode } from "./nodes/skill-activate";
 import { createGenerateNode } from "./nodes/generate";
 import { createValidateNode } from "./nodes/validate";
 import { createEnforceNode } from "./nodes/enforce";
@@ -34,6 +35,12 @@ export function createAgentWorkflow(
   });
 
   const routeNode = createRouteNode({});
+
+  // Skill 激活节点（暂用空实现，Phase 5 完善）
+  const skillActivateNode = createSkillActivateNode({
+    matchIntent: () => [], // TODO: Phase 5 实现
+    getSkill: () => undefined,
+  });
 
   const generateNode = createGenerateNode({
     modelProvider: deps.modelProvider,
@@ -66,6 +73,14 @@ export function createAgentWorkflow(
     personaValidation: null,
     retryCount: null,
     context: null,
+    // 工具相关
+    activeSkills: null,
+    availableTools: null,
+    pendingToolCalls: null,
+    toolResults: null,
+    toolCallIteration: null,
+    approvalState: null,
+    // 元数据
     createdAt: null,
     updatedAt: null,
     metadata: null,
@@ -78,16 +93,20 @@ export function createAgentWorkflow(
   workflow
     .addNode("context_build", contextBuildNode)
     .addNode("route", routeNode)
+    .addNode("skill_activate", skillActivateNode)
     .addNode("conversation", generateNode)
     .addNode("task", generateNode)
     .addNode("validate", validateNodeInst)
     .addNode("enforce", enforceNodeInst);
 
-  // 定义边：START → context_build → route
-  workflow.addEdge(START, "context_build").addEdge("context_build", "route");
+  // 定义边：START → context_build → route → skill_activate
+  workflow
+    .addEdge(START, "context_build")
+    .addEdge("context_build", "route")
+    .addEdge("route", "skill_activate");
 
-  // 条件路由：route → conversation/task
-  workflow.addConditionalEdges("route", intentRouter, {
+  // 条件路由：skill_activate → conversation/task
+  workflow.addConditionalEdges("skill_activate", intentRouter, {
     conversation: "conversation",
     task: "task",
   });

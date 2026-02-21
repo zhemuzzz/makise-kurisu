@@ -11,6 +11,12 @@ import type {
   PersonaValidation,
 } from "./types";
 import type { BuildContext } from "../memory";
+import type {
+  ToolDef,
+  ToolCall,
+  ToolResult,
+  ApprovalState,
+} from "../tools/types";
 import { AgentRole, IntentType } from "./types";
 
 // ============================================
@@ -89,6 +95,45 @@ export const agentStateChannels = {
   context: {
     value: (_: BuildContext | null | undefined, y: BuildContext | null) => y,
     default: () => null as BuildContext | null,
+  },
+
+  // === 工具相关 (L6+L7) ===
+
+  /** 激活的 Skills（覆盖） */
+  activeSkills: {
+    value: (_: readonly string[] | undefined, y: readonly string[]) => y,
+    default: () => [] as readonly string[],
+  },
+
+  /** 可用工具（覆盖） */
+  availableTools: {
+    value: (_: readonly ToolDef[] | undefined, y: readonly ToolDef[]) => y,
+    default: () => [] as readonly ToolDef[],
+  },
+
+  /** 待执行的工具调用（覆盖） */
+  pendingToolCalls: {
+    value: (_: readonly ToolCall[] | undefined, y: readonly ToolCall[]) => y,
+    default: () => [] as readonly ToolCall[],
+  },
+
+  /** 工具结果（累加） */
+  toolResults: {
+    value: (x: readonly ToolResult[] | undefined, y: readonly ToolResult[]) =>
+      [...(x ?? []), ...y] as readonly ToolResult[],
+    default: () => [] as readonly ToolResult[],
+  },
+
+  /** 工具调用迭代次数（覆盖） */
+  toolCallIteration: {
+    value: (_: number | undefined, y: number) => y,
+    default: () => 0,
+  },
+
+  /** 审批状态（覆盖） */
+  approvalState: {
+    value: (_: ApprovalState | null | undefined, y: ApprovalState | null) => y,
+    default: () => null as ApprovalState | null,
   },
 
   // 元数据
