@@ -184,7 +184,7 @@ config/
         │   ├── episodes.yaml       # 经历过的重要事件
         │   └── relationships.yaml  # 与他人的关系
         └── growth/                 # 成长记录
-            └── evolution.log       # 灵魂变化日志
+            └── evolution.md        # 灵魂变化日志
 ```
 
 ### 4.2 文件职责
