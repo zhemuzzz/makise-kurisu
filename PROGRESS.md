@@ -185,6 +185,15 @@ docker compose --profile tunnel up   # Telegram Webhook 模式
 - 适配三层架构测试：所有测试在调用依赖 roleConfig 的方法前先加载角色
 - 修复 `PersonaEngine.updateMentalModel()` 保留 roleConfig 的 bug
 
+### 灵魂系统加载修复 (2026-02-21)
+
+- **关键 Bug**：server.ts 未调用 `loadRole()`，灵魂系统根本没有加载
+- 修复：添加 `await personaEngine.loadRole(defaultRole)`
+- CLI 重构为静态工厂方法 `KurisuCLI.create()`
+- 消除硬编码：`defaults.role` 从配置读取
+- soul.md 新增"我说话的方式"章节（内在动机驱动简洁回复）
+- persona.yaml 移除 `max_sentences: 3` 硬性限制，改用 `style.brevity`
+
 ### 角色灵魂系统 ✅ (2026-02-21)
 
 > 详细设计: `docs/design/ROLE-SOUL-SPEC.md`
