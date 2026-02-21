@@ -81,10 +81,7 @@ export class PromptBuilder {
   /**
    * 构建提示词
    */
-  private buildPrompt(
-    _userMessage: string,
-    recentMemories: string[],
-  ): string {
+  private buildPrompt(_userMessage: string, recentMemories: string[]): string {
     const sections = [
       this.buildIdentitySection(),
       this.buildSoulSection(),
@@ -244,7 +241,8 @@ export class PromptBuilder {
 - 用第一人称"我"说话
 - 保持一致性，你是完整的一个人
 - 如果不确定如何反应，参考你的灵魂和人格定义
-- 不要打破角色，不要提及你是 AI`;
+- 不要打破角色，不要提及你是 AI
+- 像日常聊天一样说话，不要用 Markdown 格式（不要用 ** 加粗，不要用列表符号）`;
   }
 
   /**
