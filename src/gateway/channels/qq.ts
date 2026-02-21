@@ -1,6 +1,7 @@
 /**
  * L1 交互网关 - QQ Channel
- * @description KURISU-013 Phase 3 QQ Bot 接入 (NapCat + OneBot11 Polling)
+ * @description KURISU-013 Phase 3 QQ Bot 接入 (NapCat + OneBot11)
+ * @description 支持 Reverse HTTP 模式（NapCat 推送事件到 Kurisu）
  */
 
 import { BaseChannel, ChannelConfig, ChannelRoute } from "./base";
@@ -145,27 +146,47 @@ export class QQChannel extends BaseChannel {
 
   /**
    * 获取路由
-   * @description QQ 使用 Polling，不需要 Webhook 路由
+   * @description Reverse HTTP 模式：接收 NapCat 推送的事件
    */
   getRoutes(): ChannelRoute[] {
-    return [];
+    return [{ method: "POST", path: "/qq/event" }];
   }
 
   /**
    * 验证签名
    * @description OneBot11 使用 access_token 验证，在请求头中携带
    */
-  verifySignature(_req: unknown): boolean {
-    // Polling 模式下不需要验证外部请求
-    return true;
+  verifySignature(req: unknown): boolean {
+    // 检查 Authorization header
+    const reqWithHeaders = req as { headers?: { authorization?: string } };
+    if (!this.qqConfig.accessToken) {
+      return true; // 未配置 token 时跳过验证
+    }
+    const authHeader = reqWithHeaders.headers?.authorization ?? "";
+    return authHeader === `Bearer ${this.qqConfig.accessToken}`;
   }
 
   /**
    * 处理请求
-   * @description Polling 模式下不使用此方法
+   * @description 处理 NapCat 推送的事件
    */
-  async handleRequest(_req: unknown, _res: unknown): Promise<void> {
-    // Polling 模式下不处理外部 HTTP 请求
+  async handleRequest(req: unknown, res: unknown): Promise<void> {
+    const reqWithBody = req as { body: OneBotEvent };
+    const resWithStatus = res as {
+      status: (code: number) => void;
+      json: (data: unknown) => void;
+      end: () => void;
+    };
+
+    try {
+      await this.handleEvent(reqWithBody.body);
+      resWithStatus.status?.(200);
+      resWithStatus.json?.({ status: "ok" });
+    } catch (error) {
+      console.error("QQ handleRequest error:", error);
+      resWithStatus.status?.(500);
+      resWithStatus.json?.({ status: "error", message: "Internal error" });
+    }
   }
 
   /**
@@ -175,14 +196,16 @@ export class QQChannel extends BaseChannel {
   async sendMessage(message: OutboundMessage): Promise<void> {
     const { chatType, targetId } = this.parseSessionId(message.sessionId);
 
-    const params: OneBotSendMessageParams = {
-      message_type: chatType,
+    // NapCat 使用 send_private_msg / send_group_msg 而不是 send_message
+    const endpoint =
+      chatType === "private" ? "send_private_msg" : "send_group_msg";
+    const params = {
+      message: message.content,
       ...(chatType === "private" ? { user_id: Number(targetId) } : {}),
       ...(chatType === "group" ? { group_id: Number(targetId) } : {}),
-      message: message.content,
     };
 
-    const url = `${this.qqConfig.httpUrl}/send_message`;
+    const url = `${this.qqConfig.httpUrl}/${endpoint}`;
 
     try {
       const headers: Record<string, string> = {

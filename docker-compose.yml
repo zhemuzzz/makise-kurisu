@@ -94,6 +94,7 @@ services:
       - napcat-data:/app/.config/QQ
     ports:
       - "3001:3001"   # NapCat HTTP API 端口
+      - "6099:6099"   # NapCat WebUI 端口
     networks:
       - kurisu-network
     profiles:

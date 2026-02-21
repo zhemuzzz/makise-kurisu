@@ -18,7 +18,9 @@ import {
 /**
  * 创建 Mock Gateway
  */
-function createMockGateway(responseText: string = "哼，这种事情我早就知道了。") {
+function createMockGateway(
+  responseText: string = "哼，这种事情我早就知道了。",
+) {
   return {
     processStream: vi.fn().mockImplementation(async () => {
       async function* textStream() {
@@ -70,9 +72,10 @@ describe("QQChannel", () => {
       expect(channel.channelType).toBe(ChannelType.QQ);
     });
 
-    it("应该返回空路由（Polling 模式不需要 Webhook）", () => {
+    it("应该返回 QQ 事件路由（Reverse HTTP 模式）", () => {
       const routes = channel.getRoutes();
-      expect(routes).toHaveLength(0);
+      expect(routes).toHaveLength(1);
+      expect(routes[0]).toEqual({ method: "POST", path: "/qq/event" });
     });
 
     it("verifySignature 应该返回 true", () => {
@@ -300,7 +303,9 @@ describe("QQChannel", () => {
       await channel.testHandleEvent(event);
 
       expect(channel.lastInboundMessage).toBeDefined();
-      expect(channel.lastInboundMessage?.sessionId).toBe("qq-private-123456789");
+      expect(channel.lastInboundMessage?.sessionId).toBe(
+        "qq-private-123456789",
+      );
       expect(channel.lastInboundMessage?.userId).toBe("123456789");
       expect(channel.lastInboundMessage?.content).toBe("你好");
       expect(channel.lastInboundMessage?.channelType).toBe(ChannelType.QQ);
