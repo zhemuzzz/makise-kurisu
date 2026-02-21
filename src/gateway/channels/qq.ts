@@ -62,16 +62,6 @@ interface OneBotLatestEventsData {
   events: OneBotEvent[];
 }
 
-/**
- * OneBot11 send_message 参数
- */
-interface OneBotSendMessageParams {
-  message_type: "private" | "group";
-  user_id?: number;
-  group_id?: number;
-  message: OneBotMessageSegment[] | string;
-}
-
 // ===========================================
 // QQChannel 配置
 // ===========================================

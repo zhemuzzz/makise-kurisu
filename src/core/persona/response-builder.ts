@@ -8,7 +8,7 @@
  * - 角色只是用自己方式回应"执行失败"这个事实
  */
 
-import type { SafetyError, SafetyErrorCode } from "../safety/types";
+import type { SafetyError } from "../safety/types";
 import type { PersonaConfig } from "./soul-types";
 
 /**
@@ -42,8 +42,7 @@ export class ResponseBuilder {
    */
   private generateConfirmationPrompt(toolName: string): string {
     const patterns = this.persona.speech.patterns;
-    const confirmations =
-      patterns["when_confirming_dangerous"] ??
+    const confirmations = patterns["when_confirming_dangerous"] ??
       patterns["when_confirming"] ?? [
         "等一下...你确定？",
         "这个...真的要做吗？",
@@ -58,8 +57,7 @@ export class ResponseBuilder {
    */
   private generateForbiddenResponse(toolName: string): string {
     const patterns = this.persona.speech.patterns;
-    const responses =
-      patterns["when_refusing"] ??
+    const responses = patterns["when_refusing"] ??
       patterns["when_forbidden"] ?? [
         "这个我做不了。别问我为什么。",
         "...你是认真的吗？这种事我不会做的。",
