@@ -195,12 +195,7 @@ export interface RoleLoadResult {
   readonly success: boolean;
   readonly config?: RoleConfig;
   readonly error?: {
-    readonly code: 'NOT_FOUND' | 'INVALID_FORMAT' | 'MISSING_REQUIRED';
+    readonly code: "NOT_FOUND" | "INVALID_FORMAT" | "MISSING_REQUIRED";
     readonly message: string;
   };
 }
-
-/**
- * 配置结构版本
- */
-export type ConfigVersion = '1.0-legacy' | '2.0';

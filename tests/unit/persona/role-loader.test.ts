@@ -3,10 +3,13 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-import { RoleLoader, RoleLoadError, loadRole, tryLoadRole } from "../../../src/core/persona/role-loader";
-import type { RoleConfig } from "../../../src/core/persona/soul-types";
 import {
-  SAMPLE_ROLE_CONFIG,
+  RoleLoader,
+  RoleLoadError,
+  loadRole,
+  tryLoadRole,
+} from "../../../src/core/persona/role-loader";
+import {
   KURISU_ROLE_ID,
   KURISU_EXPECTED_CATCHPHRASES,
   KURISU_EXPECTED_TENDENCIES,
@@ -83,7 +86,9 @@ describe("RoleLoader", () => {
 
   describe("error handling", () => {
     it("should throw RoleLoadError for non-existent role", async () => {
-      await expect(loader.load("non-existent-role")).rejects.toThrow(RoleLoadError);
+      await expect(loader.load("non-existent-role")).rejects.toThrow(
+        RoleLoadError,
+      );
     });
 
     it("should throw NOT_FOUND error code for non-existent role", async () => {
@@ -124,18 +129,6 @@ describe("RoleLoader", () => {
     it("should return false for non-existent role", async () => {
       const exists = await loader.exists("non-existent-role");
       expect(exists).toBe(false);
-    });
-  });
-
-  describe("getVersion", () => {
-    it("should return '2.0' for new structure", async () => {
-      const version = await loader.getVersion(KURISU_ROLE_ID);
-      expect(version).toBe("2.0");
-    });
-
-    it("should return null for non-existent role", async () => {
-      const version = await loader.getVersion("non-existent-role");
-      expect(version).toBeNull();
     });
   });
 });

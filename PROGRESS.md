@@ -191,7 +191,7 @@ docker compose --profile tunnel up   # Telegram Webhook 模式
 | 模块 | 文件 | 说明 |
 |------|------|------|
 | 类型定义 | soul-types.ts | SoulConfig, PersonaConfig, RoleConfig |
-| 配置加载 | role-loader.ts | 支持 soul.md + persona.yaml + 旧格式 |
+| 配置加载 | role-loader.ts | 加载 soul.md + persona.yaml + lore.md + memories/ |
 | 安全拦截 | silent-interceptor.ts | 静默返回结构化错误，不产生对话输出 |
 | 错误表达 | response-builder.ts | 将安全错误转为角色化表达 |
 | Kurisu 配置 | config/personas/kurisu/ | 完整灵魂配置（soul.md + persona.yaml）|

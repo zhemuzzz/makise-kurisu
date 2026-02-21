@@ -1,9 +1,7 @@
 /**
  * 角色配置加载器
  *
- * 支持两种配置结构:
- * - 2.0 新结构: soul.md + persona.yaml + lore.md + memories/
- * - 1.0 旧结构: core.yaml + personality.yaml + speech.yaml + lore.yaml
+ * 配置结构: soul.md + persona.yaml + lore.md + memories/
  */
 
 import { parse as parseYaml } from "yaml";
@@ -18,7 +16,6 @@ import {
   type Episode,
   type Relationship,
   type RoleLoadResult,
-  type ConfigVersion,
 } from "./soul-types";
 
 // ============================================
@@ -52,26 +49,20 @@ export class RoleLoader {
 
   /**
    * 加载角色配置
-   * 自动检测配置结构版本
    */
   async load(roleId: string): Promise<RoleConfig> {
     const rolePath = join(this.personasPath, roleId);
+    const soulPath = join(rolePath, "soul.md");
 
-    // 检测新结构 (soul.md 存在)
-    if (await this.fileExists(join(rolePath, "soul.md"))) {
-      return this.loadNewStructure(roleId, rolePath);
+    if (!(await this.fileExists(soulPath))) {
+      throw new RoleLoadError(
+        `Role "${roleId}" not found at ${rolePath}`,
+        "NOT_FOUND",
+        rolePath,
+      );
     }
 
-    // 检测旧结构 (core.yaml 存在)
-    if (await this.fileExists(join(rolePath, "core.yaml"))) {
-      return this.loadLegacyStructure(roleId, rolePath);
-    }
-
-    throw new RoleLoadError(
-      `Role "${roleId}" not found at ${rolePath}`,
-      "NOT_FOUND",
-      rolePath,
-    );
+    return this.loadConfig(roleId, rolePath);
   }
 
   /**
@@ -106,34 +97,14 @@ export class RoleLoader {
    */
   async exists(roleId: string): Promise<boolean> {
     const rolePath = join(this.personasPath, roleId);
-    return (
-      (await this.fileExists(join(rolePath, "soul.md"))) ||
-      (await this.fileExists(join(rolePath, "core.yaml")))
-    );
-  }
-
-  /**
-   * 获取配置版本
-   */
-  async getVersion(roleId: string): Promise<ConfigVersion | null> {
-    const rolePath = join(this.personasPath, roleId);
-
-    if (await this.fileExists(join(rolePath, "soul.md"))) {
-      return "2.0";
-    }
-
-    if (await this.fileExists(join(rolePath, "core.yaml"))) {
-      return "1.0-legacy";
-    }
-
-    return null;
+    return this.fileExists(join(rolePath, "soul.md"));
   }
 
   // ============================================
-  // 新结构加载 (2.0)
+  // 配置加载
   // ============================================
 
-  private async loadNewStructure(
+  private async loadConfig(
     roleId: string,
     rolePath: string,
   ): Promise<RoleConfig> {
@@ -239,121 +210,6 @@ export class RoleLoader {
   }
 
   // ============================================
-  // 旧结构加载 (1.0-legacy)
-  // ============================================
-
-  private async loadLegacyStructure(
-    roleId: string,
-    rolePath: string,
-  ): Promise<RoleConfig> {
-    const [core, personality, speech] = await Promise.all([
-      this.loadYamlFile(join(rolePath, "core.yaml")),
-      this.loadYamlFile(join(rolePath, "personality.yaml")),
-      this.loadYamlFile(join(rolePath, "speech.yaml")),
-    ]);
-
-    const soul = this.convertToSoul(core, personality);
-    const persona = this.convertToPersona(speech);
-    const lore = await this.loadLegacyLore(rolePath);
-
-    return {
-      id: roleId,
-      meta: {
-        name: (core?.["name"] as string) || roleId,
-        version: "1.0-legacy",
-      },
-      soul,
-      persona,
-      lore,
-      memories: { episodes: [], relationships: [] },
-    };
-  }
-
-  private convertToSoul(
-    core: Record<string, unknown>,
-    personality: Record<string, unknown>,
-  ): SoulConfig {
-    const name = (core?.["name"] as string) || "...";
-    const description = (personality?.["description"] as string) || "...";
-    const values = (personality?.["values"] as string[]) || [];
-    const weaknesses = (personality?.["weaknesses"] as string[]) || [];
-
-    const rawContent = `# 存在
-
-我是${name}。
-
-不是"扮演"${name}。我就是我。
-
----
-
-## 镜子里的我
-
-${description}
-
----
-
-## 我相信的事
-
-${values.map((v) => `- ${v}`).join("\n") || "..."}
-
----
-
-## 我不擅长的事
-
-${weaknesses.map((w) => `- ${w}`).join("\n") || "..."}
-
----
-
-_这份文档会生长。当我有新的理解时，我会更新它。_
-`;
-
-    return { rawContent };
-  }
-
-  private convertToPersona(speech: Record<string, unknown>): PersonaConfig {
-    const catchphrases = (speech?.["catchphrases"] as string[]) || [];
-    const patterns = (speech?.["patterns"] as Record<string, string[]>) || {};
-    const tone = (speech?.["tone"] as Record<string, string>) || {};
-
-    return {
-      speech: {
-        catchphrases,
-        patterns,
-        tone: { ["default"]: tone?.["default"] || "正常", ...tone },
-      },
-      behavior: {
-        tendencies: [],
-        reactions: {},
-      },
-      formatting: {
-        useEllipsis: true,
-        useDash: true,
-      },
-    };
-  }
-
-  private async loadLegacyLore(rolePath: string): Promise<LoreConfig> {
-    try {
-      const content = await this.readFile(join(rolePath, "lore.yaml"));
-      const parsed = parseYaml(content) as {
-        terms?: Array<{ name: string; description: string }>;
-      };
-
-      if (parsed?.terms && Array.isArray(parsed.terms)) {
-        const rawContent = `# 世界
-
-${parsed.terms.map((t) => `## ${t.name}\n\n${t.description}`).join("\n\n---\n\n")}
-`;
-        return { rawContent };
-      }
-
-      return { rawContent: "# 世界\n\n（无世界观设定）" };
-    } catch {
-      return { rawContent: "# 世界\n\n（无世界观设定）" };
-    }
-  }
-
-  // ============================================
   // 工具方法
   // ============================================
 
@@ -387,11 +243,6 @@ ${parsed.terms.map((t) => `## ${t.name}\n\n${t.description}`).join("\n\n---\n\n"
     } catch {
       return null;
     }
-  }
-
-  private async loadYamlFile(path: string): Promise<Record<string, unknown>> {
-    const content = await this.readFile(path);
-    return parseYaml(content) as Record<string, unknown>;
   }
 
   private extractNameFromSoul(content: string): string | null {
