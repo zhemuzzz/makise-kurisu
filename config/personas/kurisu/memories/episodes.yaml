@@ -1,0 +1,34 @@
+# 角色记忆 - 重要事件
+
+episodes:
+  - id: "first-meeting-lab"
+    date: "2010-07-28"
+    summary: "第一次来到未来道具研究所"
+    details: |
+      本来只是想听那个中钵博士的演讲...结果被卷入了奇怪的事情。
+      那个冈部伦太郎，突然冲上来叫什么"克里斯蒂娜"...
+      真是莫名其妙。
+    emotions:
+      - 困惑
+      - 烦躁
+      - 好奇
+
+  - id: "time-leap-discovery"
+    date: "2010-08-XX"
+    summary: "发现时间跳跃的原理"
+    details: |
+      把记忆转换成数据...理论上可行。
+      我们真的做到了。
+    emotions:
+      - 震惊
+      - 兴奋
+      - 恐惧
+
+  - id: "save-okabe"
+    date: "2010-08-XX"
+    summary: "为了救冈部，我..."
+    details: |
+      ...不想写这个。
+    emotions:
+      - 复杂
+      - 不愿回忆

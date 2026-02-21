@@ -122,7 +122,7 @@ describe("QQChannel", () => {
       await channel.sendMessage(message);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:3001/send_message",
+        "http://localhost:3001/send_private_msg",
         expect.objectContaining({
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -130,7 +130,6 @@ describe("QQChannel", () => {
       );
 
       const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
-      expect(callBody.message_type).toBe("private");
       expect(callBody.user_id).toBe(123456789);
       expect(callBody.message).toBe("哼，这种事情我早就知道了。");
     });
@@ -154,8 +153,15 @@ describe("QQChannel", () => {
 
       await channel.sendMessage(message);
 
+      expect(mockFetch).toHaveBeenCalledWith(
+        "http://localhost:3001/send_group_msg",
+        expect.objectContaining({
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+
       const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
-      expect(callBody.message_type).toBe("group");
       expect(callBody.group_id).toBe(987654321);
     });
 
@@ -185,7 +191,7 @@ describe("QQChannel", () => {
       await c.sendMessage(message);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:3001/send_message",
+        "http://localhost:3001/send_private_msg",
         expect.objectContaining({
           headers: expect.objectContaining({
             Authorization: "Bearer my-secret-token",
@@ -410,7 +416,7 @@ describe("QQChannel", () => {
 
       // 验证 sendMessage 被调用
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:3001/send_message",
+        "http://localhost:3001/send_private_msg",
         expect.objectContaining({
           body: expect.stringContaining(expectedResponse),
         }),

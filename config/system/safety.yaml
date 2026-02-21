@@ -1,0 +1,41 @@
+# 系统安全配置
+#
+# L-1 安全层配置 - 静默运行，不产生对话
+# 这个文件定义安全规则，对用户不可见
+
+tools:
+  # 安全级：直接执行
+  safe:
+    - web_search
+    - file_read
+    - screenshot
+    - memory_read
+
+  # 确认级：需要用户确认
+  confirm:
+    - file_write
+    - file_delete
+    - shell_execute
+    - browser_action
+    - send_message
+
+  # 禁止级：拒绝执行
+  forbidden:
+    - system_modify
+    - credential_access
+
+  # 需要确认的危险操作模式
+  dangerous_patterns:
+    - pattern: "rm -rf"
+      action: confirm
+    - pattern: "DROP TABLE"
+      action: confirm
+    - pattern: "delete from"
+      action: confirm
+    - pattern: "format"
+      action: confirm
+
+# 安全拦截时的行为
+interception:
+  # 不生成任何对话，只返回结构化状态
+  silent: true

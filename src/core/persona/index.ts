@@ -6,19 +6,24 @@
  * - PersonaValidator: OOC 检测、语气/关系一致性
  * - PersonaEnforcer: 傲娇转换、OOC 移除、情感犹豫
  * - PromptBuilder: RP 提示词构建 + Lore 世界观
+ * - RoleLoader: 角色配置加载（soul.md + persona.yaml）
  */
 
-import { MentalModel, PersonaHardcoded } from "./types";
+import type { MentalModel, PersonaHardcoded } from "./types";
+import type { RoleConfig, RoleLoadResult } from "./soul-types";
 import { PERSONA_HARDCODED } from "./constants";
-import { PersonaValidator, DetailedValidationResult } from "./validator";
+import { PersonaValidator, type DetailedValidationResult } from "./validator";
 import { PersonaEnforcer } from "./enforcer";
 import { PromptBuilder } from "./prompt-builder";
+import { RoleLoader } from "./role-loader";
 
 export class PersonaEngine {
   private mentalModel: MentalModel;
   private validator: PersonaValidator;
   private enforcer: PersonaEnforcer;
   private promptBuilder: PromptBuilder;
+  private roleLoader: RoleLoader;
+  private roleConfig: RoleConfig | null = null;
 
   constructor(initialModel?: Partial<MentalModel>) {
     this.mentalModel = {
@@ -45,6 +50,37 @@ export class PersonaEngine {
     this.validator = new PersonaValidator(this.mentalModel);
     this.enforcer = new PersonaEnforcer(this.mentalModel);
     this.promptBuilder = new PromptBuilder(this.mentalModel);
+    this.roleLoader = new RoleLoader();
+  }
+
+  /**
+   * 加载角色配置
+   * @param roleId 角色 ID（对应 config/personas/{roleId}/）
+   * @returns 加载结果
+   */
+  async loadRole(roleId: string): Promise<RoleLoadResult> {
+    const result = await this.roleLoader.tryLoad(roleId);
+
+    if (result.success && result.config) {
+      this.roleConfig = result.config;
+      this.promptBuilder.setRoleConfig(result.config);
+    }
+
+    return result;
+  }
+
+  /**
+   * 获取当前角色配置
+   */
+  getRoleConfig(): RoleConfig | null {
+    return this.roleConfig;
+  }
+
+  /**
+   * 检查是否已加载角色配置
+   */
+  hasRoleConfig(): boolean {
+    return this.roleConfig !== null;
   }
 
   /**
