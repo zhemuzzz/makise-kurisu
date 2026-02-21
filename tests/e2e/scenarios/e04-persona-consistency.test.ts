@@ -124,6 +124,9 @@ describe("E04: Persona Consistency", () => {
         await import("../../../src/core/persona");
       const realPersonaEngine = new RealPersonaEngine();
 
+      // 新的三层架构需要先加载角色配置
+      await realPersonaEngine.loadRole("kurisu");
+
       const deps = createE2EDeps({ personaEngine: realPersonaEngine });
       const orchestratorWithRealPersona = new AgentOrchestrator(deps);
 

@@ -121,10 +121,16 @@ export class PersonaEngine {
         : this.mentalModel.shared_memories,
     };
 
-    // 重建子模块以反映新状态
+    // 更新子模块以反映新状态（保留 roleConfig）
     this.validator = new PersonaValidator(this.mentalModel);
     this.enforcer = new PersonaEnforcer(this.mentalModel);
+
+    // 保留原有的 roleConfig
+    const currentRoleConfig = this.promptBuilder.getRoleConfig();
     this.promptBuilder = new PromptBuilder(this.mentalModel);
+    if (currentRoleConfig) {
+      this.promptBuilder.setRoleConfig(currentRoleConfig);
+    }
   }
 
   /**

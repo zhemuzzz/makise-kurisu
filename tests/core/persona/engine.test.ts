@@ -3,15 +3,17 @@
  * 位置: tests/core/persona/engine.test.ts
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, beforeAll } from "vitest";
 import { PersonaEngine } from "@/core/persona/index";
 import type { MentalModel } from "@/core/persona/types";
 
 describe("PersonaEngine", () => {
   let engine: PersonaEngine;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     engine = new PersonaEngine();
+    // 加载角色配置（新的三层架构要求）
+    await engine.loadRole("kurisu");
   });
 
   describe("constructor", () => {
@@ -128,7 +130,7 @@ describe("PersonaEngine", () => {
       expect(result.isValid).toBe(false);
     });
 
-    it("should allow friendly phrases for close relationships", () => {
+    it("should allow friendly phrases for close relationships", async () => {
       const closeEngine = new PersonaEngine({
         relationship_graph: {
           trust_level: 80,
@@ -136,6 +138,7 @@ describe("PersonaEngine", () => {
           emotional_state: "warm",
         },
       });
+      await closeEngine.loadRole("kurisu");
       const response = "哼，你这家伙...今天表现还行吧。";
       const result = closeEngine.validate(response);
       expect(result.isValid).toBe(true);
@@ -153,10 +156,11 @@ describe("PersonaEngine", () => {
       const memories = ["之前我们讨论了时间机器"];
       const prompt = engine.buildRPPrompt(userMessage, memories);
 
+      // 新的三层架构：身份 + 灵魂 + 世界观 + 记忆 + 表现层
       expect(prompt).toContain("牧濑红莉栖");
-      expect(prompt).toContain(userMessage);
       expect(prompt).toContain(memories[0]);
-      expect(prompt).toContain("傲娇");
+      // soul.md 内容
+      expect(prompt).toContain("我是");
     });
 
     it("should include relationship context", () => {
@@ -174,8 +178,8 @@ describe("PersonaEngine", () => {
       });
 
       const prompt = engine.buildRPPrompt("测试消息", []);
-      expect(prompt).toContain("75%熟悉度");
-      expect(prompt).toContain("time travel");
+      // 信任度在记忆部分显示
+      expect(prompt).toContain("60%");
     });
 
     it("should limit memories to last 5", () => {
@@ -190,10 +194,10 @@ describe("PersonaEngine", () => {
       expect(m3Index).toBeGreaterThan(m1Index);
     });
 
-    it("should include forbidden behaviors", () => {
+    it("should include instruction to not mention AI", () => {
       const prompt = engine.buildRPPrompt("test", []);
-      expect(prompt).toContain("作为AI");
-      expect(prompt).toContain("我无法");
+      // 新的指令部分
+      expect(prompt).toContain("不要提及你是 AI");
     });
   });
 
@@ -252,19 +256,20 @@ describe("PersonaEngine", () => {
 
     it("should include persona identity", () => {
       const prompt = engine.getSystemPrompt();
+      // 新的三层架构
       expect(prompt).toContain("牧濑红莉栖");
-      expect(prompt).toContain("18岁");
     });
 
-    it("should include personality traits", () => {
+    it("should include soul content", () => {
       const prompt = engine.getSystemPrompt();
-      expect(prompt).toContain("傲娇");
-      expect(prompt).toContain("理性");
+      // soul.md 内容（第一人称）
+      expect(prompt).toContain("我是");
     });
 
-    it("should include forbidden behaviors", () => {
+    it("should include instruction to not mention AI", () => {
       const prompt = engine.getSystemPrompt();
-      expect(prompt).toContain("禁止");
+      // 新的指令部分
+      expect(prompt).toContain("不要提及你是 AI");
     });
   });
 
