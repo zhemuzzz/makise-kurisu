@@ -1,12 +1,13 @@
 # 模型配置文件
 # 位置: config/models.yaml
 
-# 默认模型配置
+# 默认配置
 defaults:
   conversation: glm-5
   task: glm-5
-  reasoning: claude-opus-4-6
+  reasoning: glm-5
   embedding: glm-5
+  role: kurisu              # 默认角色（对应 config/personas/{role}/）
 
 # 模型定义
 models:
@@ -94,7 +95,7 @@ models:
 # Claude 官方模型需要单独的 API Key (console.anthropic.com)
 routing:
   rules:
-    conversation: MiniMax-M2.5  # 对话测试
-    code: glm-5              # 代码生成/理解
-    reasoning: MiniMax-M2.5  # 复杂推理
+    conversation: glm-5          # 对话（中文最佳，质量 excellent）
+    code: glm-5                  # 代码生成/理解
+    reasoning: glm-5             # 复杂推理（质量 excellent）
     embedding: glm-5

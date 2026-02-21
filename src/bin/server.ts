@@ -170,7 +170,12 @@ async function main(): Promise<void> {
       modelConfig.models,
       modelConfig.defaults,
     );
+
+    // 加载默认角色
+    const defaultRole = modelConfig.defaults["role"] ?? "kurisu";
     const personaEngine = new PersonaEngine();
+    await personaEngine.loadRole(defaultRole);
+
     const memoryEngine = new HybridMemoryEngine({
       sessionConfig: { maxMessages: 50, ttl: 30 * 60 * 1000 },
     });

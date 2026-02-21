@@ -7,7 +7,7 @@
  */
 
 import * as readline from "readline";
-import { ModelProvider } from "../config/models";
+import { ModelProvider, loadConfig } from "../config/models";
 import { HybridMemoryEngine } from "../memory";
 import { PersonaEngine } from "../core/persona";
 import { AgentOrchestrator } from "../agents";
@@ -40,23 +40,43 @@ class KurisuCLI {
   private userId: string;
   private running = false;
 
-  constructor() {
+  private constructor(orchestrator: AgentOrchestrator) {
     this.sessionId = `cli-session-${Date.now()}`;
     this.userId = `cli-user-${Date.now()}`;
+    this.orchestrator = orchestrator;
+  }
+
+  /**
+   * 创建 CLI 实例（异步工厂方法）
+   */
+  static async create(): Promise<KurisuCLI> {
+    // 加载模型配置
+    const configPath = process.env["MODELS_CONFIG"] ?? "config/models.yaml";
+    const modelConfig = await loadConfig(configPath);
 
     // 初始化依赖
-    const modelProvider = new ModelProvider();
+    const modelProvider = new ModelProvider(
+      modelConfig.models,
+      modelConfig.defaults,
+    );
+
+    // 加载默认角色
+    const defaultRole = modelConfig.defaults["role"] ?? "kurisu";
     const personaEngine = new PersonaEngine();
+    await personaEngine.loadRole(defaultRole);
+
     const memoryEngine = new HybridMemoryEngine({
       sessionConfig: { maxMessages: 50, ttl: 30 * 60 * 1000 },
     });
 
-    this.orchestrator = new AgentOrchestrator({
+    const orchestrator = new AgentOrchestrator({
       modelProvider,
       personaEngine,
       memoryEngine:
         memoryEngine as unknown as import("../agents/types").MemoryEngineLike,
     });
+
+    return new KurisuCLI(orchestrator);
   }
 
   /**
@@ -174,7 +194,7 @@ async function main(): Promise<void> {
   console.log(`Kurisu CLI v${VERSION}\n`);
 
   try {
-    const cli = new KurisuCLI();
+    const cli = await KurisuCLI.create();
     await cli.start();
   } catch (error) {
     console.error("Failed to start CLI:", error);
