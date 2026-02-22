@@ -49,6 +49,18 @@ Telegram 接入 ████████████████░░░░ 80%
 
 ## 最近完成
 
+### CI 修复：GatewayLike 接口补全 ✅（2026-02-22）
+
+**问题**: TypeScript 类型检查失败
+- `server.ts` 中 `telegramGateway` 和 `qqGateway` 缺少 `checkApprovalReply` 和 `executeApprovedTool` 方法
+- `skills/loader.ts` 中不必要的 type assertions
+
+**修复**:
+- ✅ 补全 `GatewayLike` 接口所需方法（委托给 Gateway 实例）
+- ✅ 移除 `loader.ts` 中的冗余 type assertions（TypeScript 自动 narrowing）
+
+---
+
 ### KURISU-016+017 Phase 5: Skill System ✅（2026-02-22）
 
 **目标**: Skill 加载 + 知识注入
