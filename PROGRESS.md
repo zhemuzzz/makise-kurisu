@@ -35,9 +35,9 @@ Telegram 接入 ████████████████░░░░ 80%
   ├── Phase 0-2.2 文字对话  ✅ 端到端测试通过
   └── Phase 3 语音消息      🔲 依赖 Phase A
 
-2.0 核心能力 ██████████░░░░░░░░░░ 50%
+2.0 核心能力 ████████████░░░░░░░░ 60%
   ├── Phase A: 基础语音     🔲 P0
-  ├── Phase B: 工具沙箱     🔄 开发中 ← 当前（KURISU-016+017 Phase 5 开发中）
+  ├── Phase B: 工具沙箱     🔄 开发中 ← 当前（KURISU-016+017 Phase 6 待开发）
   ├── Phase C: 角色创建向导 🔲 P0
   ├── Phase D: Persona 2.0  🔲 P1
   ├── Phase E: 实时语音     🔲 P1
@@ -49,26 +49,19 @@ Telegram 接入 ████████████████░░░░ 80%
 
 ## 最近完成
 
-### KURISU-016+017 Phase 5: Skill System（开发中）
+### KURISU-016+017 Phase 5: Skill System ✅（2026-02-22）
 
 **目标**: Skill 加载 + 知识注入
 
-**任务列表**:
-- 🔲 5.1 SkillLoader 实现 (`src/skills/loader.ts`) - 加载 skill.yaml
-- 🔲 5.2 SkillRegistry 实现 (`src/skills/registry.ts`) - Skill 注册表
-- 🔲 5.3 IntentMatcher 实现 (`src/skills/intent-matcher.ts`) - 意图匹配
-- 🔲 5.4 KnowledgeInjector 实现 (`src/skills/knowledge-injector.ts`) - 知识注入
-- 🔲 5.5 内置 Skills (`config/skills/`) - web-search, file-tools, time
+**完成**:
+- ✅ SkillLoader (`src/skills/loader.ts`) - 加载 skill.yaml + MCP 配置
+- ✅ SkillRegistry (`src/skills/registry.ts`) - Skill 注册表 + 意图匹配
+- ✅ IntentMatcher (`src/skills/intent-matcher.ts`) - 关键词/意图/正则匹配
+- ✅ KnowledgeInjector (`src/skills/knowledge-injector.ts`) - 知识注入 + Few-Shot
+- ✅ 内置 Skills (`config/skills/`) - web-search, file-tools, time
+- ✅ 单元测试 - 40 tests，总计 1013 tests 通过
 
-**已有类型** (`src/skills/types.ts`):
-- `SkillType`: knowledge | tool | hybrid
-- `TriggerRule`: keywords, intent, patterns, minConfidence
-- `SkillExample`: user, assistant, toolCalls
-- `SkillConfig`: id, name, version, type, trigger, context, examples, tools
-- `SkillInstance`: config + toolDefs + status
-- `ISkillRegistry`: load, unload, get, list, matchIntent, activate
-
-**验证目标**: 聊天气候触发 web-search skill
+**新增文件**: 17 files changed, 2100 insertions(+)
 
 ### KURISU-016+017 Phase 4: 审批流程集成（2026-02-22）
 
