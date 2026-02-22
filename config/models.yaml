@@ -91,8 +91,7 @@ models:
     costPerMillionTokens: 0.3
 
 # 路由规则
-# 开发阶段使用 GLM-5 + MiniMax 组合
-# Claude 官方模型需要单独的 API Key (console.anthropic.com)
+# 开发阶段使用 GLM-5，后续根据需求调整
 routing:
   rules:
     conversation: glm-5          # 对话（中文最佳，质量 excellent）

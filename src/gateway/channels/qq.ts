@@ -392,11 +392,24 @@ export class QQChannel extends BaseChannel {
     const chatType = isGroup ? "group" : "private";
     const targetId = isGroup ? event.group_id : event.user_id;
 
+    // 提取消息文本：优先 raw_message，回退到从 message 数组提取
+    let content = event.raw_message;
+    if (!content && event.message) {
+      if (typeof event.message === "string") {
+        content = event.message;
+      } else if (Array.isArray(event.message)) {
+        content = event.message
+          .filter((seg) => seg.type === "text")
+          .map((seg) => seg.data["text"] as string)
+          .join("");
+      }
+    }
+
     return {
       channelType: this.channelType,
       sessionId: this.buildSessionId(`qq-${chatType}`, String(targetId)),
       userId: String(event.user_id),
-      content: event.raw_message,
+      content: content ?? "",
       messageType: "text",
       timestamp: event.time * 1000,
       metadata: {
