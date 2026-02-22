@@ -35,9 +35,9 @@ Telegram 接入 ████████████████░░░░ 80%
   ├── Phase 0-2.2 文字对话  ✅ 端到端测试通过
   └── Phase 3 语音消息      🔲 依赖 Phase A
 
-2.0 核心能力 ████░░░░░░░░░░░░░░░░ 20%
+2.0 核心能力 ██████░░░░░░░░░░░░░░ 30%
   ├── Phase A: 基础语音     🔲 P0
-  ├── Phase B: 工具沙箱     🔄 开发中 ← 当前（KURISU-016+017）
+  ├── Phase B: 工具沙箱     🔄 开发中 ← 当前（KURISU-016+017 Phase 2 完成）
   ├── Phase C: 角色创建向导 🔲 P0
   ├── Phase D: Persona 2.0  🔲 P1
   ├── Phase E: 实时语音     🔲 P1
@@ -49,6 +49,25 @@ Telegram 接入 ████████████████░░░░ 80%
 
 ## 最近完成
 
+### Agent 层 function calling 集成（2026-02-22）
+
+**Phase 2 完成** ✅
+
+- 模型层类型定义：OpenAIToolDefinition、LLMToolCall、Message 联合类型
+- OpenAI 兼容 Provider 支持 tools 参数和 tool_calls 响应解析
+- Agent 层 ToolRegistryLike 接口抽象
+- generate 节点支持工具调用结果构建和 pendingToolCalls 返回
+- 新增 generateRouter、toolCallRouter 路由
+- 工作流实现 ReAct 循环：generate → tool_call → generate（最大 5 次迭代）
+
+**架构图**:
+```
+conversation/task → generateRouter → tool_call (如果有 tool_calls)
+                                       ↓
+                              toolCallRouter → conversation/task (继续生成)
+                                              → validate (完成或超过迭代上限)
+```
+
 ### KURISU-016+017: 工具执行层 + Skill System（2026-02-22）
 
 > 详细文档: `.claude/tasks/KURISU-016-017-TOOL-SKILL-SYSTEM.md`
@@ -59,15 +78,17 @@ Telegram 接入 ████████████████░░░░ 80%
 - 扩展 AgentState 添加工具相关字段
 - skill_activate 节点 + workflow 集成
 
-**Phase 2 进行中** 🔄
+**Phase 2 完成** ✅
 - ✅ MCP SDK 集成 (@modelcontextprotocol/sdk + dockerode)
 - ✅ MCPBridge: MCP 客户端连接池
 - ✅ ToolRegistry: 工具注册表 + OpenAI 格式转换
 - ✅ PermissionChecker: safe/confirm/deny 三级权限
 - ✅ ApprovalManager: 审批流程管理
 - ✅ tool_call 节点
-- 🔲 generate 节点支持 tools 参数
-- 🔲 ReAct 循环集成
+- ✅ generate 节点支持 tools 参数
+- ✅ ReAct 循环集成（generate → tool_call → generate，最大 5 次迭代）
+- ✅ OpenAI-compatible Provider 支持 function calling
+- ✅ 新增 generateRouter、toolCallRouter 路由
 
 **待完成**
 - Phase 3: Docker 沙箱实现
