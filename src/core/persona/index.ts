@@ -15,6 +15,12 @@ import { PersonaValidator, type DetailedValidationResult } from "./validator";
 import { PersonaEnforcer } from "./enforcer";
 import { PromptBuilder } from "./prompt-builder";
 import { RoleLoader } from "./role-loader";
+import type { ToolResult } from "../../tools/types";
+import {
+  PersonaWrapper,
+  createPersonaWrapper,
+  type PersonaWrapperConfig,
+} from "../../tools/persona-wrapper";
 
 export class PersonaEngine {
   private mentalModel: MentalModel;
@@ -22,6 +28,7 @@ export class PersonaEngine {
   private enforcer: PersonaEnforcer;
   private promptBuilder: PromptBuilder;
   private roleLoader: RoleLoader;
+  private toolWrapper: PersonaWrapper;
   private roleConfig: RoleConfig | null = null;
 
   constructor(initialModel?: Partial<MentalModel>) {
@@ -50,6 +57,7 @@ export class PersonaEngine {
     this.enforcer = new PersonaEnforcer(this.mentalModel);
     this.promptBuilder = new PromptBuilder(this.mentalModel);
     this.roleLoader = new RoleLoader();
+    this.toolWrapper = createPersonaWrapper();
   }
 
   /**
@@ -165,5 +173,41 @@ export class PersonaEngine {
    */
   buildRPPrompt(userMessage: string, memories: string[]): string {
     return this.promptBuilder.build(userMessage, memories);
+  }
+
+  /**
+   * 包装工具输出
+   *
+   * 将工具执行结果用角色语气包装，使其符合人设
+   * 委托给 PersonaWrapper
+   *
+   * @param result 工具执行结果
+   * @returns 人设化后的输出文本
+   */
+  wrapToolOutput(result: ToolResult): string {
+    return this.toolWrapper.wrap(result);
+  }
+
+  /**
+   * 构建审批请求消息
+   *
+   * @param toolName 工具名称
+   * @param args 工具参数（可选）
+   * @returns 审批请求消息
+   */
+  buildApprovalMessage(
+    toolName: string,
+    args?: Record<string, unknown>,
+  ): string {
+    return this.toolWrapper.buildApprovalMessage(toolName, args);
+  }
+
+  /**
+   * 配置工具包装器
+   *
+   * @param config 包装器配置
+   */
+  configureToolWrapper(config: PersonaWrapperConfig): void {
+    this.toolWrapper = createPersonaWrapper(config);
   }
 }

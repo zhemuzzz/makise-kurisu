@@ -41,3 +41,11 @@ export {
   type SandboxExecutorConfig,
   type ExecuteOptions,
 } from "./sandbox";
+
+// 人设包装器
+export {
+  PersonaWrapper,
+  createPersonaWrapper,
+  type PersonaWrapperConfig,
+  type ToolOutputType,
+} from "./persona-wrapper";
