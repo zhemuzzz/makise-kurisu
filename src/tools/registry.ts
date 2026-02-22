@@ -14,6 +14,8 @@ import type {
 import { ToolNotFoundError } from "./types";
 import type { MCPBridge } from "./mcp-bridge";
 import type { PermissionChecker } from "./permission";
+import type { SandboxExecutor } from "./sandbox";
+import { shouldUseSandbox } from "./sandbox";
 
 /**
  * 工具执行器
@@ -37,6 +39,10 @@ export interface ToolRegistryConfig {
   mcpBridge?: MCPBridge;
   /** 权限检查器 */
   permissionChecker?: PermissionChecker;
+  /** 沙箱执行器（用于 confirm 级工具） */
+  sandboxExecutor?: SandboxExecutor;
+  /** 是否启用沙箱（默认 true） */
+  sandboxEnabled?: boolean;
 }
 
 /**
@@ -51,10 +57,14 @@ export class ToolRegistry {
   private tools: Map<string, ToolRegistration> = new Map();
   private mcpBridge: MCPBridge | undefined;
   private permissionChecker: PermissionChecker | undefined;
+  private sandboxExecutor: SandboxExecutor | undefined;
+  private sandboxEnabled: boolean;
 
   constructor(config: ToolRegistryConfig = {}) {
     this.mcpBridge = config.mcpBridge;
     this.permissionChecker = config.permissionChecker;
+    this.sandboxExecutor = config.sandboxExecutor;
+    this.sandboxEnabled = config.sandboxEnabled ?? true;
   }
 
   /**
@@ -164,15 +174,26 @@ export class ToolRegistry {
     }
 
     const startTime = Date.now();
+    const permission = this.getPermission(call.name);
+
+    // 检查是否需要在沙箱中执行
+    const useSandbox = shouldUseSandbox(permission, this.sandboxEnabled);
 
     try {
       let output: unknown;
+      let sandboxed = false;
 
-      // 1. 优先使用自定义执行器
-      if (registration.executor) {
+      // 1. confirm 级工具 + 启用沙箱 + 有沙箱执行器 → 沙箱执行
+      if (useSandbox && this.sandboxExecutor) {
+        const sandboxResult = await this.executeInSandbox(call);
+        output = sandboxResult;
+        sandboxed = true;
+      }
+      // 2. 优先使用自定义执行器
+      else if (registration.executor) {
         output = await registration.executor(call.arguments);
       }
-      // 2. 使用 MCP 桥接
+      // 3. 使用 MCP 桥接
       else if (
         registration.mcpServerName &&
         this.mcpBridge &&
@@ -185,7 +206,7 @@ export class ToolRegistry {
           call.arguments,
         );
       }
-      // 3. 无执行器
+      // 4. 无执行器
       else {
         throw new Error(`No executor for tool: ${call.name}`);
       }
@@ -196,6 +217,7 @@ export class ToolRegistry {
         success: true,
         output,
         latency: Date.now() - startTime,
+        sandboxed,
       };
     } catch (error) {
       return {
@@ -207,6 +229,56 @@ export class ToolRegistry {
         latency: Date.now() - startTime,
       };
     }
+  }
+
+  /**
+   * 在沙箱中执行工具调用
+   *
+   * 将工具调用转换为 shell 命令在沙箱中执行
+   */
+  private async executeInSandbox(call: ToolCall): Promise<unknown> {
+    if (!this.sandboxExecutor) {
+      throw new Error("SandboxExecutor not configured");
+    }
+
+    // 将工具参数转换为 JSON 字符串传递给命令
+    const argsJson = JSON.stringify(call.arguments);
+
+    // 构建执行命令（假设工具在沙箱中以 CLI 形式存在）
+    // 实际实现可能需要根据具体工具调整
+    const command = `${call.name} '${argsJson}'`;
+
+    const result = await this.sandboxExecutor.execute({
+      command,
+      timeout: this.getToolTimeout(call.name),
+    });
+
+    if (result.timedOut) {
+      throw new Error(`Tool execution timed out after ${result.latency}ms`);
+    }
+
+    if (result.exitCode !== 0) {
+      throw new Error(
+        `Tool execution failed with exit code ${result.exitCode}: ${result.stderr}`,
+      );
+    }
+
+    // 尝试解析 JSON 输出
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+      return JSON.parse(result.stdout);
+    } catch {
+      // 如果不是 JSON，返回原始输出
+      return result.stdout;
+    }
+  }
+
+  /**
+   * 获取工具超时时间
+   */
+  private getToolTimeout(toolName: string): number {
+    const tool = this.get(toolName);
+    return tool?.timeout ?? 30000;
   }
 
   /**

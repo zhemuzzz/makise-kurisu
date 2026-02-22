@@ -32,3 +32,12 @@ export {
   createApprovalManager,
   type ApprovalManagerConfig,
 } from "./approval";
+
+// 沙箱执行器
+export {
+  SandboxExecutor,
+  createSandboxExecutor,
+  shouldUseSandbox,
+  type SandboxExecutorConfig,
+  type ExecuteOptions,
+} from "./sandbox";

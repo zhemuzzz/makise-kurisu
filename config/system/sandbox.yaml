@@ -1,0 +1,24 @@
+# Kurisu 工具沙箱配置
+#
+# 用于 L6 工具执行层 confirm 级工具的安全隔离执行
+
+# 是否启用沙箱
+enabled: true
+
+# Docker 镜像
+image: kurisu-sandbox:latest
+
+# 执行超时（毫秒）
+timeout: 30000
+
+# 内存限制（字节）- 512MB
+memoryLimit: 536870912
+
+# CPU 限制（0-1）- 50%
+cpuLimit: 0.5
+
+# 是否禁用网络
+networkDisabled: true
+
+# 工作目录
+workDir: /workspace

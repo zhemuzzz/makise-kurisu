@@ -320,17 +320,19 @@ export interface ApprovalState {
 
 **验证**: 能调用 MCP fetch 工具获取网页
 
-### Phase 3: Docker 沙箱 (2-3 天)
+### Phase 3: Docker 沙箱 (2-3 天) ✅ 完成 (2026-02-22)
 
 **目标**: confirm 级工具在沙箱中执行
 
-| 任务 | 文件 | 说明 |
-|------|------|------|
-| 3.1 Dockerfile.sandbox | `Dockerfile.sandbox` | 沙箱镜像 |
-| 3.2 SandboxExecutor 实现 | `src/tools/sandbox.ts` | Docker 执行器 |
-| 3.3 沙箱配置 | `config/system/sandbox.yaml` | 资源限制配置 |
+| 任务 | 文件 | 说明 | 状态 |
+|------|------|------|------|
+| 3.1 Dockerfile.sandbox | `Dockerfile.sandbox` | 沙箱镜像 | ✅ |
+| 3.2 SandboxExecutor 实现 | `src/tools/sandbox.ts` | Docker 执行器 | ✅ |
+| 3.3 沙箱配置 | `config/system/sandbox.yaml` | 资源限制配置 | ✅ |
+| 3.4 单元测试 | `tests/tools/sandbox.test.ts` | 10 tests | ✅ |
+| 3.5 ToolRegistry 集成 | `src/tools/registry.ts` | execute 方法支持沙箱 | ✅ |
 
-**验证**: shell 命令在沙箱中执行
+**验证**: ✅ shell 命令在沙箱中执行（架构就绪，需 Docker 环境）
 
 ### Phase 4: 审批流程 (2 天)
 

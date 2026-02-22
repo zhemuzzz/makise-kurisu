@@ -1,0 +1,31 @@
+# Kurisu 工具沙箱镜像
+#
+# 用于安全执行 confirm 级工具（shell 命令、文件写入等）
+# 特点：
+# - 最小化 Alpine 基础镜像
+# - 非 root 用户执行
+# - 只读根文件系统
+# - 无网络访问（由容器配置控制）
+
+FROM alpine:3.19
+
+# 安装常用工具
+RUN apk add --no-cache \
+    curl \
+    bash \
+    jq \
+    coreutils \
+    && rm -rf /var/cache/apk/*
+
+# 创建工作目录
+WORKDIR /workspace
+
+# 创建非特权用户
+RUN adduser -D -u 1000 -h /home/sandbox sandbox \
+    && chown -R sandbox:sandbox /workspace
+
+# 切换到非特权用户
+USER sandbox
+
+# 设置默认命令
+CMD ["sh"]
