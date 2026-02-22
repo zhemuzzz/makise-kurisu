@@ -17,6 +17,7 @@ import {
   TelegramChannel,
   QQChannel,
   type IOrchestrator,
+  type ToolCall,
 } from "../gateway";
 import type { MemoryEngineLike } from "../agents/types";
 
@@ -111,6 +112,22 @@ function createChannels(gateway: Gateway): {
           finalResponse: result.finalResponse,
         };
       },
+      checkApprovalReply: async (
+        sessionId: string,
+        userMessage: string,
+      ): Promise<{
+        isApprovalReply: boolean;
+        result?: "approved" | "rejected" | "timeout";
+        toolCall?: ToolCall;
+      }> => {
+        return gateway.checkApprovalReply(sessionId, userMessage);
+      },
+      executeApprovedTool: async (
+        sessionId: string,
+        toolCall: ToolCall,
+      ): Promise<string> => {
+        return gateway.executeApprovedTool(sessionId, toolCall);
+      },
     };
 
     channels.telegram = new TelegramChannel({
@@ -135,6 +152,22 @@ function createChannels(gateway: Gateway): {
           textStream: result.textStream,
           finalResponse: result.finalResponse,
         };
+      },
+      checkApprovalReply: async (
+        sessionId: string,
+        userMessage: string,
+      ): Promise<{
+        isApprovalReply: boolean;
+        result?: "approved" | "rejected" | "timeout";
+        toolCall?: ToolCall;
+      }> => {
+        return gateway.checkApprovalReply(sessionId, userMessage);
+      },
+      executeApprovedTool: async (
+        sessionId: string,
+        toolCall: ToolCall,
+      ): Promise<string> => {
+        return gateway.executeApprovedTool(sessionId, toolCall);
       },
     };
 

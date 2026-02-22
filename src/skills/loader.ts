@@ -78,11 +78,12 @@ function validateSkillConfig(config: unknown, skillPath: string): SkillConfig {
 
   // 构建完整的 SkillConfig
   // 使用 Object.assign 避免 readonly 属性赋值问题
+  // 类型已通过上方验证，TypeScript 自动 narrowing
   const baseConfig = {
-    id: cfg["id"] as string,
-    name: cfg["name"] as string,
-    version: cfg["version"] as string,
-    type: cfg["type"] as "knowledge" | "tool" | "hybrid",
+    id: cfg["id"],
+    name: cfg["name"],
+    version: cfg["version"],
+    type: cfg["type"],
     trigger,
   };
 
