@@ -72,6 +72,16 @@ Telegram 接入 ████████████████░░░░ 80%
 
 ---
 
+### CI 修复：PersonaWrapper 未使用参数 ✅（2026-02-23）
+
+**问题**: TypeScript TS6133 错误
+- `persona-wrapper.ts` 中 `wrapDenied` 和 `wrapTimeout` 方法的 `result` 参数未使用
+
+**修复**:
+- ✅ 将未使用参数改为 `_result`（下划线前缀标记）
+
+---
+
 ### CI 修复：GatewayLike 接口补全 ✅（2026-02-22）
 
 **问题**: TypeScript 类型检查失败
