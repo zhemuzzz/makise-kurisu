@@ -4,6 +4,8 @@
 
 export {
   intentRouter,
+  generateRouter,
+  toolCallRouter,
   validationRouter,
   shouldRegenerate,
-} from './intent-router';
+} from "./intent-router";

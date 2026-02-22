@@ -12,6 +12,7 @@ import type {
   ChatOptions,
   ChatResponse,
   StreamChunk,
+  LLMToolCall,
 } from "../types";
 
 /**
@@ -143,27 +144,63 @@ export class OpenAICompatibleModel implements IModel {
 
     const startTime = Date.now();
 
-    // 转换消息格式为 OpenAI 格式
-    const openaiMessages = messages.map((m) => ({
-      role: m.role,
-      content: m.content,
-    }));
+    // 转换消息格式为 OpenAI 格式（处理联合类型）
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const openaiMessages: any[] = messages.map((m) => {
+      if (m.role === "tool") {
+        return {
+          role: m.role,
+          tool_call_id: m.tool_call_id,
+          content: m.content,
+        };
+      }
+      return { role: m.role, content: m.content };
+    });
 
-    const response = await this.client.post<{
-      choices: Array<{
-        message: { content: string };
-        finish_reason: string;
-      }>;
-      usage: { prompt_tokens: number; completion_tokens: number };
-    }>("/v1/chat/completions", {
+    // 构建请求体
+    const requestBody: Record<string, unknown> = {
       model: this.config.model ?? this.name,
       messages: openaiMessages,
       max_tokens: options?.maxTokens ?? this.config.maxTokens ?? 4096,
       temperature:
         options?.temperature ?? this.config.defaultTemperature ?? 0.7,
-    });
+    };
 
-    const content = response.choices[0]?.message?.content ?? "";
+    // 添加 tools（如果提供）
+    if (options?.tools && options.tools.length > 0) {
+      requestBody["tools"] = options.tools;
+    }
+
+    const response = await this.client.post<{
+      choices: Array<{
+        message: {
+          content?: string;
+          tool_calls?: Array<{
+            id: string;
+            type: "function";
+            function: {
+              name: string;
+              arguments: string;
+            };
+          }>;
+        };
+        finish_reason: string;
+      }>;
+      usage: { prompt_tokens: number; completion_tokens: number };
+    }>("/v1/chat/completions", requestBody);
+
+    const choice = response.choices[0];
+    const content = choice?.message?.content ?? "";
+    const toolCalls = choice?.message?.tool_calls;
+    const finishReason = choice?.finish_reason;
+
+    // 解析 finishReason
+    let parsedFinishReason: ChatResponse["finishReason"] = "stop";
+    if (finishReason === "tool_calls") {
+      parsedFinishReason = "tool_calls";
+    } else if (finishReason === "length") {
+      parsedFinishReason = "length";
+    }
 
     return {
       content,
@@ -176,8 +213,11 @@ export class OpenAICompatibleModel implements IModel {
       },
       model: this.name,
       latency: Date.now() - startTime,
-      finishReason:
-        response.choices[0]?.finish_reason === "stop" ? "stop" : "length",
+      finishReason: parsedFinishReason,
+      // 只有当有 tool_calls 时才添加
+      ...(toolCalls && toolCalls.length > 0
+        ? { toolCalls: toolCalls as LLMToolCall[] }
+        : {}),
     };
   }
 

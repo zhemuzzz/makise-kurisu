@@ -5,10 +5,32 @@
 
 // ============ 消息类型 ============
 
-export interface Message {
-  role: "system" | "user" | "assistant";
+/**
+ * 工具调用消息（assistant 发起工具调用）
+ */
+export interface ToolCallMessage {
+  role: "assistant";
+  content: string | null;
+  tool_calls?: LLMToolCall[];
+}
+
+/**
+ * 工具结果消息
+ */
+export interface ToolResultMessage {
+  role: "tool";
+  tool_call_id: string;
   content: string;
 }
+
+/**
+ * 通用消息类型（支持工具调用）
+ */
+export type Message =
+  | { role: "system"; content: string }
+  | { role: "user"; content: string }
+  | { role: "assistant"; content: string; tool_calls?: LLMToolCall[] }
+  | { role: "tool"; tool_call_id: string; content: string };
 
 // ============ 配置类型 ============
 
@@ -49,12 +71,38 @@ export interface ModelsYamlConfig {
 
 // ============ 运行时选项 ============
 
+/**
+ * OpenAI 工具定义格式
+ */
+export interface OpenAIToolDefinition {
+  type: "function";
+  function: {
+    name: string;
+    description: string;
+    parameters: Record<string, unknown>;
+  };
+}
+
+/**
+ * LLM 返回的工具调用
+ */
+export interface LLMToolCall {
+  id: string;
+  type: "function";
+  function: {
+    name: string;
+    arguments: string;
+  };
+}
+
 export interface ChatOptions {
   temperature?: number;
   maxTokens?: number;
   topP?: number;
   stopSequences?: string[];
   metadata?: Record<string, unknown>;
+  /** 可用工具列表（OpenAI function calling 格式） */
+  tools?: OpenAIToolDefinition[];
 }
 
 export interface StreamChunk {
@@ -72,7 +120,9 @@ export interface ChatResponse {
   };
   model: string;
   latency: number;
-  finishReason?: "stop" | "length" | "error";
+  finishReason?: "stop" | "length" | "tool_calls" | "error";
+  /** 工具调用列表（如果 LLM 决定调用工具） */
+  toolCalls?: LLMToolCall[];
 }
 
 // ============ 核心接口 ============

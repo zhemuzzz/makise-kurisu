@@ -239,6 +239,28 @@ export interface GenerateNodeDeps {
   personaEngine: PersonaEngine;
   memoryEngine: MemoryEngineLike;
   maxContextMessages: number;
+  /** 工具注册表（可选，用于 function calling） */
+  toolRegistry?: ToolRegistryLike;
+}
+
+/**
+ * 工具注册表接口（L6 子集）
+ *
+ * 注意：toOpenAIFormat 返回类型使用宽松定义以兼容不同来源的 OpenAIToolDefinition
+ */
+export interface ToolRegistryLike {
+  /** 转换为 OpenAI 工具定义格式 */
+  toOpenAIFormat(tools?: string[]): Array<{
+    type: "function";
+    function: {
+      name: string;
+      description: string;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      parameters: any;
+    };
+  }>;
+  /** 获取工具列表 */
+  list(): ToolDef[];
 }
 
 /**
