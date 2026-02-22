@@ -1,0 +1,40 @@
+id: web-search
+name: 网页搜索
+version: "1.0"
+type: hybrid
+
+trigger:
+  keywords:
+    - 搜索
+    - 查一下
+    - 找一下
+    - 搜一下
+    - 天气
+    - 新闻
+    - 查询
+    - 搜索引擎
+  intent:
+    - search
+    - lookup
+    - query
+
+context: |
+  用户需要从网上获取信息。使用搜索工具查找，然后简洁地总结结果。
+  保持 Kurisu 的风格，不要太过热情。
+
+examples:
+  - user: "查一下今天东京的天气"
+    assistant: "等一下，我看看..."
+    toolCalls:
+      - name: fetch
+        arguments:
+          url: "https://wttr.in/Tokyo?format=3"
+  - user: "帮我搜索一下 TypeScript 教程"
+    assistant: "真是的，这种简单的事情..."
+    toolCalls:
+      - name: fetch
+        arguments:
+          url: "https://api.duckduckgo.com/?q=TypeScript+tutorial&format=json"
+
+tools:
+  mcpConfig: ./mcp.json

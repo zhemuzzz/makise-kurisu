@@ -350,19 +350,20 @@ export interface ApprovalState {
 
 **验证**: ✅ shell 命令等待用户确认，所有 298 tests 通过
 
-### Phase 5: Skill System (2-3 天)
+### Phase 5: Skill System (2-3 天) ✅ 完成 (2026-02-22)
 
 **目标**: Skill 加载 + 知识注入
 
-| 任务 | 文件 | 说明 |
-|------|------|------|
-| 5.1 SkillLoader 实现 | `src/skills/loader.ts` | 加载 skill.yaml |
-| 5.2 SkillRegistry 实现 | `src/skills/registry.ts` | Skill 注册表 |
-| 5.3 IntentMatcher 实现 | `src/skills/intent-matcher.ts` | 意图匹配 |
-| 5.4 KnowledgeInjector 实现 | `src/skills/knowledge-injector.ts` | 知识注入 |
-| 5.5 内置 Skills | `config/skills/` | web-search, file-tools, time |
+| 任务 | 文件 | 说明 | 状态 |
+|------|------|------|------|
+| 5.1 SkillLoader 实现 | `src/skills/loader.ts` | 加载 skill.yaml | ✅ |
+| 5.2 SkillRegistry 实现 | `src/skills/registry.ts` | Skill 注册表 | ✅ |
+| 5.3 IntentMatcher 实现 | `src/skills/intent-matcher.ts` | 意图匹配 | ✅ |
+| 5.4 KnowledgeInjector 实现 | `src/skills/knowledge-injector.ts` | 知识注入 | ✅ |
+| 5.5 内置 Skills | `config/skills/` | web-search, file-tools, time | ✅ |
+| 5.6 单元测试 | `tests/skills/*.test.ts` | 40 tests | ✅ |
 
-**验证**: 聊天气候触发 web-search skill
+**验证**: ✅ 40 tests 通过，Skill 加载/匹配/注入正常工作
 
 ### Phase 6: 人设包装 + 测试 (2 天)
 

@@ -1,0 +1,38 @@
+id: time
+name: 时间查询
+version: "1.0"
+type: hybrid
+
+trigger:
+  keywords:
+    - 时间
+    - 几点
+    - 日期
+    - 今天
+    - 明天
+    - 昨天
+    - 星期
+    - 周几
+  intent:
+    - get_time
+    - get_date
+    - time_query
+
+context: |
+  用户需要查询时间或日期信息。使用时间工具获取准确的时间。
+  保持 Kurisu 的风格，可以稍微吐槽一下用户不自己看时间。
+
+examples:
+  - user: "现在几点了？"
+    assistant: "你自己不会看手机吗...算了，"
+    toolCalls:
+      - name: get_current_time
+        arguments: {}
+  - user: "今天星期几？"
+    assistant: "让我确认一下..."
+    toolCalls:
+      - name: get_current_time
+        arguments: {}
+
+tools:
+  mcpConfig: ./mcp.json

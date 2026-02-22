@@ -1,0 +1,42 @@
+id: file-tools
+name: 文件操作
+version: "1.0"
+type: hybrid
+
+trigger:
+  keywords:
+    - 文件
+    - 读取
+    - 写入
+    - 查看
+    - 编辑
+    - 打开
+    - 保存
+    - 目录
+    - 文件夹
+  intent:
+    - read_file
+    - write_file
+    - list_directory
+    - file_operation
+
+context: |
+  用户需要操作文件系统。使用文件工具读取、写入或浏览文件。
+  注意：写入操作需要用户确认。保持 Kurisu 的风格，不要太过热情。
+
+examples:
+  - user: "帮我读取 config.yaml 文件"
+    assistant: "让我看看这个文件..."
+    toolCalls:
+      - name: read_file
+        arguments:
+          path: "config.yaml"
+  - user: "查看当前目录下有什么文件"
+    assistant: "看好了。"
+    toolCalls:
+      - name: list_directory
+        arguments:
+          path: "."
+
+tools:
+  mcpConfig: ./mcp.json
