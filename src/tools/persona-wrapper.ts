@@ -202,14 +202,14 @@ export class PersonaWrapper {
   /**
    * 包装被拒绝的结果
    */
-  private wrapDenied(result: ToolResult): string {
+  private wrapDenied(_result: ToolResult): string {
     return this.selectTemplate(this.templates.deniedMessages);
   }
 
   /**
    * 包装超时结果
    */
-  private wrapTimeout(result: ToolResult): string {
+  private wrapTimeout(_result: ToolResult): string {
     return this.selectTemplate(this.templates.timeoutMessages);
   }
 
@@ -246,8 +246,7 @@ export class PersonaWrapper {
     // 截断过长输出
     if (formatted.length > this.config.maxOutputLength) {
       formatted =
-        formatted.slice(0, this.config.maxOutputLength) +
-        "\n... (输出已截断)";
+        formatted.slice(0, this.config.maxOutputLength) + "\n... (输出已截断)";
     }
 
     return formatted;
