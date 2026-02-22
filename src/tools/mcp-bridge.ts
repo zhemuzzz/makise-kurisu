@@ -6,32 +6,14 @@
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import {
+  ListToolsResultSchema,
+  CompatibilityCallToolResultSchema,
+  type ListToolsResult,
+  type CompatibilityCallToolResult,
+} from "@modelcontextprotocol/sdk/types.js";
 import type { ToolDef } from "./types";
 import type { MCPServerConfig, MCPConfig } from "../skills/types";
-
-/**
- * JSON Schema 类型（简化版）
- */
-type JSONSchema = Record<string, unknown>;
-
-/**
- * MCP 工具列表结果 Schema（简化版）
- */
-interface MCPTool {
-  name: string;
-  description?: string;
-  inputSchema: JSONSchema;
-}
-
-interface MCPListToolsResult {
-  tools: MCPTool[];
-  nextCursor?: string;
-}
-
-interface MCPToolCallResult {
-  content: Array<{ type: string; text?: string; data?: string }>;
-  isError?: boolean;
-}
 
 /**
  * MCP 客户端连接状态
@@ -184,12 +166,11 @@ export class MCPBridge {
     }
 
     try {
-      // 调用 tools/list - 使用 any 绕过 Zod schema 要求
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = (await (conn.client as any).request({
-        method: "tools/list",
-        params: {},
-      })) as MCPListToolsResult;
+      // 使用 MCP SDK 的 ListToolsResultSchema 验证响应
+      const result: ListToolsResult = await conn.client.request(
+        { method: "tools/list", params: {} },
+        ListToolsResultSchema,
+      );
 
       // 转换为 ToolDef
       return result.tools.map((tool) => ({
@@ -233,26 +214,43 @@ export class MCPBridge {
       throw new Error(`MCP server not connected: ${serverName}`);
     }
 
-    try {
-      // 使用 any 绕过 Zod schema 要求
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = (await (conn.client as any).request({
-        method: "tools/call",
-        params: { name: toolName, arguments: args },
-      })) as MCPToolCallResult;
+    // 使用 MCP SDK 的 CompatibilityCallToolResultSchema 验证响应
+    // （支持新旧两种协议版本）
+    const result = (await conn.client.request(
+      { method: "tools/call", params: { name: toolName, arguments: args } },
+      CompatibilityCallToolResultSchema,
+    )) as CompatibilityCallToolResult;
 
-      // 提取内容
-      if (result.isError) {
-        throw new Error(
-          `Tool execution error: ${result.content.map((c) => c.text).join("\n")}`,
-        );
-      }
-
-      // 返回内容
-      return result.content.map((c) => c.text ?? c.data).join("\n");
-    } catch (error) {
-      throw error;
+    // 处理错误
+    if (result.isError) {
+      // 兼容新旧两种格式
+      /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unnecessary-type-assertion */
+      const errorContent =
+        "content" in result
+          ? (result as unknown as { content: Array<{ text?: string }> }).content
+              .map((c) => c.text ?? "")
+              .join("\n")
+          : "Unknown error";
+      /* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unnecessary-type-assertion */
+      throw new Error(`Tool execution error: ${errorContent}`);
     }
+
+    // 兼容新旧两种格式返回内容
+    if ("content" in result) {
+      /* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unnecessary-type-assertion */
+      return (
+        result as unknown as {
+          content: Array<{ text?: string; data?: string }>;
+        }
+      ).content
+        .map((c) => c.text ?? c.data ?? "")
+        .join("\n");
+      /* eslint-enable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unnecessary-type-assertion */
+    }
+
+    // 旧格式：直接返回 toolResult
+    /* eslint-disable-next-line @typescript-eslint/no-unsafe-return */
+    return (result as { toolResult: unknown }).toolResult;
   }
 
   /**

@@ -178,6 +178,7 @@ export class ToolRegistry {
         this.mcpBridge &&
         registration.def.source.type === "mcp"
       ) {
+        // 条件已确保 this.mcpBridge 非空
         output = await this.mcpBridge.callTool(
           registration.mcpServerName,
           call.name,
