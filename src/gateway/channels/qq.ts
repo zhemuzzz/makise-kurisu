@@ -77,7 +77,28 @@ interface GatewayLike {
   ): Promise<{
     textStream: AsyncGenerator<string>;
     finalResponse: Promise<string>;
+    approvalRequired?: boolean;
+    approvalMessage?: string;
+    pendingToolCall?: {
+      id: string;
+      name: string;
+      arguments: Record<string, unknown>;
+    };
   }>;
+  /** 检查用户消息是否是审批回复 */
+  checkApprovalReply(
+    sessionId: string,
+    userMessage: string,
+  ): Promise<{
+    isApprovalReply: boolean;
+    result?: "approved" | "rejected" | "timeout";
+    toolCall?: { id: string; name: string; arguments: Record<string, unknown> };
+  }>;
+  /** 执行已批准的工具 */
+  executeApprovedTool(
+    sessionId: string,
+    toolCall: { id: string; name: string; arguments: Record<string, unknown> },
+  ): Promise<string>;
 }
 
 /**
@@ -350,6 +371,19 @@ export class QQChannel extends BaseChannel {
     // 调用 Gateway 处理
     if (this.qqConfig.gateway) {
       try {
+        // 1. 先检查是否是审批回复
+        const approvalCheck = await this.qqConfig.gateway.checkApprovalReply(
+          inbound.sessionId,
+          inbound.content,
+        );
+
+        if (approvalCheck.isApprovalReply) {
+          // 2. 处理审批回复
+          await this.handleApprovalReply(inbound, approvalCheck);
+          return;
+        }
+
+        // 3. 正常处理流程
         const result = await this.qqConfig.gateway.processStream(
           inbound.sessionId,
           inbound.content,
@@ -366,9 +400,81 @@ export class QQChannel extends BaseChannel {
           };
           await this.sendMessage(outbound);
         }
+
+        // 4. 检查是否需要审批
+        if (result.approvalRequired && result.approvalMessage) {
+          const approvalOutbound: OutboundMessage = {
+            channelType: this.channelType,
+            sessionId: inbound.sessionId,
+            content: result.approvalMessage,
+          };
+          await this.sendMessage(approvalOutbound);
+        }
       } catch (error) {
         console.error("QQ Channel Gateway error:", error);
       }
+    }
+  }
+
+  /**
+   * 处理审批回复
+   */
+  private async handleApprovalReply(
+    inbound: InboundMessage,
+    approvalCheck: {
+      isApprovalReply: boolean;
+      result?: "approved" | "rejected" | "timeout";
+      toolCall?: {
+        id: string;
+        name: string;
+        arguments: Record<string, unknown>;
+      };
+    },
+  ): Promise<void> {
+    const { result, toolCall } = approvalCheck;
+
+    if (result === "approved" && toolCall) {
+      // 执行已批准的工具
+      try {
+        const responseText = await this.qqConfig.gateway!.executeApprovedTool(
+          inbound.sessionId,
+          toolCall,
+        );
+
+        if (responseText.trim()) {
+          const outbound: OutboundMessage = {
+            channelType: this.channelType,
+            sessionId: inbound.sessionId,
+            content: responseText,
+          };
+          await this.sendMessage(outbound);
+        }
+      } catch (error) {
+        console.error("QQChannel executeApprovedTool error:", error);
+        // 发送错误消息
+        const errorOutbound: OutboundMessage = {
+          channelType: this.channelType,
+          sessionId: inbound.sessionId,
+          content: "执行工具时出错了，请稍后重试。",
+        };
+        await this.sendMessage(errorOutbound);
+      }
+    } else if (result === "rejected") {
+      // 用户取消
+      const cancelOutbound: OutboundMessage = {
+        channelType: this.channelType,
+        sessionId: inbound.sessionId,
+        content: "好的，已取消操作。",
+      };
+      await this.sendMessage(cancelOutbound);
+    } else if (result === "timeout") {
+      // 超时
+      const timeoutOutbound: OutboundMessage = {
+        channelType: this.channelType,
+        sessionId: inbound.sessionId,
+        content: "审批已超时，请重新发起请求。",
+      };
+      await this.sendMessage(timeoutOutbound);
     }
   }
 

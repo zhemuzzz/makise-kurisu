@@ -44,6 +44,11 @@ function createMockGateway(
 
       return result;
     }),
+    // 审批相关方法的 mock
+    checkApprovalReply: vi.fn().mockResolvedValue({
+      isApprovalReply: false,
+    }),
+    executeApprovedTool: vi.fn().mockResolvedValue("工具执行完成"),
   };
 }
 

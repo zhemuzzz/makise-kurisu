@@ -5,7 +5,12 @@
 
 import * as http from "http";
 import { BaseChannel, ChannelConfig, ChannelRoute } from "./base";
-import { ChannelType, InboundMessage, OutboundMessage } from "../types";
+import {
+  ChannelType,
+  InboundMessage,
+  OutboundMessage,
+  ToolCall,
+} from "../types";
 
 // ===========================================
 // Telegram API 类型定义
@@ -102,7 +107,21 @@ interface GatewayLike {
   ): Promise<{
     textStream: AsyncGenerator<string>;
     finalResponse: Promise<string>;
+    approvalRequired?: boolean;
+    approvalMessage?: string;
+    pendingToolCall?: ToolCall;
   }>;
+  /** 检查用户消息是否是审批回复 */
+  checkApprovalReply(
+    sessionId: string,
+    userMessage: string,
+  ): Promise<{
+    isApprovalReply: boolean;
+    result?: "approved" | "rejected" | "timeout";
+    toolCall?: ToolCall;
+  }>;
+  /** 执行已批准的工具 */
+  executeApprovedTool(sessionId: string, toolCall: ToolCall): Promise<string>;
 }
 
 /**
@@ -209,7 +228,20 @@ export class TelegramChannel extends BaseChannel {
         this.sendJsonResponse(typedRes, 200, { status: "ok" });
 
         try {
-          // 调用 Gateway 处理
+          // 1. 先检查是否是审批回复
+          const approvalCheck =
+            await this.telegramConfig.gateway.checkApprovalReply(
+              inbound.sessionId,
+              inbound.content,
+            );
+
+          if (approvalCheck.isApprovalReply) {
+            // 2. 处理审批回复
+            await this.handleApprovalReply(inbound, approvalCheck);
+            return;
+          }
+
+          // 3. 正常处理流程
           const result = await this.telegramConfig.gateway.processStream(
             inbound.sessionId,
             inbound.content,
@@ -227,6 +259,16 @@ export class TelegramChannel extends BaseChannel {
               content: responseText,
             };
             await this.sendMessage(outbound);
+          }
+
+          // 4. 检查是否需要审批
+          if (result.approvalRequired && result.approvalMessage) {
+            const approvalOutbound: OutboundMessage = {
+              channelType: this.channelType,
+              sessionId: inbound.sessionId,
+              content: result.approvalMessage,
+            };
+            await this.sendMessage(approvalOutbound);
           }
         } catch (error) {
           console.error("TelegramChannel Gateway error:", error);
@@ -284,6 +326,65 @@ export class TelegramChannel extends BaseChannel {
   // ===========================================
   // 生命周期覆盖
   // ===========================================
+
+  /**
+   * 处理审批回复
+   */
+  private async handleApprovalReply(
+    inbound: InboundMessage,
+    approvalCheck: {
+      isApprovalReply: boolean;
+      result?: "approved" | "rejected" | "timeout";
+      toolCall?: ToolCall;
+    },
+  ): Promise<void> {
+    const { result, toolCall } = approvalCheck;
+
+    if (result === "approved" && toolCall) {
+      // 执行已批准的工具
+      try {
+        const responseText =
+          await this.telegramConfig.gateway!.executeApprovedTool(
+            inbound.sessionId,
+            toolCall,
+          );
+
+        if (responseText.trim()) {
+          const outbound: OutboundMessage = {
+            channelType: this.channelType,
+            sessionId: inbound.sessionId,
+            content: responseText,
+          };
+          await this.sendMessage(outbound);
+        }
+      } catch (error) {
+        console.error("TelegramChannel executeApprovedTool error:", error);
+        // 发送错误消息
+        const errorOutbound: OutboundMessage = {
+          channelType: this.channelType,
+          sessionId: inbound.sessionId,
+          content: "执行工具时出错了，请稍后重试。",
+        };
+        await this.sendMessage(errorOutbound);
+      }
+    } else if (result === "rejected") {
+      // 用户取消
+      const cancelOutbound: OutboundMessage = {
+        channelType: this.channelType,
+        sessionId: inbound.sessionId,
+        content: "好的，已取消操作。",
+      };
+      await this.sendMessage(cancelOutbound);
+    } else if (result === "timeout") {
+      // 超时
+      const timeoutOutbound: OutboundMessage = {
+        channelType: this.channelType,
+        sessionId: inbound.sessionId,
+        content: "审批已超时，请重新发起请求。",
+      };
+      await this.sendMessage(timeoutOutbound);
+    }
+  }
 
   /**
    * 初始化

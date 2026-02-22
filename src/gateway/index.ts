@@ -10,6 +10,8 @@ import {
   type StreamCallbacks,
   type GatewayStreamResult,
   type IOrchestrator,
+  type ApprovalManagerLike,
+  type ToolCall,
   ChannelType,
 } from "./types";
 import { SessionManager } from "./session-manager";
@@ -45,6 +47,7 @@ export interface GatewayStatus {
  */
 export class Gateway {
   private readonly orchestrator: IOrchestrator;
+  private readonly approvalManager: ApprovalManagerLike | undefined;
   private readonly config: Required<GatewayConfig>;
   private sessionManager?: SessionManager;
   private streamHandler: StreamHandler;
@@ -56,6 +59,7 @@ export class Gateway {
     }
 
     this.orchestrator = deps.orchestrator;
+    this.approvalManager = deps.approvalManager;
     this.config = {
       sessionTTL: config.sessionTTL ?? DEFAULT_SESSION_TTL,
       maxSessions: config.maxSessions ?? DEFAULT_MAX_SESSIONS,
@@ -253,6 +257,104 @@ export class Gateway {
       isRunning: this.running,
       sessionCount: this.getSessionCount(),
     };
+  }
+
+  // ===========================================
+  // 审批管理集成
+  // ===========================================
+
+  /**
+   * 检查会话是否有待审批的工具调用
+   */
+  hasPendingApproval(sessionId: string): boolean {
+    if (!this.approvalManager) {
+      return false;
+    }
+    return this.approvalManager.hasPendingApproval(sessionId);
+  }
+
+  /**
+   * 获取会话的待审批状态
+   */
+  getPendingApproval(
+    sessionId: string,
+  ): { toolCall: ToolCall; message: string } | null {
+    if (!this.approvalManager) {
+      return null;
+    }
+    const approval = this.approvalManager.getApproval(sessionId);
+    if (!approval || approval.status !== "pending") {
+      return null;
+    }
+    return {
+      toolCall: approval.toolCall,
+      message: approval.message,
+    };
+  }
+
+  /**
+   * 检查用户消息是否是审批回复
+   * @returns 如果是审批回复，返回处理结果；否则返回 null
+   */
+  async checkApprovalReply(
+    sessionId: string,
+    userMessage: string,
+  ): Promise<{
+    isApprovalReply: boolean;
+    result?: "approved" | "rejected" | "timeout";
+    toolCall?: ToolCall;
+  }> {
+    // 没有 approvalManager，不是审批回复
+    if (!this.approvalManager) {
+      return { isApprovalReply: false };
+    }
+
+    // 检查是否有待审批
+    if (!this.approvalManager.hasPendingApproval(sessionId)) {
+      return { isApprovalReply: false };
+    }
+
+    // 获取审批状态
+    const approval = this.approvalManager.getApproval(sessionId);
+    if (!approval) {
+      return { isApprovalReply: false };
+    }
+
+    // 处理回复
+    const replyResult = this.approvalManager.handleReply(
+      sessionId,
+      userMessage.trim(),
+    );
+
+    // 如果是 invalid 回复，说明用户输入的不是审批指令
+    if (replyResult === "invalid") {
+      return { isApprovalReply: false };
+    }
+
+    // approved, rejected, timeout 都是有效的审批回复
+    return {
+      isApprovalReply: true,
+      result: replyResult,
+      toolCall: approval.toolCall,
+    };
+  }
+
+  /**
+   * 执行已批准的工具
+   */
+  async executeApprovedTool(
+    sessionId: string,
+    toolCall: ToolCall,
+  ): Promise<string> {
+    // 检查 orchestrator 是否支持 executeTool
+    if (!this.orchestrator.executeTool) {
+      throw new GatewayError(
+        "Orchestrator does not support tool execution",
+        "TOOL_EXECUTION_NOT_SUPPORTED",
+      );
+    }
+
+    return this.orchestrator.executeTool(sessionId, toolCall);
   }
 
   /**

@@ -334,17 +334,21 @@ export interface ApprovalState {
 
 **验证**: ✅ shell 命令在沙箱中执行（架构就绪，需 Docker 环境）
 
-### Phase 4: 审批流程 (2 天)
+### Phase 4: 审批流程 (2 天) ✅ 完成 (2026-02-22)
 
 **目标**: confirm 级工具需要用户审批
 
-| 任务 | 文件 | 说明 |
-|------|------|------|
-| 4.1 ApprovalManager 实现 | `src/tools/approval.ts` | 审批状态管理 |
-| 4.2 修改 tool_call 节点 | `src/agents/nodes/tool-call.ts` | 检查审批状态 |
-| 4.3 修改 Channel 处理 | `src/gateway/channels/*.ts` | 处理审批回复 |
+| 任务 | 文件 | 说明 | 状态 |
+|------|------|------|------|
+| 4.1 ApprovalManager 实现 | `src/tools/approval.ts` | 审批状态管理 | ✅ |
+| 4.2 修改 tool_call 节点 | `src/agents/nodes/tool-call.ts` | 检查审批状态 | ✅ |
+| 4.3 类型扩展 | `src/agents/types.ts`, `src/gateway/types.ts` | AgentResult/StreamResult 添加审批字段 | ✅ |
+| 4.4 Gateway 集成 | `src/gateway/index.ts` | ApprovalManager 依赖注入 | ✅ |
+| 4.5 Orchestrator 暴露审批 | `src/agents/orchestrator.ts` | process() 返回审批状态 | ✅ |
+| 4.6 TelegramChannel 审批 | `src/gateway/channels/telegram.ts` | checkApprovalReply + executeApprovedTool | ✅ |
+| 4.7 QQChannel 审批 | `src/gateway/channels/qq.ts` | checkApprovalReply + executeApprovedTool | ✅ |
 
-**验证**: shell 命令等待用户确认
+**验证**: ✅ shell 命令等待用户确认，所有 298 tests 通过
 
 ### Phase 5: Skill System (2-3 天)
 

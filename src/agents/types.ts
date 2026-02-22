@@ -171,6 +171,8 @@ export interface OrchestratorDeps {
   readonly memoryEngine: MemoryEngineLike;
   /** 模型提供者 (L5) */
   readonly modelProvider: IModelProvider;
+  /** 工具注册表 (L6，可选) */
+  readonly toolRegistry?: ToolExecutorRegistryLike;
 }
 
 /**
@@ -208,6 +210,12 @@ export interface AgentResult {
   readonly latency: number;
   /** 错误信息 */
   readonly error?: string;
+  /** 是否需要审批 (confirm 级工具) */
+  readonly approvalRequired?: boolean;
+  /** 审批消息（需要审批时发送给用户） */
+  readonly approvalMessage?: string;
+  /** 待审批的工具调用 */
+  readonly pendingToolCall?: ToolCall;
 }
 
 /**
@@ -218,6 +226,12 @@ export interface StreamResult {
   readonly chunks: AsyncGenerator<StreamChunk>;
   /** 完整响应 Promise */
   readonly finalResponse: Promise<string>;
+  /** 是否需要审批 (confirm 级工具) */
+  readonly approvalRequired?: boolean;
+  /** 审批消息（需要审批时发送给用户） */
+  readonly approvalMessage?: string;
+  /** 待审批的工具调用 */
+  readonly pendingToolCall?: ToolCall;
 }
 
 // ============================================
@@ -261,6 +275,16 @@ export interface ToolRegistryLike {
   }>;
   /** 获取工具列表 */
   list(): ToolDef[];
+}
+
+/**
+ * 工具执行注册表接口（扩展自 ToolRegistryLike）
+ *
+ * 包含执行能力的完整接口
+ */
+export interface ToolExecutorRegistryLike extends ToolRegistryLike {
+  /** 执行工具调用 */
+  execute(call: ToolCall): Promise<ToolResult>;
 }
 
 /**

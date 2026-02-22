@@ -233,6 +233,30 @@ export interface StreamCallbacks {
 // Gateway 依赖
 // ===========================================
 
+// Import and re-export ToolCall and ApprovalState from tools/types
+import type {
+  ToolCall as ToolCallType,
+  ApprovalState as ApprovalStateType,
+} from "../tools/types";
+
+export type ToolCall = ToolCallType;
+export type ApprovalState = ApprovalStateType;
+
+/**
+ * 审批管理器接口
+ */
+export interface ApprovalManagerLike {
+  /** 检查是否有待审批 */
+  hasPendingApproval(sessionId: string): boolean;
+  /** 获取审批状态 */
+  getApproval(sessionId: string): ApprovalState | undefined;
+  /** 处理审批回复 */
+  handleReply(
+    sessionId: string,
+    reply: string,
+  ): "approved" | "rejected" | "invalid" | "timeout";
+}
+
 /**
  * Orchestrator 接口
  */
@@ -251,6 +275,8 @@ export interface IOrchestrator {
   hasSession(sessionId: string): boolean;
   getSession?(sessionId: string): SessionInfo | null;
   deleteSession?(sessionId: string): void;
+  /** 执行已批准的工具（可选） */
+  executeTool?(sessionId: string, toolCall: ToolCall): Promise<string>;
 }
 
 /**
@@ -258,6 +284,8 @@ export interface IOrchestrator {
  */
 export interface GatewayDeps {
   orchestrator: IOrchestrator;
+  /** 审批管理器（可选） */
+  approvalManager?: ApprovalManagerLike;
 }
 
 /**
@@ -286,6 +314,12 @@ export interface GatewayStreamResult {
   fullStream: AsyncGenerator<AnyStreamEvent>;
   /** 最终响应 Promise */
   finalResponse: Promise<string>;
+  /** 是否需要审批 (confirm 级工具) */
+  approvalRequired?: boolean;
+  /** 审批消息（需要审批时发送给用户） */
+  approvalMessage?: string;
+  /** 待审批的工具调用 */
+  pendingToolCall?: ToolCall;
 }
 
 // ===========================================

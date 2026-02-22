@@ -35,9 +35,9 @@ Telegram 接入 ████████████████░░░░ 80%
   ├── Phase 0-2.2 文字对话  ✅ 端到端测试通过
   └── Phase 3 语音消息      🔲 依赖 Phase A
 
-2.0 核心能力 ████████░░░░░░░░░░░░ 40%
+2.0 核心能力 ██████████░░░░░░░░░░ 50%
   ├── Phase A: 基础语音     🔲 P0
-  ├── Phase B: 工具沙箱     🔄 开发中 ← 当前（KURISU-016+017 Phase 3 完成）
+  ├── Phase B: 工具沙箱     🔄 开发中 ← 当前（KURISU-016+017 Phase 4 完成）
   ├── Phase C: 角色创建向导 🔲 P0
   ├── Phase D: Persona 2.0  🔲 P1
   ├── Phase E: 实时语音     🔲 P1
@@ -48,6 +48,46 @@ Telegram 接入 ████████████████░░░░ 80%
 ---
 
 ## 最近完成
+
+### KURISU-016+017 Phase 4: 审批流程集成（2026-02-22）
+
+**目标**: confirm 级工具需要用户审批，审批流程完整集成到 Channel 层
+
+**完成**:
+- ✅ 类型扩展：AgentResult/StreamResult/GatewayStreamResult 添加审批字段
+  - `approvalRequired`: 是否需要审批
+  - `approvalMessage`: 审批消息（发送给用户）
+  - `pendingToolCall`: 待审批的工具调用
+- ✅ Gateway 集成 ApprovalManager
+  - `hasPendingApproval(sessionId)`: 检查是否有待审批
+  - `checkApprovalReply(sessionId, userMessage)`: 检查用户回复是否是审批指令
+  - `executeApprovedTool(sessionId, toolCall)`: 执行已批准的工具
+- ✅ Orchestrator 暴露审批状态
+  - `process()` 返回 `approvalRequired/approvalMessage/pendingToolCall`
+  - 新增 `executeTool(sessionId, toolCall)` 方法
+- ✅ TelegramChannel 审批处理
+  - `handleApprovalReply()`: 处理 approved/rejected/timeout
+  - 用户回复「确认」→ 执行工具并发送结果
+  - 用户回复「取消」→ 发送"已取消操作"
+  - 超时 → 发送"审批已超时"
+- ✅ QQChannel 审批处理（同上）
+- ✅ 测试修复：Mock Gateway 添加新方法，298 tests 通过
+
+**审批流程架构**:
+```
+confirm 级工具调用
+    ↓
+Orchestrator.process() 返回 approvalRequired=true + approvalMessage
+    ↓
+Channel 发送审批消息给用户（Telegram/QQ）
+    ↓
+用户回复「确认」/「取消」
+    ↓
+Channel.handleRequest() → Gateway.checkApprovalReply()
+    ↓
+approved → executeApprovedTool() → 发送工具执行结果
+rejected → 发送"已取消操作"
+```
 
 ### KURISU-016+017 Phase 3: Docker 沙箱（2026-02-22）
 
@@ -124,8 +164,29 @@ conversation/task → generateRouter → tool_call (如果有 tool_calls)
 - ✅ OpenAI-compatible Provider 支持 function calling
 - ✅ 新增 generateRouter、toolCallRouter 路由
 
+**Phase 4 完成** ✅ (2026-02-22)
+- ✅ 类型扩展：AgentResult/StreamResult/GatewayStreamResult 添加审批字段
+- ✅ Gateway 集成 ApprovalManager：hasPendingApproval, checkApprovalReply, executeApprovedTool
+- ✅ Orchestrator 暴露审批状态：process() 返回 approvalRequired/approvalMessage/pendingToolCall
+- ✅ Orchestrator 添加 executeTool() 方法：执行已批准的工具
+- ✅ TelegramChannel 审批处理：handleApprovalReply 方法处理确认/取消/超时
+- ✅ QQChannel 审批处理：handleApprovalReply 方法处理确认/取消/超时
+- ✅ 测试修复：Mock Gateway 添加 checkApprovalReply + executeApprovedTool
+
+**审批流程架构**:
+```
+confirm 级工具 → Orchestrator 返回 approvalRequired + approvalMessage
+                          ↓
+                    Channel 发送审批消息给用户
+                          ↓
+用户回复「确认」/「取消」 → Gateway.checkApprovalReply()
+                          ↓
+                    approved/rejected/timeout
+                          ↓
+           approved → Gateway.executeApprovedTool() → 发送结果
+```
+
 **待完成**
-- Phase 4: 审批流程集成到 Channel
 - Phase 5: Skill Loader/Registry 实现
 - Phase 6: 人设化包装 + 单元测试
 
@@ -394,16 +455,15 @@ kurisu/
 
 ## 下一步（按优先级）
 
-### 立即启动（P0）
+### KURISU-016+017 Phase 5-6（继续）
 
-1. **KURISU-015** — 基础语音：Whisper STT + Fish Audio TTS + Telegram 语音消息
-2. **KURISU-016** — 工具沙箱：Docker 隔离 + 内置工具集 + 权限分级（可并行）
+1. **Phase 5: Skill System** — SkillLoader + SkillRegistry + IntentMatcher + KnowledgeInjector
+2. **Phase 6: 人设包装 + 测试** — PersonaWrapper + 单元测试 80%+ 覆盖率
 
-### 015+016 完成后
+### 可并行启动（P0）
 
-3. **KURISU-017** — 角色创建向导：5步 CLI 向导 + role.yaml 格式
+3. **KURISU-015** — 基础语音：Whisper STT + Fish Audio TTS + Telegram 语音消息
 
-### 向导完成后
+### 016+017 完成后
 
-4. **KURISU-014** — Persona Engine 2.0：Few-Shot + 情感状态追踪
-5. 实时语音对话（WebSocket + VAD + Discord）
+4. **KURISU-017** — 角色创建向导：5步 CLI 向导 + role.yaml 格式
