@@ -340,7 +340,7 @@ export async function* reactLoop(
 
     // LLM 调用
     let llmResponse: LLMResponse | null = null;
-    let pendingToolCalls: ToolCall[] = [];
+    const pendingToolCalls: ToolCall[] = [];
     let iterationContent = "";
 
     try {

@@ -165,7 +165,7 @@ export function updateRelationshipFromInteraction(
   _interactionType: InteractionType,
 ): RelationshipState {
   // 1. familiarity 固定增长
-  let newFamiliarity = Math.min(100, state.familiarity + INTERACTION_FAMILIARITY_GAIN);
+  const newFamiliarity = Math.min(100, state.familiarity + INTERACTION_FAMILIARITY_GAIN);
 
   // 2. 根据情绪计算 trust/warmth 变化
   let trustDelta = 0;
