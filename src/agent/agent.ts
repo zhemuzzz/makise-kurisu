@@ -177,6 +177,9 @@ export class Agent {
     // 拒绝所有待处理的确认请求
     this.#services.approval.rejectAllPending(sessionId);
 
+    // 清理该会话的消息队列 (防止泄露)
+    this.#messageQueues.delete(sessionId);
+
     // 中止所有活跃的 Sub-Agent
     // (SubAgentManagerPort 会处理)
 
@@ -423,10 +426,17 @@ export class Agent {
   #processQueue(sessionId: string): void {
     const queue = this.#messageQueues.get(sessionId);
     if (!queue || queue.length === 0) {
+      // 清理空队列，防止 Map 泄露 (B1 fix)
+      this.#messageQueues.delete(sessionId);
       return;
     }
 
     const { input, config } = queue.shift()!;
+
+    // 清理空队列 (B1 fix)
+    if (queue.length === 0) {
+      this.#messageQueues.delete(sessionId);
+    }
 
     // 异步处理下一条消息 (手动迭代避免 C1 bug)
     void (async () => {
@@ -434,8 +444,27 @@ export class Agent {
         const gen = this.execute(input, config);
         let iter = await gen.next();
         while (!iter.done) {
-          // TODO(H8): 转发事件到调用方
+          // H8 fix: Forward queued message events through tracing
+          const event = iter.value;
+          this.#services.tracing.log({
+            type: "queued_event",
+            sessionId,
+            data: { eventType: event.type },
+          });
           iter = await gen.next();
+        }
+
+        // Log queued message result
+        const result: AgentResult | undefined = iter.value;
+        if (result) {
+          this.#services.tracing.log({
+            type: "queued_message_completed",
+            sessionId,
+            data: {
+              success: result.success,
+              hasResponse: result.finalResponse.length > 0,
+            },
+          });
         }
       } catch (error) {
         this.#services.tracing.log({

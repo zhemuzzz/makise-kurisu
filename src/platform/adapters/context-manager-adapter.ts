@@ -28,6 +28,8 @@ import type {
   ContextBlock,
   CompactMessage,
 } from "../context-manager.js";
+import type { ContextManagerOptions } from "../context-manager.js";
+import { createContextManager } from "../context-manager.js";
 
 // ============================================================================
 // Priority Constants (CM-3: 9 级优先队列)
@@ -45,16 +47,56 @@ const PRIORITY_HISTORY = 6 as const;
 // Adapter
 // ============================================================================
 
+/**
+ * Session-isolated ContextManager adapter.
+ *
+ * Each session gets its own ContextManager instance so mutable state
+ * (usedTokens, compactCount, parseState, etc.) is never shared between
+ * concurrent sessions on the same role.
+ *
+ * Lifecycle:
+ * - `assemblePrompt(input, config)` creates or reuses a per-session CM via `config.sessionId`
+ * - Subsequent calls (`checkBudget`, `processLLMOutput`, etc.) operate on the active session's CM
+ * - `destroySession(sessionId)` cleans up when a session ends
+ */
 export class ContextManagerAdapter implements ContextManagerPort {
-  private readonly cm: ContextManager;
+  private readonly options: ContextManagerOptions;
   private readonly summarizeFn: (text: string) => Promise<string>;
 
+  /** Per-session ContextManager pool */
+  private readonly sessionManagers = new Map<string, ContextManager>();
+
+  /** Active session CM (set by assemblePrompt, used by stateless methods) */
+  private activeCm: ContextManager;
+
   constructor(
-    cm: ContextManager,
+    options: ContextManagerOptions,
     summarizeFn: (text: string) => Promise<string>,
   ) {
-    this.cm = cm;
+    this.options = options;
     this.summarizeFn = summarizeFn;
+    // Default CM for calls before any session is established
+    this.activeCm = createContextManager(options);
+  }
+
+  /**
+   * Clean up a session's ContextManager when the session ends.
+   */
+  destroySession(sessionId: string): void {
+    this.sessionManagers.delete(sessionId);
+  }
+
+  /**
+   * Get or create a ContextManager for the given session.
+   */
+  private getOrCreateCm(sessionId: string): ContextManager {
+    const existing = this.sessionManagers.get(sessionId);
+    if (existing !== undefined) {
+      return existing;
+    }
+    const cm = createContextManager(this.options);
+    this.sessionManagers.set(sessionId, cm);
+    return cm;
   }
 
   // --------------------------------------------------------------------------
@@ -63,10 +105,13 @@ export class ContextManagerAdapter implements ContextManagerPort {
 
   async assemblePrompt(
     input: AgentInput,
-    _config: AgentConfig,
+    config: AgentConfig,
   ): Promise<LLMMessage[]> {
+    // Set active CM for this session (creates new if needed)
+    this.activeCm = this.getOrCreateCm(config.sessionId);
+
     const blocks = this.buildBlocks(input);
-    const assembled = this.cm.assemblePrompt({ blocks });
+    const assembled = this.activeCm.assemblePrompt({ blocks });
 
     return this.assembledToMessages(assembled, input);
   }
@@ -78,12 +123,12 @@ export class ContextManagerAdapter implements ContextManagerPort {
   checkBudget(messages: LLMMessage[]): BudgetCheckResult {
     // Sync token usage from messages
     const totalTokens = messages.reduce(
-      (sum, m) => sum + this.cm.estimateTokens(m.content),
+      (sum, m) => sum + this.activeCm.estimateTokens(m.content),
       0,
     );
-    this.cm.updateTokenUsage(totalTokens);
+    this.activeCm.updateTokenUsage(totalTokens);
 
-    const status = this.cm.checkBudget();
+    const status = this.activeCm.checkBudget();
 
     return {
       withinBudget: status.used < status.available,
@@ -101,8 +146,8 @@ export class ContextManagerAdapter implements ContextManagerPort {
 
   processLLMOutput(rawOutput: string): ProcessedOutput {
     // Process as a single chunk then flush
-    const mainResult = this.cm.processLLMOutput({ text: rawOutput, done: false });
-    const flushResult = this.cm.processLLMOutput({ text: "", done: true });
+    const mainResult = this.activeCm.processLLMOutput({ text: rawOutput, done: false });
+    const flushResult = this.activeCm.processLLMOutput({ text: "", done: true });
 
     // Combine content
     const visibleContent = mainResult.content + flushResult.content;
@@ -133,7 +178,7 @@ export class ContextManagerAdapter implements ContextManagerPort {
         ? result.output
         : JSON.stringify(result.output);
 
-    const processed = this.cm.processToolResult({ toolName, content });
+    const processed = this.activeCm.processToolResult({ toolName, content });
     return processed.content;
   }
 
@@ -157,10 +202,10 @@ export class ContextManagerAdapter implements ContextManagerPort {
 
     // Estimate tokens before
     const contentBefore = messages.map((m) => m.content).join("\n");
-    const tokensBefore = this.cm.estimateTokens(contentBefore);
+    const tokensBefore = this.activeCm.estimateTokens(contentBefore);
 
     // Delegate to Platform ContextManager
-    const platformResult = await this.cm.compact({
+    const platformResult = await this.activeCm.compact({
       messages: compactMessages,
       summarize: this.summarizeFn,
     });
@@ -185,7 +230,7 @@ export class ContextManagerAdapter implements ContextManagerPort {
     }
 
     const contentAfter = resultMessages.map((m) => m.content).join("\n");
-    const tokensAfter = this.cm.estimateTokens(contentAfter);
+    const tokensAfter = this.activeCm.estimateTokens(contentAfter);
 
     return {
       messages: resultMessages,
@@ -201,7 +246,7 @@ export class ContextManagerAdapter implements ContextManagerPort {
   // --------------------------------------------------------------------------
 
   getStats(): ContextStats {
-    const metrics = this.cm.getMetrics();
+    const metrics = this.activeCm.getMetrics();
 
     return {
       totalTokens: metrics.tokenUsage.total,

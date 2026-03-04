@@ -38,6 +38,20 @@ import {
 } from "./sub-agent-manager.js";
 import { TracingAdapter } from "./adapters/tracing-adapter.js";
 import { PermissionAdapter } from "./adapters/permission-adapter.js";
+import { ContextManagerAdapter } from "./adapters/context-manager-adapter.js";
+import { LLMProviderAdapter } from "./adapters/llm-provider-adapter.js";
+import { ToolExecutorAdapter } from "./adapters/tool-executor-adapter.js";
+import { ApprovalAdapter } from "./adapters/approval-adapter.js";
+import { MemoryAdapter } from "./adapters/memory-adapter.js";
+// createContextManager is now used internally by ContextManagerAdapter
+import { createApprovalService } from "./approval-service.js";
+import type { ApprovalService } from "./approval-service.js";
+import { ToolRegistry } from "./tools/registry.js";
+import { HybridMemoryEngine } from "./memory/hybrid-engine.js";
+import { createModelProvider } from "./models/index.js";
+import type { ModelConfig } from "./models/types.js";
+import type { IModelProvider } from "./models/types.js";
+import type { ModelProviderConfig as PlatformModelProviderConfig } from "./types/config.js";
 import type { EventBus } from "./event-bus.js";
 import { createEventBus } from "./event-bus.js";
 import type { Scheduler } from "./scheduler.js";
@@ -202,20 +216,62 @@ export interface BootstrapResult {
   readonly shutdown: () => void;
 }
 
-// ============ BootstrapFull ============
+// ============ Config Conversion Helpers ============
 
 /**
- * 完整启动序列: Foundation → RoleConfig → Identity → PlatformServices
- *
- * Phase 4c: 扩展 bootstrap() 以创建每个角色的 PlatformServices
+ * PlatformConfig 的 secrets 结构中按 secretRef 键查找实际密钥值
  */
-export async function bootstrapFull(
-  options: BootstrapFullOptions,
-): Promise<BootstrapResult> {
-  const foundation = await bootstrap(options);
-  const loader = new RoleLoader(options.personasDir);
-  const roles = new Map<string, RoleServices>();
+function resolveSecretRef(
+  ref: string,
+  secrets: { readonly zhipuApiKey: string; readonly telegramBotToken?: string; readonly qqBotToken?: string; readonly qdrantApiKey?: string },
+): string {
+  const map: Record<string, string | undefined> = {
+    zhipuApiKey: secrets.zhipuApiKey,
+    telegramBotToken: secrets.telegramBotToken,
+    qqBotToken: secrets.qqBotToken,
+    qdrantApiKey: secrets.qdrantApiKey,
+  };
+  return map[ref] ?? "";
+}
 
+/**
+ * ModelProviderConfig[] → ModelConfig[] 转换
+ * PlatformConfig 存储的模型配置 → ModelProvider 需要的格式
+ */
+function convertToModelConfigs(
+  providers: readonly PlatformModelProviderConfig[],
+  secrets: { readonly zhipuApiKey: string; readonly telegramBotToken?: string; readonly qqBotToken?: string; readonly qdrantApiKey?: string },
+): ModelConfig[] {
+  return providers.map((p) => {
+    const base = {
+      name: p.id,
+      type: "cloud" as const,
+      provider: p.provider,
+      endpoint: p.endpoint,
+      apiKey: resolveSecretRef(p.secretRef, secrets),
+      model: p.model,
+    };
+    if (p.limits?.maxTokens !== undefined) {
+      return { ...base, maxTokens: p.limits.maxTokens };
+    }
+    return base;
+  });
+}
+
+// ============ Phase: Shared Infrastructure ============
+
+interface SharedInfra {
+  readonly subAgentManager: SubAgentManager;
+  readonly noopSkillManager: SkillManagerPort;
+  readonly approvalService: ApprovalService;
+  readonly toolRegistry: ToolRegistry;
+  readonly memoryEngine: HybridMemoryEngine;
+  readonly modelProvider: IModelProvider | null;
+  readonly summarizeFn: (text: string) => Promise<string>;
+  readonly setExecuteTask: (fn: ExecuteTaskFn) => void;
+}
+
+function initSharedInfra(foundation: Foundation): SharedInfra {
   // SA-1: SubAgentManager with deferred executeTask injection (closure pattern)
   let currentExecuteTask: ExecuteTaskFn = async () => ({
     result: undefined,
@@ -235,22 +291,104 @@ export async function bootstrapFull(
   });
 
   const noopSkillManager = createNoopSkillManagerPort();
+  const approvalService: ApprovalService = createApprovalService();
+  const toolRegistry = new ToolRegistry();
+  const memoryEngine = new HybridMemoryEngine();
+
+  // ModelProvider: convert PlatformConfig → ModelConfig[] with secret resolution
+  const modelsConfig = foundation.config.get("models");
+  const secrets = foundation.config.get("secrets");
+  let modelProvider: IModelProvider | null = null;
+  try {
+    const modelConfigs = convertToModelConfigs(modelsConfig.providers, secrets);
+    modelProvider = createModelProvider(
+      modelConfigs,
+      modelsConfig.defaults as unknown as Record<string, string>,
+    );
+  } catch (error) {
+    foundation.tracing.log({
+      level: "warn",
+      category: "agent",
+      event: "bootstrap:model-provider-failed",
+      data: { error: String(error) },
+      timestamp: Date.now(),
+    });
+  }
+
+  // summarizeFn: uses chat model for compact summaries (fallback: truncate)
+  const capturedModelProvider = modelProvider;
+  const summarizeFn = async (text: string): Promise<string> => {
+    if (capturedModelProvider === null) {
+      return text.length > 200 ? text.slice(0, 200) + "..." : text;
+    }
+    try {
+      const chatModel = capturedModelProvider.getByCapability("chat");
+      const response = await chatModel.chat(
+        [{ role: "user", content: `请用中文简洁总结以下对话内容:\n${text}` }],
+        { maxTokens: 500 },
+      );
+      return response.content;
+    } catch {
+      return text.length > 200 ? text.slice(0, 200) + "..." : text;
+    }
+  };
+
+  return {
+    subAgentManager,
+    noopSkillManager,
+    approvalService,
+    toolRegistry,
+    memoryEngine,
+    modelProvider,
+    summarizeFn,
+    setExecuteTask(fn: ExecuteTaskFn) {
+      currentExecuteTask = fn;
+    },
+  };
+}
+
+// ============ Phase: Per-Role Services ============
+
+async function initRoleServices(
+  options: BootstrapFullOptions,
+  foundation: Foundation,
+  shared: SharedInfra,
+): Promise<Map<string, RoleServices>> {
+  const loader = new RoleLoader(options.personasDir);
+  const roles = new Map<string, RoleServices>();
+  const contextConfig = foundation.config.get("context");
 
   for (const roleId of options.roles) {
     try {
       const roleConfig = await loader.load(roleId);
       const identity = roleConfigToIdentity(roleConfig);
 
+      // Per-role ContextManagerOptions (different identityContent per role)
+      const identityContent = [
+        identity.soul,
+        JSON.stringify(identity.persona),
+        identity.loreCore,
+      ].join("\n");
+
+      const contextManagerOptions = {
+        totalContextTokens: 128000,
+        identityContent,
+        safetyMarginTokens: Math.floor(128000 * contextConfig.safetyMargin),
+        tokenEstimateDivisor: contextConfig.tokenEstimateDivisor,
+      };
+
       const services: PlatformServices = {
-        context: createNoopContextManagerPort(),
-        tools: createNoopToolExecutorPort(),
-        skills: noopSkillManager,
-        subAgents: subAgentManager,
+        context: new ContextManagerAdapter(contextManagerOptions, shared.summarizeFn),
+        tools: new ToolExecutorAdapter(shared.toolRegistry),
+        skills: shared.noopSkillManager,
+        subAgents: shared.subAgentManager,
         permission: new PermissionAdapter(foundation.permissions),
-        approval: createNoopApprovalPort(),
+        approval: new ApprovalAdapter(shared.approvalService),
         tracing: new TracingAdapter(foundation.tracing),
-        memory: createNoopMemoryPort(),
-        llm: createNoopLLMProviderPort(),
+        memory: new MemoryAdapter(shared.memoryEngine),
+        llm: shared.modelProvider !== null
+          ? new LLMProviderAdapter(shared.modelProvider)
+          : createNoopLLMProviderPort(),
       };
 
       roles.set(roleId, { identity, services });
@@ -260,8 +398,15 @@ export async function bootstrapFull(
     }
   }
 
-  // ============ Background Services (Phase 5a/5b/5c/5d/5e) ============
+  return roles;
+}
 
+// ============ Phase: Background Services ============
+
+function initBackgroundServices(
+  options: BootstrapFullOptions,
+  foundation: Foundation,
+): BackgroundServices {
   // Tracing wrapper that auto-adds timestamp for background services
   const bgTracing = {
     log(event: unknown): void {
@@ -369,17 +514,33 @@ export async function bootstrapFull(
     await evolution.executeRoutine(routine.id, routine.name);
   });
 
-  const background: BackgroundServices = {
-    eventBus,
-    scheduler,
-    routineSystem,
-    pipeline,
-    evolution,
-  };
+  return { eventBus, scheduler, routineSystem, pipeline, evolution };
+}
 
-  // ============ Browser Service (Phase 6a: WB-1~7) ============
+// ============ BootstrapFull (Orchestrator) ============
 
-  // 可选初始化: 仅当 browserUse 配置存在时创建 (lazy init — 首次工具调用时启动 Chromium)
+/**
+ * 完整启动序列: Foundation → SharedInfra → RoleServices → Background → Browser
+ *
+ * Phase 4c: 扩展 bootstrap() 以创建每个角色的 PlatformServices
+ * C3: 拆分为 4 个 phase 函数，bootstrapFull 仅做编排
+ */
+export async function bootstrapFull(
+  options: BootstrapFullOptions,
+): Promise<BootstrapResult> {
+  // Phase 1: Foundation (ConfigManager → TracingService → RoleDataStore → PermissionService)
+  const foundation = await bootstrap(options);
+
+  // Phase 2: Shared infrastructure (SubAgentManager, ModelProvider, adapters)
+  const shared = initSharedInfra(foundation);
+
+  // Phase 3: Per-role Identity + PlatformServices
+  const roles = await initRoleServices(options, foundation, shared);
+
+  // Phase 4: Background services (EventBus, Scheduler, RoutineSystem, Evolution)
+  const background = initBackgroundServices(options, foundation);
+
+  // Phase 5: Browser service (optional, lazy init)
   const browserUseConfig = foundation.config.get("browserUse");
   const browserService: IBrowserService | null = browserUseConfig
     ? createBrowserService(browserUseConfig)
@@ -390,17 +551,15 @@ export async function bootstrapFull(
     roles,
     background,
     browserService,
-    setExecuteTask(fn: ExecuteTaskFn) {
-      currentExecuteTask = fn;
-    },
+    setExecuteTask: shared.setExecuteTask,
     shutdown() {
       if (browserService) {
         browserService.close().catch(() => {/* graceful: ignore close errors */});
       }
-      evolution.dispose();
-      routineSystem.dispose();
-      scheduler.dispose();
-      eventBus.dispose();
+      background.evolution.dispose();
+      background.routineSystem.dispose();
+      background.scheduler.dispose();
+      background.eventBus.dispose();
       foundation.shutdown();
     },
   };
@@ -465,7 +624,7 @@ function flattenReactions(
   return result;
 }
 
-// ============ Noop Port Factories ============
+// ============ Noop Port Factories (exported for tests + graceful degradation) ============
 
 /**
  * In-memory SQLite for MutationPipeline when no RoleDataStore available
@@ -492,7 +651,7 @@ function createNoopSkillManagerPort(): SkillManagerPort {
   };
 }
 
-function createNoopContextManagerPort(): ContextManagerPort {
+export function createNoopContextManagerPort(): ContextManagerPort {
   return {
     assemblePrompt: async () => [],
     checkBudget: () => ({
@@ -519,7 +678,7 @@ function createNoopContextManagerPort(): ContextManagerPort {
   };
 }
 
-function createNoopToolExecutorPort(): ToolExecutorPort {
+export function createNoopToolExecutorPort(): ToolExecutorPort {
   return {
     execute: async (toolCall) => ({
       callId: toolCall.id,
@@ -534,7 +693,7 @@ function createNoopToolExecutorPort(): ToolExecutorPort {
   };
 }
 
-function createNoopApprovalPort(): ApprovalPort {
+export function createNoopApprovalPort(): ApprovalPort {
   return {
     requestApproval: async () => "noop",
     awaitResponse: async (approvalId) => ({
@@ -547,7 +706,7 @@ function createNoopApprovalPort(): ApprovalPort {
   };
 }
 
-function createNoopMemoryPort(): MemoryPort {
+export function createNoopMemoryPort(): MemoryPort {
   return {
     recall: async () => [],
     store: async () => {},

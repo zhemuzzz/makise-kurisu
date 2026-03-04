@@ -8,9 +8,23 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ContextManagerAdapter } from "../../../src/platform/adapters/context-manager-adapter.js";
 import type { ContextManagerPort, BudgetCheckResult, ProcessedOutput, CompactResult, ContextStats } from "../../../src/agent/ports/platform-services.js";
-import type { ContextManager, AssembledPrompt, BudgetStatus, ContextMetrics, ContextBlock } from "../../../src/platform/context-manager.js";
+import type { ContextManager, AssembledPrompt, BudgetStatus, ContextMetrics, ContextBlock, ContextManagerOptions } from "../../../src/platform/context-manager.js";
 import type { AgentInput, AgentConfig, LLMMessage, MentalModelSnapshot } from "../../../src/agent/types.js";
 import type { ToolResult } from "../../../src/platform/tools/types.js";
+
+// ============================================================================
+// Mock createContextManager so the adapter uses our mock CM
+// ============================================================================
+
+let mockCmInstance: ContextManager;
+
+vi.mock("../../../src/platform/context-manager.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../src/platform/context-manager.js")>();
+  return {
+    ...actual,
+    createContextManager: vi.fn(() => mockCmInstance),
+  };
+});
 
 // ============================================================================
 // Test Helpers
@@ -131,17 +145,26 @@ const minimalConfig: AgentConfig = {
   debugEnabled: false,
 };
 
+const testOptions: ContextManagerOptions = {
+  totalContextTokens: 8000,
+  identityContent: "test identity",
+  safetyMarginTokens: 500,
+};
+
 // ============================================================================
 // Tests
 // ============================================================================
 
 describe("ContextManagerAdapter", () => {
-  let adapter: ContextManagerPort;
+  let adapter: ContextManagerPort & { destroySession(sessionId: string): void };
   let mock: ReturnType<typeof createMockContextManager>;
 
   beforeEach(() => {
     mock = createMockContextManager();
-    adapter = new ContextManagerAdapter(mock.cm, async (text) => `Summary: ${text.slice(0, 20)}`);
+    // Set the mock CM so createContextManager returns it
+    mockCmInstance = mock.cm;
+    adapter = new ContextManagerAdapter(testOptions, async (text) => `Summary: ${text.slice(0, 20)}`);
+    // Trigger session creation by calling assemblePrompt once (or calling getOrCreateCm via assemblePrompt)
   });
 
   describe("assemblePrompt", () => {
@@ -498,6 +521,43 @@ describe("ContextManagerAdapter", () => {
       expect(stats.totalTokens).toBe(8000);
       expect(stats.compactCount).toBe(1);
       expect(stats.priorityDistribution).toBeDefined();
+    });
+  });
+
+  describe("session isolation", () => {
+    it("should create separate ContextManager per session", async () => {
+      const { createContextManager } = await import("../../../src/platform/context-manager.js");
+      const createCmFn = createContextManager as unknown as ReturnType<typeof vi.fn>;
+
+      // Reset call count
+      createCmFn.mockClear();
+
+      const input = createMinimalAgentInput();
+
+      // Session A
+      await adapter.assemblePrompt(input, { ...minimalConfig, sessionId: "session-A" });
+      // Session B
+      await adapter.assemblePrompt(input, { ...minimalConfig, sessionId: "session-B" });
+      // Session A again (should reuse)
+      await adapter.assemblePrompt(input, { ...minimalConfig, sessionId: "session-A" });
+
+      // createContextManager should be called 2 times (once per unique session)
+      expect(createCmFn).toHaveBeenCalledTimes(2);
+    });
+
+    it("should clean up session on destroySession", async () => {
+      const { createContextManager } = await import("../../../src/platform/context-manager.js");
+      const createCmFn = createContextManager as unknown as ReturnType<typeof vi.fn>;
+      createCmFn.mockClear();
+
+      const input = createMinimalAgentInput();
+
+      await adapter.assemblePrompt(input, { ...minimalConfig, sessionId: "sess-x" });
+      adapter.destroySession("sess-x");
+      // After destroy, re-accessing should create a new CM
+      await adapter.assemblePrompt(input, { ...minimalConfig, sessionId: "sess-x" });
+
+      expect(createCmFn).toHaveBeenCalledTimes(2);
     });
   });
 });

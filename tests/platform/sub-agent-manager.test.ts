@@ -137,20 +137,24 @@ describe("SubAgentManager", () => {
       expect(result.error!.message).toContain("Task failed");
     });
 
-    it("should update status to completed on success", async () => {
+    it("should clean up entry after successful await (C1 fix)", async () => {
       const id = await manager.spawn(createConfig());
       await manager.awaitResult(id);
 
-      expect(manager.getStatus(id)).toBe("completed");
+      // Entry cleaned up → getStatus returns default "pending"
+      expect(manager.getStatus(id)).toBe("pending");
+      // Active count should be 0
+      expect(manager.getActiveCount("sess-1")).toBe(0);
     });
 
-    it("should update status to failed on error", async () => {
+    it("should clean up entry after failed await (C1 fix)", async () => {
       executeTask.mockRejectedValue(new Error("boom"));
 
       const id = await manager.spawn(createConfig());
       await manager.awaitResult(id);
 
-      expect(manager.getStatus(id)).toBe("failed");
+      // Entry cleaned up
+      expect(manager.getStatus(id)).toBe("pending");
     });
 
     it("should throw for unknown sub-agent ID", async () => {
@@ -178,7 +182,7 @@ describe("SubAgentManager", () => {
   });
 
   describe("abort", () => {
-    it("should abort a running sub-agent", async () => {
+    it("should abort a running sub-agent and clean up entry (C1 fix)", async () => {
       executeTask.mockImplementation(
         () => new Promise(() => {}), // Never resolves
       );
@@ -187,7 +191,9 @@ describe("SubAgentManager", () => {
       const aborted = await manager.abort(id);
 
       expect(aborted).toBe(true);
-      expect(manager.getStatus(id)).toBe("aborted");
+      // Entry cleaned up after abort
+      expect(manager.getStatus(id)).toBe("pending");
+      expect(manager.getActiveCount("sess-1")).toBe(0);
     });
 
     it("should return false for unknown sub-agent", async () => {

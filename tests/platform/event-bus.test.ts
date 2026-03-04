@@ -3,16 +3,18 @@
  * TDD: RED → GREEN → IMPROVE
  *
  * SC-4: 进程内轻量事件总线
+ * B3: BusEventMap 类型安全
  */
 
 import { describe, it, expect, vi } from "vitest";
+import type { BusEventMap } from "@/platform/event-bus";
 
 describe("EventBus", () => {
-  it("EB-01: emit/on — handler 收到正确 payload", async () => {
+  it("EB-01: emit/on — handler 收到正确 typed payload", async () => {
     const { createEventBus } = await import("@/platform/event-bus");
     const bus = createEventBus();
 
-    const handler = vi.fn();
+    const handler = vi.fn<[BusEventMap["session:end"]]>();
     bus.on("session:end", handler);
     bus.emit("session:end", { sessionId: "sess-1", reason: "timeout" });
 
@@ -26,11 +28,11 @@ describe("EventBus", () => {
     const { createEventBus } = await import("@/platform/event-bus");
     const bus = createEventBus();
 
-    const handler1 = vi.fn();
-    const handler2 = vi.fn();
+    const handler1 = vi.fn<[BusEventMap["reply:sent"]]>();
+    const handler2 = vi.fn<[BusEventMap["reply:sent"]]>();
     bus.on("reply:sent", handler1);
     bus.on("reply:sent", handler2);
-    bus.emit("reply:sent", { content: "hello" });
+    bus.emit("reply:sent", { sessionId: "s1", content: "hello" });
 
     expect(handler1).toHaveBeenCalledOnce();
     expect(handler2).toHaveBeenCalledOnce();
@@ -42,8 +44,8 @@ describe("EventBus", () => {
     const { createEventBus } = await import("@/platform/event-bus");
     const bus = createEventBus();
 
-    const handler1 = vi.fn();
-    const handler2 = vi.fn();
+    const handler1 = vi.fn<[BusEventMap["role:start"]]>();
+    const handler2 = vi.fn<[BusEventMap["role:start"]]>();
     bus.on("role:start", handler1);
     bus.on("role:start", handler2);
     bus.off("role:start", handler1);
@@ -55,10 +57,11 @@ describe("EventBus", () => {
     bus.dispose();
   });
 
-  it("EB-04: emit 无监听者不抛异常", async () => {
+  it("EB-04: emit 无监听者不抛异常（未知事件 → unknown payload）", async () => {
     const { createEventBus } = await import("@/platform/event-bus");
     const bus = createEventBus();
 
+    // String literal outside BusEventMap → payload is unknown
     expect(() => bus.emit("nonexistent:event", { data: 42 })).not.toThrow();
 
     bus.dispose();
@@ -73,8 +76,8 @@ describe("EventBus", () => {
     bus.on("role:stop", handler);
     bus.dispose();
 
-    bus.emit("session:end", {});
-    bus.emit("role:stop", {});
+    bus.emit("session:end", { sessionId: "s1", reason: "test" });
+    bus.emit("role:stop", { roleId: "kurisu" });
 
     expect(handler).not.toHaveBeenCalled();
   });

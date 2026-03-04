@@ -246,7 +246,8 @@ executor:
 version: "1.0"
 defaultLevel: confirm
 tools:
-  safe: []
+  safe:
+    - test-tool
   confirm: []
   deny: []
 paths:

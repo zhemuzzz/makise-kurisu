@@ -49,14 +49,11 @@ interface SubAgentEntry {
 }
 
 // ============================================================================
-// ID Generator
+// ID Generator (SA-1: crypto.randomUUID)
 // ============================================================================
 
-let nextId = 0;
-
 function generateSubAgentId(): string {
-  nextId++;
-  return `sub-${Date.now()}-${nextId}`;
+  return `sub-${crypto.randomUUID()}`;
 }
 
 // ============================================================================
@@ -119,14 +116,20 @@ export class SubAgentManager implements SubAgentManagerPort {
     }
 
     // SA-3: Race with AbortSignal for timeout
+    let result: SubAgentResult;
     if (signal) {
-      return Promise.race([
+      result = await Promise.race([
         entry.resultPromise,
         this.abortOnSignal(subAgentId, signal),
       ]);
+    } else {
+      result = await entry.resultPromise;
     }
 
-    return entry.resultPromise;
+    // C1 fix: clean up terminal entries after await
+    this.entries.delete(subAgentId);
+
+    return result;
   }
 
   // --------------------------------------------------------------------------
@@ -140,6 +143,8 @@ export class SubAgentManager implements SubAgentManagerPort {
 
     entry.abortController.abort();
     entry.status = "aborted";
+    // C1 fix: clean up aborted entry
+    this.entries.delete(subAgentId);
     return true;
   }
 

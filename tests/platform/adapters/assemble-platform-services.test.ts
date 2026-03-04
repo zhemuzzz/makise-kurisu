@@ -12,12 +12,14 @@ import {
 import type { PlatformServices } from "../../../src/agent/ports/platform-services.js";
 
 // ============================================================================
-// Test Helpers
+// Mock createContextManager
 // ============================================================================
 
-function createMockDependencies(): PlatformDependencies {
+vi.mock("../../../src/platform/context-manager.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../src/platform/context-manager.js")>();
   return {
-    contextManager: {
+    ...actual,
+    createContextManager: vi.fn(() => ({
       assemblePrompt: vi.fn().mockReturnValue({ included: [], skipped: [], tokenUsage: { total: 0, perBlock: new Map() } }),
       processToolResult: vi.fn().mockReturnValue({ content: "", truncated: false, originalLength: 0 }),
       processLLMOutput: vi.fn().mockReturnValue({ content: "" }),
@@ -28,7 +30,21 @@ function createMockDependencies(): PlatformDependencies {
       recordIteration: vi.fn(),
       recordToolCall: vi.fn(),
       updateTokenUsage: vi.fn(),
-    } as unknown as PlatformDependencies["contextManager"],
+    })),
+  };
+});
+
+// ============================================================================
+// Test Helpers
+// ============================================================================
+
+function createMockDependencies(): PlatformDependencies {
+  return {
+    contextManagerOptions: {
+      totalContextTokens: 8000,
+      identityContent: "test identity",
+      safetyMarginTokens: 500,
+    },
 
     toolRegistry: {
       execute: vi.fn(),

@@ -492,141 +492,23 @@ export async function* reactLoop(
       break;
     }
 
-    // 执行工具
-    let batchCancelled = false;
-    for (const toolCall of pendingToolCalls) {
-      // H3: 取消同批次剩余工具
-      if (batchCancelled) {
-        messages.push({
-          role: "tool",
-          content: JSON.stringify({ success: false, error: "Cancelled: batch permission denied" }),
-          toolCallId: toolCall.id,
-        });
-        yield createEvent("tool_end", {
-          toolName: toolCall.name,
-          result: { success: false, errorCode: "PERMISSION_DENIED", errorMessage: "Batch cancelled" },
-        });
-        continue;
-      }
+    // 执行工具 (C2: parallel for all-safe batches)
+    const toolResults = await executeToolBatch(
+      pendingToolCalls,
+      config,
+      services,
+      state,
+      signal,
+    );
 
-      yield createEvent("tool_start", {
-        toolName: toolCall.name,
-        args: toolCall.arguments,
-      });
-
-      const startTime = Date.now();
-      let result: ToolResult;
-
-      try {
-        // 权限检查
-        const permission = await services.permission.check(
-          toolCall.name,
-          toolCall.arguments,
-          config.sessionId,
-        );
-
-        // TODO(H5): 后台模式权限策略 — 不同任务类型需要不同权限级别，
-        // 需要与 Scheduler/Background System 联动设计，留到 Background System 阶段实现
-
-        if (permission.level === "deny") {
-          batchCancelled = true;
-          result = {
-            callId: toolCall.id,
-            toolName: toolCall.name,
-            success: false,
-            output: null,
-            error: permission.reason ?? "Permission denied",
-            latency: 0,
-          };
-        } else if (permission.level === "confirm") {
-          // 用户确认流程
-          const approvalId = await services.approval.requestApproval({
-            sessionId: config.sessionId,
-            toolName: toolCall.name,
-            args: toolCall.arguments,
-            reason: `需要确认才能执行 ${toolCall.name}`,
-            ...(permission.note ? { riskDescription: permission.note } : {}),
-          });
-
-          const approval = await services.approval.awaitResponse(
-            approvalId,
-            signal,
-          );
-
-          if (approval.action !== "approve") {
-            batchCancelled = true;
-            const errorMsg =
-              approval.action === "timeout"
-                ? "Confirmation timeout"
-                : "User rejected";
-            result = {
-              callId: toolCall.id,
-              toolName: toolCall.name,
-              success: false,
-              output: null,
-              error: errorMsg,
-              latency: 0,
-            };
-          } else {
-            // 用户确认后执行
-            result = await services.tools.execute(
-              toolCall,
-              config.sessionId,
-              signal,
-            );
-          }
-        } else {
-          // safe: 直接执行
-          result = await services.tools.execute(
-            toolCall,
-            config.sessionId,
-            signal,
-          );
-        }
-      } catch (error) {
-        const classified = classifyError(error);
-        result = {
-          callId: toolCall.id,
-          toolName: toolCall.name,
-          success: false,
-          output: null,
-          error: classified.message,
-          latency: 0,
-        };
-      }
-
-      const duration = Date.now() - startTime;
-
-      // 记录工具调用
-      state.toolCalls.push({
-        toolName: toolCall.name,
-        args: toolCall.arguments,
-        result,
-        duration,
-      });
-
-      // 处理工具结果（PersonaWrapper 视角转换）
-      const processedContent = services.context.processToolResult(
-        result,
-        toolCall.name,
-      );
-
-      yield createEvent("tool_end", {
-        toolName: toolCall.name,
-        result: result.success
-          ? { success: true }
-          : {
-              success: false,
-              errorCode: "EXECUTION_FAILED",
-              errorMessage: result.error ?? "Execution failed",
-            },
-      });
+    for (const tr of toolResults) {
+      yield* tr.events;
 
       // 注入工具结果到 messages
       messages.push({
         role: "tool",
-        content: processedContent,
-        toolCallId: toolCall.id,
+        content: tr.processedContent,
+        toolCallId: tr.toolCall.id,
       });
     }
 
@@ -675,12 +557,229 @@ export async function* reactLoop(
 }
 
 // ============================================================================
-// 辅助函数
+// 工具批量执行 (C2: parallel for all-safe batches)
 // ============================================================================
 
+interface ToolBatchResult {
+  readonly toolCall: ToolCall;
+  readonly events: AgentEvent[];
+  readonly processedContent: string;
+}
+
 /**
- * 构建统计信息
+ * 执行一批工具调用
+ *
+ * 策略:
+ * 1. 先检查所有工具的权限
+ * 2. 如果全部是 safe → Promise.all 并行执行
+ * 3. 如果有 confirm/deny → 顺序执行 (保留 H3 batch cancel)
  */
+async function executeToolBatch(
+  toolCalls: ToolCall[],
+  config: AgentConfig,
+  services: PlatformServices,
+  state: ReactLoopState,
+  signal?: AbortSignal,
+): Promise<ToolBatchResult[]> {
+  // Phase 1: Check permissions for all tools
+  const permissions = await Promise.all(
+    toolCalls.map((tc) =>
+      services.permission.check(tc.name, tc.arguments, config.sessionId),
+    ),
+  );
+
+  const allSafe = permissions.every((p) => p.level === "allow");
+
+  if (allSafe && toolCalls.length > 1) {
+    // Phase 2a: Parallel execution for all-safe batch
+    return executeToolsParallel(toolCalls, config, services, state, signal);
+  }
+
+  // Phase 2b: Sequential execution (with H3 batch cancel)
+  return executeToolsSequential(toolCalls, permissions, config, services, state, signal);
+}
+
+async function executeToolsParallel(
+  toolCalls: ToolCall[],
+  config: AgentConfig,
+  services: PlatformServices,
+  state: ReactLoopState,
+  signal?: AbortSignal,
+): Promise<ToolBatchResult[]> {
+  const results = await Promise.all(
+    toolCalls.map(async (toolCall): Promise<ToolBatchResult> => {
+      const events: AgentEvent[] = [];
+      events.push(createEvent("tool_start", {
+        toolName: toolCall.name,
+        args: toolCall.arguments,
+      }));
+
+      const startTime = Date.now();
+      let result: ToolResult;
+
+      try {
+        result = await services.tools.execute(toolCall, config.sessionId, signal);
+      } catch (error) {
+        const classified = classifyError(error);
+        result = {
+          callId: toolCall.id,
+          toolName: toolCall.name,
+          success: false,
+          output: null,
+          error: classified.message,
+          latency: 0,
+        };
+      }
+
+      const duration = Date.now() - startTime;
+
+      state.toolCalls.push({
+        toolName: toolCall.name,
+        args: toolCall.arguments,
+        result,
+        duration,
+      });
+
+      const processedContent = services.context.processToolResult(result, toolCall.name);
+
+      events.push(createEvent("tool_end", {
+        toolName: toolCall.name,
+        result: result.success
+          ? { success: true }
+          : {
+              success: false,
+              errorCode: "EXECUTION_FAILED",
+              errorMessage: result.error ?? "Execution failed",
+            },
+      }));
+
+      return { toolCall, events, processedContent };
+    }),
+  );
+
+  return results;
+}
+
+async function executeToolsSequential(
+  toolCalls: ToolCall[],
+  permissions: Awaited<ReturnType<PlatformServices["permission"]["check"]>>[],
+  config: AgentConfig,
+  services: PlatformServices,
+  state: ReactLoopState,
+  signal?: AbortSignal,
+): Promise<ToolBatchResult[]> {
+  const results: ToolBatchResult[] = [];
+  let batchCancelled = false;
+
+  for (let i = 0; i < toolCalls.length; i++) {
+    const toolCall = toolCalls[i]!;
+    const permission = permissions[i]!;
+    const events: AgentEvent[] = [];
+
+    // H3: 取消同批次剩余工具
+    if (batchCancelled) {
+      events.push(createEvent("tool_end", {
+        toolName: toolCall.name,
+        result: { success: false, errorCode: "PERMISSION_DENIED", errorMessage: "Batch cancelled" },
+      }));
+
+      const processedContent = JSON.stringify({ success: false, error: "Cancelled: batch permission denied" });
+      results.push({ toolCall, events, processedContent });
+      continue;
+    }
+
+    events.push(createEvent("tool_start", {
+      toolName: toolCall.name,
+      args: toolCall.arguments,
+    }));
+
+    const startTime = Date.now();
+    let result: ToolResult;
+
+    try {
+      // TODO(H5): 后台模式权限策略
+
+      if (permission.level === "deny") {
+        batchCancelled = true;
+        result = {
+          callId: toolCall.id,
+          toolName: toolCall.name,
+          success: false,
+          output: null,
+          error: permission.reason ?? "Permission denied",
+          latency: 0,
+        };
+      } else if (permission.level === "confirm") {
+        const approvalId = await services.approval.requestApproval({
+          sessionId: config.sessionId,
+          toolName: toolCall.name,
+          args: toolCall.arguments,
+          reason: `需要确认才能执行 ${toolCall.name}`,
+          ...(permission.note ? { riskDescription: permission.note } : {}),
+        });
+
+        const approval = await services.approval.awaitResponse(approvalId, signal);
+
+        if (approval.action !== "approve") {
+          batchCancelled = true;
+          const errorMsg = approval.action === "timeout" ? "Confirmation timeout" : "User rejected";
+          result = {
+            callId: toolCall.id,
+            toolName: toolCall.name,
+            success: false,
+            output: null,
+            error: errorMsg,
+            latency: 0,
+          };
+        } else {
+          result = await services.tools.execute(toolCall, config.sessionId, signal);
+        }
+      } else {
+        result = await services.tools.execute(toolCall, config.sessionId, signal);
+      }
+    } catch (error) {
+      const classified = classifyError(error);
+      result = {
+        callId: toolCall.id,
+        toolName: toolCall.name,
+        success: false,
+        output: null,
+        error: classified.message,
+        latency: 0,
+      };
+    }
+
+    const duration = Date.now() - startTime;
+
+    state.toolCalls.push({
+      toolName: toolCall.name,
+      args: toolCall.arguments,
+      result,
+      duration,
+    });
+
+    const processedContent = services.context.processToolResult(result, toolCall.name);
+
+    events.push(createEvent("tool_end", {
+      toolName: toolCall.name,
+      result: result.success
+        ? { success: true }
+        : {
+            success: false,
+            errorCode: "EXECUTION_FAILED",
+            errorMessage: result.error ?? "Execution failed",
+          },
+    }));
+
+    results.push({ toolCall, events, processedContent });
+  }
+
+  return results;
+}
+
+// ============================================================================
+// buildStats + handleDegradation
+// ============================================================================
 function buildStats(state: ReactLoopState): AgentStats {
   return {
     iterations: state.iterations,

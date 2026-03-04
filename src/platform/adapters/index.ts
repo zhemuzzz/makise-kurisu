@@ -19,7 +19,7 @@
 
 import type { PlatformServices } from "../../agent/ports/platform-services.js";
 import type { SkillManagerPort } from "../../agent/ports/platform-services.js";
-import type { ContextManager } from "../context-manager.js";
+import type { ContextManagerOptions } from "../context-manager.js";
 import type { ToolRegistry } from "../tools/registry.js";
 import type { HybridMemoryEngine } from "../memory/hybrid-engine.js";
 import type { IModelProvider } from "../models/types.js";
@@ -49,7 +49,7 @@ export { LLMProviderAdapter } from "./llm-provider-adapter.js";
 
 /** Platform 依赖 (注入到 assemblePlatformServices) */
 export interface PlatformDependencies {
-  readonly contextManager: ContextManager;
+  readonly contextManagerOptions: ContextManagerOptions;
   readonly toolRegistry: ToolRegistry;
   readonly skillManager: SkillManagerPort;
   readonly subAgentManager: SubAgentManager;
@@ -90,7 +90,7 @@ export function assemblePlatformServices(
   deps: PlatformDependencies,
 ): PlatformServices {
   return {
-    context: new ContextManagerAdapter(deps.contextManager, deps.summarizeFn),
+    context: new ContextManagerAdapter(deps.contextManagerOptions, deps.summarizeFn),
     tools: new ToolExecutorAdapter(deps.toolRegistry),
     skills: deps.skillManager,
     subAgents: deps.subAgentManager,
