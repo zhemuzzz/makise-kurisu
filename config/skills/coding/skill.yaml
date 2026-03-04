@@ -1,0 +1,48 @@
+id: coding
+name: 编程助手
+description: 代码编写、命令执行、项目构建、调试排错
+version: "1.0"
+type: hybrid
+category: system
+
+trigger:
+  commands: [/code, /coding, /run, /shell]
+
+context: |
+  编程辅助工具，支持文件操作和命令执行。
+  | 场景 | 工具 | 说明 |
+  |------|------|------|
+  | 读写文件 | read_file / write_file | 文件操作 |
+  | 目录浏览 | list_directory / search_files | 查找文件 |
+  | 执行命令 | execute_command | 运行 shell 命令 |
+  | 平台信息 | get_platform_info | 获取系统环境 |
+
+  优先使用 read_file/write_file 操作文件。
+  execute_command 用于构建、测试、git 等 shell 操作。
+
+examples:
+  - user: "运行项目的测试"
+    assistant: "好的，我来运行测试。"
+    toolCalls:
+      - name: execute_command
+        arguments:
+          command: "pnpm"
+          args: ["test"]
+
+  - user: "查看项目结构"
+    assistant: "让我看看项目目录..."
+    toolCalls:
+      - name: list_directory
+        arguments:
+          path: "."
+
+tools:
+  servers:
+    - server: filesystem
+    - server: shell
+      include:
+        - execute_command
+        - get_platform_info
+
+requires:
+  bins: [npx]

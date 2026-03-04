@@ -56,6 +56,15 @@ servers:
     env:
       TAVILY_API_KEY: "${TAVILY_API_KEY}"
 
+  # Shell 命令执行（安全白名单机制）
+  # 用于 coding
+  shell:
+    command: npx
+    args:
+      - "-y"
+      - "super-shell-mcp@latest"
+    cwd: "${WORKING_DIR}"
+
   # 网页抓取
   # 用于 web-search
   fetch:
