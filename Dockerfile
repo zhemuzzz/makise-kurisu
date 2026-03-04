@@ -8,14 +8,15 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Install build dependencies
-RUN apk add --no-cache python3 make g++
+# Install build dependencies + pnpm
+RUN apk add --no-cache python3 make g++ && \
+    corepack enable && corepack prepare pnpm@9 --activate
 
 # Copy package files
-COPY package*.json ./
+COPY package.json pnpm-lock.yaml ./
 
 # Install all dependencies
-RUN npm ci
+RUN pnpm install --frozen-lockfile
 
 # Copy source code and config
 COPY tsconfig.json ./
@@ -67,4 +68,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 ENTRYPOINT ["/sbin/tini", "--"]
 
 # Default command: HTTP server (using tsx runtime)
-CMD ["npx", "tsx", "src/bin/server.ts"]
+CMD ["npx", "tsx", "src/platform/gateway/server.ts"]
