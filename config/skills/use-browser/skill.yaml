@@ -1,0 +1,49 @@
+id: use-browser
+name: 浏览器操作
+description: 网页浏览、信息提取、表单填写、自主多步骤浏览任务
+version: "4.0"
+type: tool
+category: system
+
+trigger:
+  commands: [/browse, /web]
+
+context: |
+  浏览器操作工具，支持自然语言控制。
+  | 场景 | 工具 | 说明 |
+  |------|------|------|
+  | 打开网页 | browser_navigate | 导航到指定 URL |
+  | 简单操作 | browser_act | 点击、输入等单步操作 |
+  | 读取内容 | browser_extract | 结构化提取页面数据 |
+  | 查看元素 | browser_observe | 识别页面可交互元素 |
+  | 复杂任务 | browser_agent | 多步骤自主浏览（搜索+比较等） |
+
+  选择 browser_act vs browser_agent:
+  - 单步明确操作（点击按钮、输入文字）→ browser_act
+  - 多步骤目标导向任务（搜索并比较、填写多页表单）→ browser_agent
+
+examples:
+  - user: "帮我打开 GitHub"
+    assistant: "好的，我来打开 GitHub 首页。"
+    toolCalls:
+      - name: browser_navigate
+        arguments:
+          url: "https://github.com"
+
+  - user: "页面上有哪些按钮？"
+    assistant: "让我看看页面上的可交互元素..."
+    toolCalls:
+      - name: browser_observe
+        arguments:
+          instruction: "find all clickable buttons"
+
+tools:
+  builtin:
+    - browser_navigate
+    - browser_act
+    - browser_extract
+    - browser_observe
+    - browser_agent
+    - browser_screenshot
+    - browser_get_url
+    - browser_scroll

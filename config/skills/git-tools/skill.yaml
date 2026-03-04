@@ -1,0 +1,62 @@
+id: git-tools
+name: Git 操作
+description: Git 版本控制：查看状态/日志/差异，提交/推送/分支管理
+version: "2.1"
+type: hybrid
+category: development
+
+trigger:
+  commands:
+    - /git
+    - /commit
+    - /push
+
+context: |
+  用户需要执行 Git 版本控制操作。
+
+  ## 工具概览
+  - 查看类（safe）：git_status, git_log, git_branch, git_diff, git_show, git_blame
+  - 修改类（confirm）：git_add, git_commit, git_checkout, git_create_branch, git_push
+  - 高级类（confirm）：git_stash, git_merge, git_rebase, git_tag
+
+  ## 注意事项
+  - 写操作需要用户确认
+  - 先查看状态再执行操作
+  - commit message 要清晰描述变更内容
+
+examples:
+  - user: "帮我看看这个仓库的状态"
+    assistant: "好，让我看看..."
+    toolCalls:
+      - name: git_status
+        arguments:
+          repo_path: "."
+
+  - user: "帮我提交这些更改"
+    assistant: "先看看改了什么..."
+    toolCalls:
+      - name: git_status
+        arguments:
+          repo_path: "."
+
+tools:
+  server: git
+  include:
+    - git_status
+    - git_log
+    - git_branch
+    - git_diff
+    - git_show
+    - git_blame
+    - git_add
+    - git_commit
+    - git_reset
+    - git_create_branch
+    - git_checkout
+    - git_stash
+    - git_merge
+    - git_fetch
+    - git_pull
+    - git_push
+    - git_tag
+    - git_reflog

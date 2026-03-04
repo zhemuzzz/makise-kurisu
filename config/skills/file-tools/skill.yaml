@@ -1,0 +1,32 @@
+id: file-tools
+name: 文件操作
+description: 读写文件、浏览目录、移动/复制/删除文件等文件系统操作
+version: "2.1"
+type: hybrid
+category: system
+
+trigger:
+  commands: []
+
+context: |
+  用户需要操作文件系统。
+  - 写入操作需要用户确认
+  - 先读取再修改，避免覆盖重要内容
+
+examples:
+  - user: "帮我读取 config.yaml"
+    assistant: "让我看看这个文件..."
+    toolCalls:
+      - name: read_text_file
+        arguments:
+          path: "config.yaml"
+
+  - user: "查看当前目录下有什么文件"
+    assistant: "看好了。"
+    toolCalls:
+      - name: list_directory
+        arguments:
+          path: "."
+
+tools:
+  server: filesystem

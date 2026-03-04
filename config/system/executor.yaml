@@ -1,0 +1,72 @@
+# Kurisu 执行器配置
+#
+# Platform Tools: 跨平台工具执行器配置
+
+# 是否自动检测最优执行器
+auto_detect: true
+
+# 手动指定执行器（覆盖自动检测）
+# executor: docker | process | cloud
+
+# 平台特定配置
+platforms:
+  linux:
+    prefer: docker
+    fallback:
+      type: process
+      allow_full_access: false
+
+  macos:
+    prefer: docker
+    fallback:
+      type: process
+      isolation: sandbox-exec
+
+  windows:
+    prefer: docker
+    fallback:
+      type: process
+      allow_full_access: false
+
+  android:
+    prefer: process
+    fallback:
+      type: process
+      isolation: proot
+    workspace: ~/kurisu-workspace
+
+  ios:
+    prefer: cloud
+
+# Docker 配置
+docker:
+  image: kurisu-sandbox:latest
+  sandbox_dir: /tmp/kurisu-workspace
+  allowed_paths:
+    - ~/Documents
+    - ~/Projects
+  memory_limit: 512
+  cpu_limit: 0.5
+  timeout: 30000
+
+# 云端配置
+cloud:
+  endpoint: ${KURISU_CLOUD_ENDPOINT}
+  api_key: ${KURISU_CLOUD_API_KEY}
+  timeout: 30000
+
+# 默认权限
+default_permission: sandbox
+
+# 用户目录权限配置
+restricted:
+  allowed_paths:
+    - ~/Documents
+    - ~/Projects
+    - ~/Downloads
+
+# 审批配置
+approval:
+  timeout: 30000
+  auto_reject_on_timeout: true
+  critical_requires_reason: false

@@ -1,0 +1,79 @@
+# Kurisu Platform 配置
+# 位置: config/system/platform.yaml
+# 参考: config-manager.md (CFG-2, CFG-3)
+
+storage:
+  dataDir: ./data
+  qdrant:
+    host: localhost
+    port: 6333
+
+scheduler:
+  evolutionInterval: 86400000        # 24h
+  heartbeatCheckInterval: 3600000    # 1h
+  ileDecayInterval: 1800000          # 30min
+  telemetryCleanupCron: "0 3 * * *"
+
+context:
+  safetyMargin: 0.2
+  tokenEstimateDivisor: 3
+  maxIterations: 25
+
+executor:
+  type: docker
+  docker:
+    image: kurisu-sandbox:latest
+    memoryLimit: "512m"
+    cpuLimit: "1.0"
+    networkMode: none
+    timeout: 30000
+
+gateway: {}
+  # telegram:
+  #   webhookUrl: (通过 TELEGRAM_WEBHOOK_URL 环境变量设置)
+  # qq:
+  #   host: localhost
+  #   port: 3001
+
+skills:
+  classifierCapability: conversation
+  classifierTimeout: 3000
+  classifierConfidence: 0.6
+  maxActivePerSession: 5
+  knowledgeCapacity: 500
+  knowledgeMaxTokensPerEntry: 2000
+  compensationIntervalMs: 1800000     # 30min
+
+routine:
+  enabled: false
+  enabledSources:
+    - system
+  maxRoutinesPerRole: 50
+  cleanupIntervalMs: 3600000          # 1h
+  defaultPermissionLevel: confirm
+
+evolution:
+  enabled: false
+  reflectionDelayMs: 5000             # 5s
+  reflectionMaxTokens: 4000
+
+mutation:
+  maxPerSubmit: 10
+  validationTimeoutMs: 30000          # 30s
+  codeValidationTimeoutMs: 60000      # 60s
+  logRetentionDays: 90
+  dailyLimit: 100
+  dedupThreshold: 0.85
+  dedupSkipThreshold: 0.95
+
+# browserUse:                          # 可选，配置后启用浏览器功能
+#   env: local
+#   model: "openai/gpt-4o-mini"        # Vercel AI SDK 内置 provider
+#   # model:                           # 或自定义 endpoint
+#   #   modelName: "glm-4-flash"
+#   #   apiKey: "${GLM_API_KEY}"
+#   #   baseURL: "https://open.bigmodel.cn/api/paas/v4"
+#   localBrowserLaunchOptions:
+#     headless: true
+#   selfHeal: true
+#   verbose: 1

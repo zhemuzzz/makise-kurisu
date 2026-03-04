@@ -1,0 +1,65 @@
+# KURISU Global MCP Server Definitions
+#
+# 集中定义所有 MCP Server，供 Skills 通过 server name 引用
+# 好处：
+# 1. 避免重复定义（filesystem 被 file-tools 等多个 skill 共用）
+# 2. 连接池复用（同名 server 只建一次连接）
+# 3. 便于管理和维护
+#
+# 变量说明：
+# - ${WORKING_DIR}：运行时变量，会话工作目录（cd 切换后自动更新）
+# - ${ENV_VAR}：静态环境变量，从 process.env 读取
+
+servers:
+  # 文件系统操作
+  # 用于 file-tools
+  filesystem:
+    command: npx
+    args:
+      - "-y"
+      - "@modelcontextprotocol/server-filesystem"
+      - "${WORKING_DIR}"
+    cwd: "${WORKING_DIR}"
+
+  # Git 版本控制（纯 JS，@cyanheads/git-mcp-server）
+  # 用于 git-tools, 28 个 git 工具
+  # GIT_BASE_DIR 使用运行时变量，会话启动时解析为实际工作目录
+  git:
+    command: npx
+    args:
+      - "-y"
+      - "@cyanheads/git-mcp-server@latest"
+    env:
+      GIT_BASE_DIR: "${WORKING_DIR}"
+      MCP_TRANSPORT_TYPE: stdio
+      MCP_LOG_LEVEL: error
+    cwd: "${WORKING_DIR}"
+
+  # 网页搜索（免费，多引擎）
+  # 用于 web-search
+  open-websearch:
+    command: npx
+    args:
+      - "-y"
+      - "open-websearch@latest"
+    env:
+      DEFAULT_SEARCH_ENGINE: duckduckgo
+      MODE: stdio
+
+  # Tavily 搜索（需要 TAVILY_API_KEY）
+  # 用于 web-search
+  tavily:
+    command: npx
+    args:
+      - "-y"
+      - "tavily-mcp@latest"
+    env:
+      TAVILY_API_KEY: "${TAVILY_API_KEY}"
+
+  # 网页抓取
+  # 用于 web-search
+  fetch:
+    command: npx
+    args:
+      - "-y"
+      - "@kazuph/mcp-fetch"

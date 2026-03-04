@@ -1,0 +1,52 @@
+id: web-search
+name: 网页搜索
+description: 搜索互联网获取实时信息，支持多引擎搜索和网页内容抓取
+version: "2.2"
+type: hybrid
+category: information
+
+trigger:
+  commands:
+    - /search
+    - /查
+
+context: |
+  用户需要从网上获取信息。
+
+  ## 工具选择策略
+  1. **search (open-websearch)** — 首选，免费，多引擎（bing/duckduckgo/brave）
+  2. **tavily-search** — 深度研究，AI 优化结果（需 TAVILY_API_KEY）
+  3. **imageFetch** — 已有具体 URL 时直取网页内容
+
+  ## 注意事项
+  - 不要依赖训练数据回答时效性问题
+  - 搜索后简洁总结关键信息
+
+examples:
+  - user: "查一下今天东京的天气"
+    assistant: "等一下，我看看..."
+    toolCalls:
+      - name: search
+        arguments:
+          query: "东京 天气 今天"
+          engines: ["duckduckgo", "bing"]
+
+  - user: "帮我研究一下 RAG 技术的最新进展"
+    assistant: "研究这种事情倒是不讨厌..."
+    toolCalls:
+      - name: tavily-search
+        arguments:
+          query: "RAG retrieval augmented generation latest advances"
+          search_depth: "advanced"
+
+tools:
+  servers:
+    - server: open-websearch
+      include:
+        - search
+    - server: tavily
+      include:
+        - tavily-search
+    - server: fetch
+      include:
+        - imageFetch

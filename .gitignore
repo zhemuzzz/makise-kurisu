@@ -1,0 +1,61 @@
+# Dependencies
+node_modules/
+
+# Build
+dist/
+*.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Testing
+coverage/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Runtime data (per-role databases, state, knowledge)
+data/
+
+# Claude Code (AI tooling config, not project runtime)
+.claude/
+.claude.json
+.mcp.json
+
+# Project management (development tracking)
+CLAUDE.md
+PROGRESS.md
+
+# npm lockfile (project uses pnpm)
+package-lock.json
+
+# Temporary
+.tmp/
+tmp/
+temp/
+
+# Docker
+.docker/
+
+# Kubernetes
+*.kubeconfig
+kubeconfig*

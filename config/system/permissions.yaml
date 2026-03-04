@@ -1,0 +1,51 @@
+# 权限规则配置
+# 位置: config/system/permissions.yaml
+# 参考: permission-service.md (PS-2)
+
+version: "1.0"
+defaultLevel: confirm
+
+tools:
+  safe:
+    - web_search
+    - fetch
+    - file_read
+    - time
+    - screenshot
+    - memory_read
+  confirm:
+    - shell
+    - file_write
+    - browser
+    - computer_use
+    - skill_manage
+    - subagent_spawn
+  deny:
+    - file_delete
+
+paths:
+  deny:
+    - /etc/**
+    - /usr/**
+    - ~/.ssh/**
+    - ~/.gnupg/**
+  confirm:
+    - ~/Documents/**
+    - ~/Desktop/**
+  allow:
+    - ./data/**
+    - ./config/**
+    - /tmp/kurisu-*/**
+
+shell:
+  denyPatterns:
+    - "rm -rf /"
+    - mkfs
+    - "dd if="
+    - "> /dev/"
+  confirmPatterns:
+    - sudo
+    - chmod
+    - chown
+    - rm
+    - mv

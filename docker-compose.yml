@@ -1,0 +1,141 @@
+# Kurisu Docker Compose
+# Development and Production configuration
+
+version: "3.8"
+
+services:
+  # ============================================
+  # Kurisu HTTP Server
+  # ============================================
+  kurisu:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: kurisu:latest
+    container_name: kurisu-server
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOST=0.0.0.0
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      # QQ Channel (NapCat OneBot11)
+      - NAPCAT_HTTP_URL=${NAPCAT_HTTP_URL:-http://napcat:3001}
+      - NAPCAT_ACCESS_TOKEN=${NAPCAT_ACCESS_TOKEN:-}
+      - QQ_POLL_INTERVAL=${QQ_POLL_INTERVAL:-1000}
+    volumes:
+      - kurisu-logs:/app/logs
+      - ./config:/app/config:ro
+      - /var/run/docker.sock:/var/run/docker.sock  # Docker-in-Docker (sibling containers)
+      - kurisu-workspace:/tmp/kurisu-workspace      # 沙箱工作目录
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - kurisu-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+
+  # ============================================
+  # Cloudflare Tunnel（Webhook 模式用，Polling 模式无需启动）
+  # 用法：docker compose --profile tunnel up
+  # 注意：Quick Tunnel 每次重启 URL 会变，需要重新注册 Webhook
+  # 固定 URL 方案见下方注释
+  # ============================================
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: kurisu-tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      kurisu:
+        condition: service_healthy
+    networks:
+      - kurisu-network
+    profiles:
+      - tunnel
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+  # ============================================
+  # NapCat（QQ Bot，OneBot11 协议）
+  # 用法：docker compose --profile qq up
+  # 首次运行需要扫码登录：docker logs kurisu-napcat
+  # ============================================
+  napcat:
+    image: mlikiowa/napcat-docker:latest
+    container_name: kurisu-napcat
+    restart: unless-stopped
+    environment:
+      - NAPCAT_GID=1000
+      - NAPCAT_UID=1000
+    volumes:
+      - napcat-data:/app/.config/QQ
+    ports:
+      - "3001:3001"   # NapCat HTTP API 端口
+      - "6099:6099"   # NapCat WebUI 端口
+    networks:
+      - kurisu-network
+    profiles:
+      - qq
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ============================================
+  # Redis（可选，分布式 Session 用）
+  # ============================================
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: kurisu-redis
+  #   restart: unless-stopped
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis-data:/data
+  #   networks:
+  #     - kurisu-network
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 3
+
+networks:
+  kurisu-network:
+    driver: bridge
+
+volumes:
+  kurisu-logs:
+    driver: local
+  kurisu-workspace:
+    driver: local
+  napcat-data:
+    driver: local
+  # redis-data:
+  #   driver: local

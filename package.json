@@ -1,0 +1,58 @@
+{
+  "name": "makise-kurisu",
+  "version": "0.1.0",
+  "description": "拟人化实时交互优先的个人 AI 数字分身",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "docker:build": "docker build -t kurisu:latest .",
+    "docker:run": "docker run -p 3000:3000 --env-file .env kurisu:latest",
+    "docker:compose": "docker-compose up -d"
+  },
+  "keywords": [
+    "ai",
+    "chatbot",
+    "digital-avatar",
+    "persona",
+    "roleplay"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/dockerode": "^4.0.1",
+    "@types/node": "^20.11.0",
+    "@typescript-eslint/eslint-plugin": "^6.19.0",
+    "@typescript-eslint/parser": "^6.19.0",
+    "@vitest/coverage-v8": "^1.2.0",
+    "eslint": "^8.56.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.2.0"
+  },
+  "dependencies": {
+    "@browserbasehq/stagehand": "^3.1.0",
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "@qdrant/js-client-rest": "^1.17.0",
+    "better-sqlite3": "^12.6.2",
+    "croner": "^10.0.1",
+    "dockerode": "^4.0.9",
+    "dotenv": "^17.3.1",
+    "yaml": "^2.3.0",
+    "zod": "^3.22.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3"
+    ]
+  }
+}
