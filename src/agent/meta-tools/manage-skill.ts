@@ -90,7 +90,7 @@ const toolDef: ToolDef = {
 function validateDraft(
   raw: unknown,
 ): { draft: SkillDraft } | { error: string } {
-  if (raw == null || typeof raw !== "object") {
+  if (raw === null || raw === undefined || typeof raw !== "object") {
     return { error: "Missing required parameter: draft" };
   }
 

@@ -557,6 +557,7 @@ function createNoopMemoryPort(): MemoryPort {
 function createNoopLLMProviderPort(): LLMProviderPort {
   return {
     async *stream() {
+      yield { delta: "" };
       return {
         content: "",
         finishReason: "stop" as const,

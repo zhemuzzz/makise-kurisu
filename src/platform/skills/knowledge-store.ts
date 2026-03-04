@@ -325,12 +325,12 @@ export function createKnowledgeStore(config: KnowledgeStoreConfig): IKnowledgeSt
     const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
     let sql = `SELECT * FROM knowledge_index ${where} ORDER BY id ASC`;
 
-    if (filter.limit != null) {
+    if (filter.limit !== null && filter.limit !== undefined) {
       sql += ` LIMIT ?`;
       params.push(filter.limit);
     }
-    if (filter.offset != null) {
-      if (filter.limit == null) {
+    if (filter.offset !== null && filter.offset !== undefined) {
+      if (filter.limit === null || filter.limit === undefined) {
         sql += ` LIMIT -1`;
       }
       sql += ` OFFSET ?`;
@@ -376,19 +376,19 @@ export function createKnowledgeStore(config: KnowledgeStoreConfig): IKnowledgeSt
     const sets: string[] = [];
     const params: unknown[] = [];
 
-    if (effectiveness.score != null) {
+    if (effectiveness.score !== null && effectiveness.score !== undefined) {
       sets.push("effectiveness_score = ?");
       params.push(effectiveness.score);
     }
-    if (effectiveness.usageCount != null) {
+    if (effectiveness.usageCount !== null && effectiveness.usageCount !== undefined) {
       sets.push("effectiveness_usage_count = ?");
       params.push(effectiveness.usageCount);
     }
-    if (effectiveness.lastUsedAt != null) {
+    if (effectiveness.lastUsedAt !== null && effectiveness.lastUsedAt !== undefined) {
       sets.push("effectiveness_last_used_at = ?");
       params.push(effectiveness.lastUsedAt);
     }
-    if (effectiveness.feedback != null) {
+    if (effectiveness.feedback !== null && effectiveness.feedback !== undefined) {
       sets.push("effectiveness_feedback = ?");
       params.push(effectiveness.feedback);
     }

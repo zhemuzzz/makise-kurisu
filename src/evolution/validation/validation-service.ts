@@ -76,7 +76,9 @@ class ValidationServiceImpl implements ValidationService {
 
   async validate(mutation: Mutation): Promise<ValidatedResult> {
     const checks: ValidationCheck[] = [];
+    // eslint-disable-next-line prefer-const -- reassigned on L97/L107
     let dedup: DedupResult | undefined;
+    // eslint-disable-next-line prefer-const -- reassigned on L97/L107
     let testResult: TestResult | undefined;
 
     // 1. Permission check

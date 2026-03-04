@@ -133,7 +133,7 @@ export function createSkillManager(config: SkillManagerConfig): ISkillManager {
       (a, b) => b.relevanceScore - a.relevanceScore,
     );
 
-    return limit != null ? results.slice(0, limit) : results;
+    return limit !== null && limit !== undefined ? results.slice(0, limit) : results;
   }
 
   // ---- getActiveSkills ----
