@@ -32,6 +32,7 @@ module.exports = {
       { checksVoidReturn: false },
     ],
     "@typescript-eslint/require-await": "warn",
+    "@typescript-eslint/no-unnecessary-type-assertion": "warn",
 
     // 代码质量规则
     "no-console": "off",
