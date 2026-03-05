@@ -17,7 +17,7 @@ import type {
 } from "./types.js";
 import type { ToolDef } from "../tools/types.js";
 import type { MCPBridge } from "../tools/mcp-bridge.js";
-import type { LLMIntentClassifier } from "../gateway/llm-intent-classifier.js";
+import type { ISkillIntentClassifier } from "./intent-classifier.js";
 import type { IModel } from "../models/types.js";
 import { SkillLoader, createSkillLoader } from "./loader.js";
 import {
@@ -36,7 +36,7 @@ export interface SkillRegistryConfig {
   /** Skills 目录路径 */
   skillsDir?: string;
   /** LLM 意图分类器（可选，Skill 加载时自动注册意图） */
-  llmClassifier?: LLMIntentClassifier;
+  llmClassifier?: ISkillIntentClassifier;
   /** Embedding 模型（可选，启用语义匹配） */
   embeddingModel?: IModel;
 }
@@ -55,7 +55,7 @@ export class SkillRegistry implements ISkillRegistry {
   private loader: SkillLoader;
   private injector: KnowledgeInjector;
   private mcpBridge: MCPBridge | undefined;
-  private llmClassifier: LLMIntentClassifier | undefined;
+  private llmClassifier: ISkillIntentClassifier | undefined;
 
   constructor(config: SkillRegistryConfig = {}) {
     if (config.mcpBridge) {
@@ -84,8 +84,7 @@ export class SkillRegistry implements ISkillRegistry {
 
     this.skills.set(instance.config.id, instance);
 
-    // KURISU-027: 自动注册意图到 LLM 分类器
-    this.registerSkillIntent(instance);
+    // Note: 意图分类器通过 ISkillRegistry 引用直接读取 Skills，无需单独注册
 
     return instance;
   }
@@ -163,10 +162,53 @@ export class SkillRegistry implements ISkillRegistry {
   /**
    * 匹配意图
    *
-   * TODO: KURISU-035 Phase 3+ — IntentMatcher will be reimplemented
+   * 2 级分类:
+   * - L1: 命令匹配 (trigger.commands)
+   * - L2: LLM 分类 (通过 llmClassifier，如果配置了)
+   *
+   * KURISU-039 Phase 2: 实现 2 级意图分类
    */
-  matchIntent(_input: string): IntentMatchResult[] {
-    return [];
+  matchIntent(input: string): IntentMatchResult[] {
+    const results: IntentMatchResult[] = [];
+    const normalizedInput = input.toLowerCase().trim();
+
+    // L1: 命令匹配 (trigger.commands)
+    for (const skill of this.list()) {
+      const commands = skill.config.trigger.commands ?? [];
+      for (const command of commands) {
+        if (normalizedInput.startsWith(command.toLowerCase())) {
+          results.push({
+            skillId: skill.config.id,
+            confidence: 0.95, // 命令匹配高置信度
+            reason: "command",
+            matched: command,
+          });
+          break; // 每个 Skill 只匹配一次
+        }
+      }
+    }
+
+    // L2: LLM 分类 (如果配置了 llmClassifier 且 L1 未匹配)
+    if (results.length === 0 && this.llmClassifier) {
+      const llmResult = this.llmClassifier.classify(input);
+      // 将 SkillMatch 转换为 IntentMatchResult
+      for (const match of llmResult.matches) {
+        if (match.confidence > 0.6) {
+          const base = {
+            skillId: match.skillId,
+            confidence: match.confidence,
+            reason: (match.reason === "command" ? "command" : "intent") as IntentMatchResult["reason"],
+          };
+          const result: IntentMatchResult = match.matched
+            ? { ...base, matched: match.matched }
+            : base;
+          results.push(result);
+        }
+      }
+    }
+
+    // 按置信度排序
+    return results.sort((a, b) => b.confidence - a.confidence);
   }
 
   /**
@@ -340,35 +382,6 @@ export class SkillRegistry implements ISkillRegistry {
     return this.injector.buildToolDefinitions(this.getActiveSkills());
   }
 
-  /**
-   * KURISU-027: 将 Skill 的触发信息注册到 LLM 分类器
-   *
-   * 当 SkillRegistry 配置了 llmClassifier 时，每次加载 Skill 自动注册，
-   * 使 LLM 能在规则匹配全部失败时作为兜底识别该 Skill。
-   */
-  private registerSkillIntent(instance: SkillInstance): void {
-    if (!this.llmClassifier) return;
-
-    const { id, name, trigger } = instance.config;
-    const examples = trigger.intent ?? trigger.keywords ?? [];
-
-    // 至少需要有示例才能注册
-    if (examples.length === 0) return;
-
-    try {
-      this.llmClassifier.registerIntent({
-        type: id,
-        description: name,
-        actions: [],
-        examples: examples as string[],
-      });
-    } catch {
-      // 注册失败不影响正常加载
-      console.warn(
-        `[SkillRegistry] Failed to register intent for skill: ${id}`,
-      );
-    }
-  }
 }
 
 // ============================================

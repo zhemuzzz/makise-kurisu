@@ -439,83 +439,12 @@ trigger: {}
   });
 
   // ============================================
-  // KURISU-027: 自动注册意图到 LLM 分类器
+  // Note: ISkillIntentClassifier 通过 ISkillRegistry 引用直接读取 Skills
+  // 无需单独的 registerIntent 调用，因此移除了 T1.7 测试组
   // ============================================
 
-  describe('T1.7: SkillRegistry 加载时自动注册意图到 LLM 分类器', () => {
-    it('应该在加载 Skill 时自动注册意图', async () => {
-      const mockLLMClassifier = {
-        registerIntent: vi.fn().mockReturnThis(),
-        getIntentCount: vi.fn().mockReturnValue(1),
-      };
-
-      registry = createSkillRegistry({
-        llmClassifier: mockLLMClassifier as any,
-      });
-
-      await writeFile(
-        join(testDir, 'skill.yaml'),
-        `
-id: test-intent-register
-name: 测试意图注册
-version: "1.0.0"
-type: hybrid
-trigger:
-  keywords:
-    - 测试
-    - 搜索
-  intent:
-    - search
-    - lookup
-`,
-      );
-
-      await registry.load(testDir);
-
-      // 应该调用 registerIntent，使用 intent 字段作为 examples
-      expect(mockLLMClassifier.registerIntent).toHaveBeenCalledWith({
-        type: 'test-intent-register',
-        description: '测试意图注册',
-        actions: [],
-        examples: ['search', 'lookup'],
-      });
-    });
-
-    it('应该在没有 intent 字段时使用 keywords 作为 examples', async () => {
-      const mockLLMClassifier = {
-        registerIntent: vi.fn().mockReturnThis(),
-        getIntentCount: vi.fn().mockReturnValue(1),
-      };
-
-      registry = createSkillRegistry({
-        llmClassifier: mockLLMClassifier as any,
-      });
-
-      await writeFile(
-        join(testDir, 'skill.yaml'),
-        `
-id: keyword-only-skill
-name: 仅关键词
-version: "1.0.0"
-type: hybrid
-trigger:
-  keywords:
-    - 天气
-    - 查询
-`,
-      );
-
-      await registry.load(testDir);
-
-      expect(mockLLMClassifier.registerIntent).toHaveBeenCalledWith({
-        type: 'keyword-only-skill',
-        description: '仅关键词',
-        actions: [],
-        examples: ['天气', '查询'],
-      });
-    });
-
-    it('应该在没有 llmClassifier 时正常加载（不注册）', async () => {
+  describe('T1.7: SkillRegistry 与 ISkillIntentClassifier 集成', () => {
+    it('应该在没有 llmClassifier 时正常加载', async () => {
       // 默认不传 llmClassifier
       registry = createSkillRegistry();
 
