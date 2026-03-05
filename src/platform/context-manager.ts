@@ -119,19 +119,47 @@ export interface ContextManager {
   updateTokenUsage(used: number): void;
 }
 
+// ============ Constants ============
+
+/** Token 估算默认除数 (字符数 / 3 ≈ token 数) */
+const TOKEN_ESTIMATE_DIVISOR_DEFAULT = 3;
+
+/** 最大 Compact 次数 */
+const MAX_COMPACTS_DEFAULT = 2;
+
+/** 工具结果截断阈值 (tokens) */
+const TOOL_TRUNCATION_DEFAULTS = {
+  DEFAULT: 1300,
+  SHELL: 700,
+  FILE_READ: 2000,
+  WEB_SEARCH: 1000,
+} as const;
+
+/** Priority ≤ 此值的 block 总是包含 */
+const PRIORITY_ALWAYS_INCLUDE_THRESHOLD = 4;
+
+/** <think> 标签长度 */
+const THINK_TAG_OPEN_LENGTH = 7;
+
+/** </think> 标签长度 */
+const THINK_TAG_CLOSE_LENGTH = 8;
+
+/** Compact 时保留的最近消息数 (2 轮 = 4 条消息) */
+const COMPACT_RECENT_MESSAGE_COUNT = 4;
+
 // ============ Options ============
 
 export interface ContextManagerOptions {
   readonly totalContextTokens: number;
   readonly identityContent: string;
   readonly safetyMarginTokens: number;
-  readonly tokenEstimateDivisor?: number; // default 3
-  readonly maxCompacts?: number; // default 2
+  readonly tokenEstimateDivisor?: number; // default TOKEN_ESTIMATE_DIVISOR_DEFAULT
+  readonly maxCompacts?: number; // default MAX_COMPACTS_DEFAULT
   readonly toolTruncationThresholds?: {
-    readonly default?: number; // 1300 tokens
-    readonly shell?: number; // 700 tokens
-    readonly file_read?: number; // 2000 tokens
-    readonly web_search?: number; // 1000 tokens
+    readonly default?: number; // TOOL_TRUNCATION_DEFAULTS.DEFAULT
+    readonly shell?: number; // TOOL_TRUNCATION_DEFAULTS.SHELL
+    readonly file_read?: number; // TOOL_TRUNCATION_DEFAULTS.FILE_READ
+    readonly web_search?: number; // TOOL_TRUNCATION_DEFAULTS.WEB_SEARCH
   };
 }
 
@@ -166,17 +194,17 @@ class ContextManagerImpl implements ContextManager {
   constructor(options: ContextManagerOptions) {
     this.totalContextTokens = options.totalContextTokens;
     this.safetyMarginTokens = options.safetyMarginTokens;
-    this.divisor = options.tokenEstimateDivisor ?? 3;
-    this.maxCompacts = options.maxCompacts ?? 2;
+    this.divisor = options.tokenEstimateDivisor ?? TOKEN_ESTIMATE_DIVISOR_DEFAULT;
+    this.maxCompacts = options.maxCompacts ?? MAX_COMPACTS_DEFAULT;
 
     this.identityFixed = this.estimateTokens(options.identityContent);
 
     const t = options.toolTruncationThresholds;
     this.thresholds = {
-      default: t?.default ?? 1300,
-      shell: t?.shell ?? 700,
-      file_read: t?.file_read ?? 2000,
-      web_search: t?.web_search ?? 1000,
+      default: t?.default ?? TOOL_TRUNCATION_DEFAULTS.DEFAULT,
+      shell: t?.shell ?? TOOL_TRUNCATION_DEFAULTS.SHELL,
+      file_read: t?.file_read ?? TOOL_TRUNCATION_DEFAULTS.FILE_READ,
+      web_search: t?.web_search ?? TOOL_TRUNCATION_DEFAULTS.WEB_SEARCH,
     };
   }
 
@@ -220,8 +248,7 @@ class ContextManagerImpl implements ContextManager {
     for (const block of sorted) {
       const blockTokens = this.estimateTokens(block.content);
 
-      // Priority 1-4: always include
-      if (block.priority <= 4) {
+      if (block.priority <= PRIORITY_ALWAYS_INCLUDE_THRESHOLD) {
         included.push(block);
         perBlock.set(block.label, blockTokens);
         totalTokens += blockTokens;
@@ -317,7 +344,7 @@ class ContextManagerImpl implements ContextManager {
         }
         content += text.slice(i, thinkStart);
         this.parseState = "IN_THINK";
-        i = thinkStart + 7; // skip "<think>"
+        i = thinkStart + THINK_TAG_OPEN_LENGTH;
       } else if (this.parseState === "IN_THINK") {
         const thinkEnd = text.indexOf("</think>", i);
         if (thinkEnd === -1) {
@@ -329,7 +356,7 @@ class ContextManagerImpl implements ContextManager {
         thinking = this.thinkBuffer;
         this.thinkBuffer = "";
         this.parseState = "NORMAL";
-        i = thinkEnd + 8; // skip "</think>"
+        i = thinkEnd + THINK_TAG_CLOSE_LENGTH;
       }
     }
 
@@ -350,8 +377,8 @@ class ContextManagerImpl implements ContextManager {
     // Collect pinned messages
     const pinnedMessages = messages.filter((m) => m.pinned);
 
-    // Keep last 2 rounds (4 messages: user+assistant * 2)
-    const recentCount = Math.min(4, messages.length);
+    // Keep last 2 rounds (COMPACT_RECENT_MESSAGE_COUNT messages: user+assistant * 2)
+    const recentCount = Math.min(COMPACT_RECENT_MESSAGE_COUNT, messages.length);
     const recentMessages = messages.slice(-recentCount);
 
     // Middle history (not pinned, not recent)
