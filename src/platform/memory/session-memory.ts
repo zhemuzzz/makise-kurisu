@@ -15,8 +15,8 @@ import {
   SessionState,
   DEFAULT_SESSION_CONFIG,
   MessageRole,
-} from "./types";
-import { InvalidSessionIdError, InvalidMessageError } from "./errors";
+} from "./types.js";
+import { InvalidSessionIdError, InvalidMessageError } from "./errors.js";
 
 /**
  * SessionMemory 类

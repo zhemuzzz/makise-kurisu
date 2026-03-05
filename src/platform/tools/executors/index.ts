@@ -18,13 +18,13 @@ export type {
   TermuxExecutorConfig,
   CloudExecutorConfig,
   ExecutorConfig,
-} from "./types";
+} from "./types.js";
 
 export {
   DEFAULT_DOCKER_CONFIG,
   DEFAULT_PROCESS_CONFIG,
   DEFAULT_EXECUTE_OPTIONS,
-} from "./types";
+} from "./types.js";
 
 // 平台检测
 export {
@@ -33,15 +33,15 @@ export {
   isDockerLikelyAvailable,
   clearPlatformCache,
   getRecommendedWorkDir,
-} from "./platform";
+} from "./platform.js";
 
-export type { PlatformInfo, DockerAvailability } from "./platform";
+export type { PlatformInfo, DockerAvailability } from "./platform.js";
 
 // 执行器
-export { DockerExecutor, createDockerExecutor } from "./docker-executor";
-export { ProcessExecutor, createProcessExecutor } from "./process-executor";
-export { TermuxExecutor, createTermuxExecutor } from "./termux-executor";
-export { CloudExecutor, createCloudExecutor } from "./cloud-executor";
+export { DockerExecutor, createDockerExecutor } from "./docker-executor.js";
+export { ProcessExecutor, createProcessExecutor } from "./process-executor.js";
+export { TermuxExecutor, createTermuxExecutor } from "./termux-executor.js";
+export { CloudExecutor, createCloudExecutor } from "./cloud-executor.js";
 
 // 工厂
 export {
@@ -50,9 +50,9 @@ export {
   getRecommendedExecutorType,
   isProcessExecutorAvailable,
   isCloudExecutorAvailable,
-} from "./factory";
+} from "./factory.js";
 
-export type { CreatedExecutor } from "./factory";
+export type { CreatedExecutor } from "./factory.js";
 
 // 安全验证
 export {
@@ -62,4 +62,4 @@ export {
   validateAllowedPaths,
   buildSafeCommand,
   decodeBase64Args,
-} from "./security";
+} from "./security.js";

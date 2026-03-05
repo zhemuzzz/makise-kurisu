@@ -4,7 +4,7 @@
  * 将激活的 Skills 的知识注入到 Prompt 中
  */
 
-import type { SkillInstance, SkillExample } from "./types";
+import type { SkillInstance, SkillExample } from "./types.js";
 
 /**
  * 知识注入配置

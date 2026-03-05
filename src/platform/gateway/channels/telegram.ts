@@ -4,18 +4,18 @@
  */
 
 import * as http from "http";
-import { BaseChannel, ChannelConfig, ChannelRoute } from "./base";
+import { BaseChannel, ChannelConfig, ChannelRoute } from "./base.js";
 import {
   ChannelType,
   InboundMessage,
   OutboundMessage,
   ToolCall,
-} from "../types";
+} from "../types.js";
 import {
   ApprovalHandler,
   createApprovalHandler,
   type ApprovalGatewayLike,
-} from "./approval-handler";
+} from "./approval-handler.js";
 
 // ===========================================
 // Telegram API 类型定义

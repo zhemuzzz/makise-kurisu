@@ -12,7 +12,7 @@
 import fs from "fs";
 import path from "path";
 import os from "os";
-import type { FilePermissionLevel } from "../models/executor-types";
+import type { FilePermissionLevel } from "../models/executor-types.js";
 
 // ===========================================
 // 类型定义

@@ -16,18 +16,18 @@ import {
   type SessionPermissionManagerLike,
   type FilePermissionLevel,
   ChannelType,
-} from "./types";
-import type { MCPWorkDirSync } from "../tools/mcp-workdir-sync";
+} from "./types.js";
+import type { MCPWorkDirSync } from "../tools/mcp-workdir-sync.js";
 import {
   SessionSettingRegistry,
   createSessionSettingRegistry,
-} from "./session-setting-registry";
-import { createChangeDirHandler } from "./handlers/change-dir-handler";
-import { createChangePermissionHandler } from "./handlers/change-permission-handler";
-import { createDeleteConfirmHandler } from "./handlers/delete-confirm-handler";
-import { SessionManager } from "./session-manager";
-import { StreamHandler } from "./stream-handler";
-import { GatewayError, InputValidationError } from "./errors";
+} from "./session-setting-registry.js";
+import { createChangeDirHandler } from "./handlers/change-dir-handler.js";
+import { createChangePermissionHandler } from "./handlers/change-permission-handler.js";
+import { createDeleteConfirmHandler } from "./handlers/delete-confirm-handler.js";
+import { SessionManager } from "./session-manager.js";
+import { StreamHandler } from "./stream-handler.js";
+import { GatewayError, InputValidationError } from "./errors.js";
 
 /**
  * 默认会话 TTL (30分钟)
@@ -618,13 +618,13 @@ export class Gateway {
 }
 
 // Re-export types
-export * from "./types";
-export * from "./errors";
-export { SessionManager } from "./session-manager";
-export { StreamHandler } from "./stream-handler";
-export { CLIChannel } from "./channels/cli";
-export { MockChannel } from "./channels/mock";
-export { TelegramChannel } from "./channels/telegram";
-export { QQChannel } from "./channels/qq";
-export { BaseChannel, ChannelRoute } from "./channels/base";
-export { KurisuServer } from "./server";
+export * from "./types.js";
+export * from "./errors.js";
+export { SessionManager } from "./session-manager.js";
+export { StreamHandler } from "./stream-handler.js";
+export { CLIChannel } from "./channels/cli.js";
+export { MockChannel } from "./channels/mock.js";
+export { TelegramChannel } from "./channels/telegram.js";
+export { QQChannel } from "./channels/qq.js";
+export { BaseChannel, ChannelRoute } from "./channels/base.js";
+export { KurisuServer } from "./server.js";

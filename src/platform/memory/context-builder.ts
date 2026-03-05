@@ -15,10 +15,10 @@ import {
   Message,
   MemorySearchResult,
   PersonaEngineLike,
-} from "./types";
-import { SessionMemory } from "./session-memory";
-import { ShortTermMemory } from "./short-term-memory";
-import { ContextBuildError, ValidationError } from "./errors";
+} from "./types.js";
+import { SessionMemory } from "./session-memory.js";
+import { ShortTermMemory } from "./short-term-memory.js";
+import { ContextBuildError, ValidationError } from "./errors.js";
 
 /**
  * ContextBuilder 类

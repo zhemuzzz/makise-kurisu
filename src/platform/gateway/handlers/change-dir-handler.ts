@@ -12,15 +12,15 @@
  * @module gateway/handlers/change-dir-handler
  */
 
-import { isUserConfirm, isUserReject } from "../session-setting-constants";
+import { isUserConfirm, isUserReject } from "../session-setting-constants.js";
 import type {
   SessionSettingHandler,
   SessionSettingIntent,
   SessionSettingHandleResult,
   SessionSettingApprovalResult,
-} from "../session-setting-registry";
-import type { SessionWorkDirManagerLike, FilePermissionLevel } from "../types";
-import { MCPWorkDirSync } from "../../tools/mcp-workdir-sync";
+} from "../session-setting-registry.js";
+import type { SessionWorkDirManagerLike, FilePermissionLevel } from "../types.js";
+import { MCPWorkDirSync } from "../../tools/mcp-workdir-sync.js";
 
 // TODO: KURISU-035 Phase 3+ — will be reimplemented as platform service
 /**

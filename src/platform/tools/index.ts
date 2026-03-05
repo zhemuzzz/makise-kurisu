@@ -5,10 +5,10 @@
  */
 
 // 类型
-export * from "./types";
+export * from "./types.js";
 
 // MCP 桥接
-export { MCPBridge, createMCPBridge, type MCPBridgeConfig } from "./mcp-bridge";
+export { MCPBridge, createMCPBridge, type MCPBridgeConfig } from "./mcp-bridge.js";
 
 // 工具注册表
 export {
@@ -16,7 +16,7 @@ export {
   createToolRegistry,
   type ToolExecutor,
   type ToolRegistryConfig,
-} from "./registry";
+} from "./registry.js";
 
 // 权限检查器
 export {
@@ -24,14 +24,14 @@ export {
   createPermissionChecker,
   type PermissionCheckerConfig,
   type PermissionCheckResult,
-} from "./permission";
+} from "./permission.js";
 
 // 审批管理器
 export {
   ApprovalManager,
   createApprovalManager,
   type ApprovalManagerConfig,
-} from "./approval";
+} from "./approval.js";
 
 // 沙箱执行器
 export {
@@ -40,7 +40,7 @@ export {
   shouldUseSandbox,
   type SandboxExecutorConfig,
   type ExecuteOptions,
-} from "./sandbox";
+} from "./sandbox.js";
 
 // 人设包装器
 export {
@@ -48,7 +48,7 @@ export {
   createPersonaWrapper,
   type PersonaWrapperConfig,
   type ToolOutputType,
-} from "./persona-wrapper";
+} from "./persona-wrapper.js";
 
 // 会话工作目录管理器 (KURISU-020)
 export {
@@ -59,7 +59,7 @@ export {
   type ChangeDirApprovalRequest,
   type PathValidationResult,
   type SessionWorkDirManagerConfig,
-} from "./session-workdir";
+} from "./session-workdir.js";
 
 // 会话权限管理器 (KURISU-021)
 export {
@@ -68,4 +68,4 @@ export {
   type SessionPermissionState,
   type PermissionChangeResult,
   type PermissionApprovalRequest,
-} from "./session-permission";
+} from "./session-permission.js";

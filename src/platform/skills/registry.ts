@@ -14,17 +14,17 @@ import type {
   SkillActivationStatus,
   VariableContext,
   SkillRequires,
-} from "./types";
-import type { ToolDef } from "../tools/types";
-import type { MCPBridge } from "../tools/mcp-bridge";
-import type { LLMIntentClassifier } from "../gateway/llm-intent-classifier";
-import type { IModel } from "../models/types";
-import { SkillLoader, createSkillLoader } from "./loader";
+} from "./types.js";
+import type { ToolDef } from "../tools/types.js";
+import type { MCPBridge } from "../tools/mcp-bridge.js";
+import type { LLMIntentClassifier } from "../gateway/llm-intent-classifier.js";
+import type { IModel } from "../models/types.js";
+import { SkillLoader, createSkillLoader } from "./loader.js";
 import {
   KnowledgeInjector,
   createKnowledgeInjector,
-} from "./knowledge-injector";
-import { SKILL_MAX_RETRIES, SKILL_RETRY_BASE_DELAY_MS } from "./types";
+} from "./knowledge-injector.js";
+import { SKILL_MAX_RETRIES, SKILL_RETRY_BASE_DELAY_MS } from "./types.js";
 // TODO: KURISU-035 Phase 3+ — IntentMatcher and EmbeddingCache will be reimplemented
 
 /**

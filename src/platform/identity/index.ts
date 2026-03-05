@@ -6,15 +6,15 @@
  * - RoleLoader: 角色配置加载（soul.md + persona.yaml）
  */
 
-import type { MentalModel, PersonaHardcoded } from "./types";
-import type { RoleConfig, RoleLoadResult } from "./soul-types";
-import { RoleLoader } from "./role-loader";
-import type { ToolResult } from "../tools/types";
+import type { MentalModel, PersonaHardcoded } from "./types.js";
+import type { RoleConfig, RoleLoadResult } from "./soul-types.js";
+import { RoleLoader } from "./role-loader.js";
+import type { ToolResult } from "../tools/types.js";
 import {
   PersonaWrapper,
   createPersonaWrapper,
   type PersonaWrapperConfig,
-} from "../tools/persona-wrapper";
+} from "../tools/persona-wrapper.js";
 
 export class PersonaEngine {
   private mentalModel: MentalModel;

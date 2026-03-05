@@ -12,7 +12,7 @@
  * @module gateway/handlers/change-permission-handler
  */
 
-import { isUserConfirm, isUserReject } from "../session-setting-constants";
+import { isUserConfirm, isUserReject } from "../session-setting-constants.js";
 
 // TODO: KURISU-035 Phase 3+ — will be reimplemented as platform service
 /**
@@ -47,11 +47,11 @@ import type {
   SessionSettingIntent,
   SessionSettingHandleResult,
   SessionSettingApprovalResult,
-} from "../session-setting-registry";
+} from "../session-setting-registry.js";
 import type {
   SessionPermissionManagerLike,
   FilePermissionLevel,
-} from "../types";
+} from "../types.js";
 
 /**
  * 权限切换处理器

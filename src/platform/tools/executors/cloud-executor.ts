@@ -9,16 +9,16 @@
  * - 需要更多资源的任务
  */
 
-import type { PermissionLevel } from "../types";
+import type { PermissionLevel } from "../types.js";
 import type {
   ToolExecutor,
   ExecutorCapabilities,
   ExecuteOptions,
   ExecuteResult,
   CloudExecutorConfig,
-} from "./types";
-import { detectPlatform } from "./platform";
-import { checkDangerousCommand } from "./security";
+} from "./types.js";
+import { detectPlatform } from "./platform.js";
+import { checkDangerousCommand } from "./security.js";
 
 /**
  * 默认云端执行器配置

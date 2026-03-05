@@ -9,7 +9,7 @@
  * 3. 提供会话级权限覆盖（不持久化）
  */
 
-import type { FilePermissionLevel } from "../models/executor-types";
+import type { FilePermissionLevel } from "../models/executor-types.js";
 
 /**
  * 权限级别优先级（用于判断升级/降级）

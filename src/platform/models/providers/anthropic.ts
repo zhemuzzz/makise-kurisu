@@ -15,7 +15,7 @@ import type {
   StreamChunk,
   OpenAIToolDefinition,
   LLMToolCall,
-} from "../types";
+} from "../types.js";
 
 // ============================================
 // Anthropic API 类型

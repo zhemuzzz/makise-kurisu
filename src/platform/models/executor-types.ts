@@ -8,7 +8,7 @@ import type {
   Platform,
   DockerExecutorConfig,
   CloudExecutorConfig,
-} from "../tools/executors/types";
+} from "../tools/executors/types.js";
 
 // ============================================
 // 权限级别（扩展自任务文档的三级权限）

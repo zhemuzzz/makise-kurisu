@@ -11,12 +11,12 @@
  * 5. iOS 使用 CloudExecutor
  */
 
-import type { ToolExecutor, ExecutorConfig } from "./types";
-import { DockerExecutor } from "./docker-executor";
-import { ProcessExecutor } from "./process-executor";
-import { TermuxExecutor } from "./termux-executor";
-import { CloudExecutor } from "./cloud-executor";
-import { detectPlatform, checkDockerAvailable } from "./platform";
+import type { ToolExecutor, ExecutorConfig } from "./types.js";
+import { DockerExecutor } from "./docker-executor.js";
+import { ProcessExecutor } from "./process-executor.js";
+import { TermuxExecutor } from "./termux-executor.js";
+import { CloudExecutor } from "./cloud-executor.js";
+import { detectPlatform, checkDockerAvailable } from "./platform.js";
 
 /**
  * 创建的执行器信息

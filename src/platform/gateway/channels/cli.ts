@@ -4,8 +4,8 @@
  */
 
 import * as readline from "readline";
-import { ChannelType, type IOrchestrator } from "../types";
-import { ChannelError } from "../errors";
+import { ChannelType, type IOrchestrator } from "../types.js";
+import { ChannelError } from "../errors.js";
 
 /**
  * CLI 渠道配置

@@ -21,15 +21,15 @@ import {
   SessionState,
   MessageRole,
   Mem0Client,
-} from "./types";
-import { SessionMemory } from "./session-memory";
-import { ShortTermMemory } from "./short-term-memory";
-import { ContextBuilder } from "./context-builder";
+} from "./types.js";
+import { SessionMemory } from "./session-memory.js";
+import { ShortTermMemory } from "./short-term-memory.js";
+import { ContextBuilder } from "./context-builder.js";
 import {
   InvalidSessionIdError,
   SessionNotFoundError,
   ValidationError,
-} from "./errors";
+} from "./errors.js";
 
 /**
  * HybridMemoryEngine 类

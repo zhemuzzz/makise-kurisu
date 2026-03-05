@@ -27,10 +27,10 @@ export type {
   ShortTermMemoryConfig,
   HybridMemoryEngineConfig,
   PersonaEngineLike,
-} from './types';
+} from './types.js';
 
 // Constants
-export { DEFAULT_SESSION_CONFIG, DEFAULT_CONTEXT_CONFIG } from './types';
+export { DEFAULT_SESSION_CONFIG, DEFAULT_CONTEXT_CONFIG } from './types.js';
 
 // Error classes
 export {
@@ -43,13 +43,13 @@ export {
   ContextBuildError,
   MemoryLimitExceededError,
   ValidationError,
-} from './errors';
+} from './errors.js';
 
 // Core classes
-export { SessionMemory } from './session-memory';
-export { ShortTermMemory } from './short-term-memory';
-export { ContextBuilder } from './context-builder';
-export { HybridMemoryEngine } from './hybrid-engine';
+export { SessionMemory } from './session-memory.js';
+export { ShortTermMemory } from './short-term-memory.js';
+export { ContextBuilder } from './context-builder.js';
+export { HybridMemoryEngine } from './hybrid-engine.js';
 
 // Convenience re-export for default usage
-export { HybridMemoryEngine as default } from './hybrid-engine';
+export { HybridMemoryEngine as default } from './hybrid-engine.js';

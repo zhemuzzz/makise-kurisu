@@ -15,8 +15,8 @@
 
 import path from "path";
 import os from "os";
-import type { RoleToolConfig } from "../models/executor-types";
-import type { PermissionLevel } from "./types";
+import type { RoleToolConfig } from "../models/executor-types.js";
+import type { PermissionLevel } from "./types.js";
 
 /**
  * 操作类型

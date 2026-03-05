@@ -13,15 +13,15 @@ import { readFileSync } from "fs";
 import { parse as parseYaml } from "yaml";
 import { config as loadDotenv } from "dotenv";
 
-import type { PlatformConfig, ModelProviderConfig } from "./types/config";
+import type { PlatformConfig, ModelProviderConfig } from "./types/config.js";
 import {
   PlatformConfigSchema,
   CONFIG_DEFAULTS,
   ENV_VAR_MAPPING,
   SECRETS_ENV_MAPPING,
   CONDITIONAL_VALIDATION_RULES,
-} from "./types/config";
-import { ConfigLoadError } from "./models/types";
+} from "./types/config.js";
+import { ConfigLoadError } from "./models/types.js";
 
 // ============ Types ============
 

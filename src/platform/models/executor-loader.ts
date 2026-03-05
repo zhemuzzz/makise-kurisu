@@ -16,16 +16,16 @@ import type {
   RestrictedConfig,
   RoleToolConfig,
   PlatformConfig,
-} from "./executor-types";
+} from "./executor-types.js";
 import {
   DEFAULT_APPROVAL_CONFIG,
   DEFAULT_RESTRICTED_CONFIG,
   DEFAULT_ROLE_TOOL_CONFIG,
-} from "./executor-types";
+} from "./executor-types.js";
 import type {
   DockerExecutorConfig,
   CloudExecutorConfig,
-} from "../tools/executors/types";
+} from "../tools/executors/types.js";
 
 /**
  * 配置文件路径

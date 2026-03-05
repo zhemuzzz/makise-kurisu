@@ -10,17 +10,17 @@ import type {
   ToolResult,
   PermissionLevel,
   OpenAIToolDefinition,
-} from "./types";
-import { ToolNotFoundError } from "./types";
-import type { MCPBridge } from "./mcp-bridge";
-import type { PermissionChecker } from "./permission";
-import type { SandboxExecutor } from "./sandbox";
-import { shouldUseSandbox } from "./sandbox";
+} from "./types.js";
+import { ToolNotFoundError } from "./types.js";
+import type { MCPBridge } from "./mcp-bridge.js";
+import type { PermissionChecker } from "./permission.js";
+import type { SandboxExecutor } from "./sandbox.js";
+import { shouldUseSandbox } from "./sandbox.js";
 // KURISU-019: 跨平台执行器
-import type { ToolExecutor as CrossPlatformExecutor } from "./executors/types";
-import { createExecutor } from "./executors/factory";
-import { getRecommendedWorkDir } from "./executors/platform";
-import { buildSafeCommand } from "./executors/security";
+import type { ToolExecutor as CrossPlatformExecutor } from "./executors/types.js";
+import { createExecutor } from "./executors/factory.js";
+import { getRecommendedWorkDir } from "./executors/platform.js";
+import { buildSafeCommand } from "./executors/security.js";
 
 /**
  * 工具执行器

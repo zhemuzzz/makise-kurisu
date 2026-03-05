@@ -15,8 +15,8 @@ import {
   Mem0Client,
   Mem0Memory,
   ShortTermMemoryConfig,
-} from "./types";
-import { InvalidSessionIdError, Mem0APIError, ValidationError } from "./errors";
+} from "./types.js";
+import { InvalidSessionIdError, Mem0APIError, ValidationError } from "./errors.js";
 
 /**
  * ShortTermMemory 类

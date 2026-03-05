@@ -2,5 +2,5 @@
  * 安全层导出
  */
 
-export * from "./types";
-export * from "./silent-interceptor";
+export * from "./types.js";
+export * from "./silent-interceptor.js";

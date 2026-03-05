@@ -13,7 +13,7 @@ import type {
   ChatResponse,
   StreamChunk,
   LLMToolCall,
-} from "../types";
+} from "../types.js";
 
 /**
  * HTTP 客户端配置（用于赋值时，允许显式 undefined）

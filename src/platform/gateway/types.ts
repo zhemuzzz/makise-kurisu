@@ -237,8 +237,8 @@ export interface StreamCallbacks {
 import type {
   ToolCall as ToolCallType,
   ApprovalState as ApprovalStateType,
-} from "../tools/types";
-import type { MCPWorkDirSync } from "../tools/mcp-workdir-sync";
+} from "../tools/types.js";
+import type { MCPWorkDirSync } from "../tools/mcp-workdir-sync.js";
 
 export type ToolCall = ToolCallType;
 export type ApprovalState = ApprovalStateType;

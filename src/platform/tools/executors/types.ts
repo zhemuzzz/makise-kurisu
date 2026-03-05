@@ -4,7 +4,7 @@
  * KURISU-019 Phase 1: 定义统一的执行器接口
  */
 
-import type { PermissionLevel } from "../types";
+import type { PermissionLevel } from "../types.js";
 
 // ============================================
 // 平台类型

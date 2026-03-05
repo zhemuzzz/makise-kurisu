@@ -5,8 +5,8 @@
  * 负责在会话工作目录变化时，重启受影响的 MCP Server
  */
 
-import type { MCPBridge } from "./mcp-bridge";
-import type { MCPServerConfigLoader } from "../skills/mcp-server-config";
+import type { MCPBridge } from "./mcp-bridge.js";
+import type { MCPServerConfigLoader } from "../skills/mcp-server-config.js";
 
 /**
  * 工作目录同步结果

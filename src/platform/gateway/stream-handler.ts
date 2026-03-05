@@ -10,7 +10,7 @@ import {
   type StreamCallbacks,
   type GatewayStreamResult,
   isErrorEvent,
-} from "./types";
+} from "./types.js";
 
 /**
  * 流式处理器

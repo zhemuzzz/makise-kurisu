@@ -4,7 +4,7 @@
  * 定义技能配置、触发规则、知识注入等类型
  */
 
-import type { ToolDef } from "../tools/types";
+import type { ToolDef } from "../tools/types.js";
 
 // ============================================
 // 变量上下文

@@ -14,21 +14,21 @@ import path from "path";
 import fs from "fs";
 import os from "os";
 import { randomUUID } from "crypto";
-import type { PermissionLevel } from "../types";
+import type { PermissionLevel } from "../types.js";
 import type {
   ToolExecutor,
   ExecutorCapabilities,
   ExecuteOptions,
   ExecuteResult,
   ProcessExecutorConfig,
-} from "./types";
-import { DEFAULT_PROCESS_CONFIG } from "./types";
-import { detectPlatform } from "./platform";
+} from "./types.js";
+import { DEFAULT_PROCESS_CONFIG } from "./types.js";
+import { detectPlatform } from "./platform.js";
 import {
   filterSensitiveEnvVars,
   validateAllowedPaths,
   validateCommandSecurity,
-} from "./security";
+} from "./security.js";
 
 /**
  * 进程权限级别

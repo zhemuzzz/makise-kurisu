@@ -3,7 +3,7 @@
  * @description KURISU-013 多平台 Channel 基础设施
  */
 
-import { ChannelType, OutboundMessage } from "../types";
+import { ChannelType, OutboundMessage } from "../types.js";
 
 /**
  * Channel 路由定义

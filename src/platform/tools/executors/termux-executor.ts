@@ -12,16 +12,16 @@
 import { spawn } from "child_process";
 import fs from "fs";
 import os from "os";
-import type { PermissionLevel } from "../types";
+import type { PermissionLevel } from "../types.js";
 import type {
   ToolExecutor,
   ExecutorCapabilities,
   ExecuteOptions,
   ExecuteResult,
   TermuxExecutorConfig,
-} from "./types";
-import { detectPlatform } from "./platform";
-import { checkDangerousCommand, filterSensitiveEnvVars } from "./security";
+} from "./types.js";
+import { detectPlatform } from "./platform.js";
+import { checkDangerousCommand, filterSensitiveEnvVars } from "./security.js";
 
 /**
  * 默认 Termux 执行器配置

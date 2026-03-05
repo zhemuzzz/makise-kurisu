@@ -12,8 +12,8 @@ import {
   ConfigLoadError,
   ValidationError,
   FileNotFoundError,
-} from "./types";
-import { injectEnvVars } from "./env";
+} from "./types.js";
+import { injectEnvVars } from "./env.js";
 
 /**
  * YAML 配置加载器
@@ -152,4 +152,4 @@ export function loadConfigFromString(content: string): ModelsYamlConfig {
 }
 
 // 导出错误类
-export { ConfigLoadError, ValidationError, FileNotFoundError } from "./types";
+export { ConfigLoadError, ValidationError, FileNotFoundError } from "./types.js";

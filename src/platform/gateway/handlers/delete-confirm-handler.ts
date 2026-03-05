@@ -12,7 +12,7 @@
  * @module gateway/handlers/delete-confirm-handler
  */
 
-import { isUserConfirm, isUserReject } from "../session-setting-constants";
+import { isUserConfirm, isUserReject } from "../session-setting-constants.js";
 
 // TODO: KURISU-035 Phase 3+ — will be reimplemented as platform service
 /**
@@ -42,8 +42,8 @@ import type {
   SessionSettingIntent,
   SessionSettingHandleResult,
   SessionSettingApprovalResult,
-} from "../session-setting-registry";
-import type { SessionPermissionManagerLike } from "../types";
+} from "../session-setting-registry.js";
+import type { SessionPermissionManagerLike } from "../types.js";
 
 /**
  * 删除确认处理器

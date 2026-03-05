@@ -4,8 +4,8 @@
  * 根据 three-tier 权限模型检查工具权限
  */
 
-import type { PermissionLevel, ToolPermissionConfig } from "./types";
-import { DEFAULT_TOOL_SYSTEM_CONFIG } from "./types";
+import type { PermissionLevel, ToolPermissionConfig } from "./types.js";
+import { DEFAULT_TOOL_SYSTEM_CONFIG } from "./types.js";
 
 /**
  * 权限检查结果

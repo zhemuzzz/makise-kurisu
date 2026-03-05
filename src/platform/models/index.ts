@@ -11,19 +11,19 @@ import {
   type ModelConfig,
   ModelNotFoundError,
   CapabilityNotConfiguredError,
-} from "./types";
-import { AnthropicCompatibleModel } from "./providers/anthropic";
-import { OpenAICompatibleModel } from "./providers/openai-compatible";
-import { createZhipuEmbeddingModel } from "./zhipu-embedding";
+} from "./types.js";
+import { AnthropicCompatibleModel } from "./providers/anthropic.js";
+import { OpenAICompatibleModel } from "./providers/openai-compatible.js";
+import { createZhipuEmbeddingModel } from "./zhipu-embedding.js";
 
 // 导出类型和错误
-export * from "./types";
-export { injectEnvVars, EnvResolver } from "./env";
-export { YamlConfigLoader, loadConfig, loadConfigFromString } from "./loader";
-export { AnthropicCompatibleModel } from "./providers/anthropic";
-export { OpenAICompatibleModel } from "./providers/openai-compatible";
-export { createZhipuEmbeddingModel } from "./zhipu-embedding";
-export type { ZhipuEmbeddingConfig } from "./zhipu-embedding";
+export * from "./types.js";
+export { injectEnvVars, EnvResolver } from "./env.js";
+export { YamlConfigLoader, loadConfig, loadConfigFromString } from "./loader.js";
+export { AnthropicCompatibleModel } from "./providers/anthropic.js";
+export { OpenAICompatibleModel } from "./providers/openai-compatible.js";
+export { createZhipuEmbeddingModel } from "./zhipu-embedding.js";
+export type { ZhipuEmbeddingConfig } from "./zhipu-embedding.js";
 
 /**
  * Provider 工厂：根据配置创建模型实例

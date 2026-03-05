@@ -4,8 +4,8 @@
  */
 
 import * as http from "http";
-import { BaseChannel, ChannelConfig, ChannelRoute } from "./base";
-import { ChannelType, InboundMessage, OutboundMessage } from "../types";
+import { BaseChannel, ChannelConfig, ChannelRoute } from "./base.js";
+import { ChannelType, InboundMessage, OutboundMessage } from "../types.js";
 
 /**
  * Gateway 接口（避免循环依赖）

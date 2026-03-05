@@ -4,13 +4,13 @@
  * @description 支持 Reverse HTTP 模式（NapCat 推送事件到 Kurisu）
  */
 
-import { BaseChannel, ChannelConfig, ChannelRoute } from "./base";
-import { ChannelType, InboundMessage, OutboundMessage } from "../types";
+import { BaseChannel, ChannelConfig, ChannelRoute } from "./base.js";
+import { ChannelType, InboundMessage, OutboundMessage } from "../types.js";
 import {
   ApprovalHandler,
   createApprovalHandler,
   type ApprovalGatewayLike,
-} from "./approval-handler";
+} from "./approval-handler.js";
 
 // ===========================================
 // OneBot11 类型定义

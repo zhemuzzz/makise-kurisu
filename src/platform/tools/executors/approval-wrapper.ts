@@ -6,9 +6,9 @@
  * 提供 executeWithApproval 方法，根据权限级别决定是否需要审批
  */
 
-import type { ToolExecutor, ExecuteOptions, ExecuteResult } from "./types";
-import type { ApprovalManager, ApprovalRequest, RiskLevel } from "../approval";
-import type { FilePermissionLevel } from "../../models/executor-types";
+import type { ToolExecutor, ExecuteOptions, ExecuteResult } from "./types.js";
+import type { ApprovalManager, ApprovalRequest, RiskLevel } from "../approval.js";
+import type { FilePermissionLevel } from "../../models/executor-types.js";
 
 /**
  * 带审批信息的执行结果

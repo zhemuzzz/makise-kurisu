@@ -3,7 +3,7 @@
  * 位置: src/config/models/env.ts
  */
 
-import { EnvVarMissingError } from "./types";
+import { EnvVarMissingError } from "./types.js";
 
 /**
  * 环境变量解析器
@@ -73,4 +73,4 @@ export function injectEnvVars<T extends Record<string, unknown>>(
 }
 
 // 导出错误类
-export { EnvVarMissingError } from "./types";
+export { EnvVarMissingError } from "./types.js";

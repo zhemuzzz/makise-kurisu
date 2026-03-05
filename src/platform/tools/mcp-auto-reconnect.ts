@@ -5,7 +5,7 @@
  * 从 mcp-bridge.ts 提取，降低文件复杂度
  */
 
-import type { MCPServerConfig } from "../skills/types";
+import type { MCPServerConfig } from "../skills/types.js";
 
 /**
  * MCP 连接状态

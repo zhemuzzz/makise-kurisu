@@ -4,7 +4,7 @@
  *              将权限切换/目录切换/工具执行审批统一处理，减少 Channel 层代码重复
  */
 
-import type { ToolCall } from "../types";
+import type { ToolCall } from "../types.js";
 
 // ===========================================
 // 类型定义

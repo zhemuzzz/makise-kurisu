@@ -7,7 +7,7 @@
 import fs from "fs";
 import path from "path";
 import os from "os";
-import type { Platform } from "./types";
+import type { Platform } from "./types.js";
 
 /**
  * 平台检测结果

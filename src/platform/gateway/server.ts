@@ -5,8 +5,8 @@
 
 import * as http from "http";
 import * as url from "url";
-import { Gateway } from "./index";
-import { BaseChannel } from "./channels/base";
+import { Gateway } from "./index.js";
+import { BaseChannel } from "./channels/base.js";
 
 const VERSION = "0.2.0";
 

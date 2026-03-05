@@ -8,8 +8,8 @@ import {
   type CreateSessionParams,
   createSessionInfo,
   type SessionManagerConfig,
-} from "./types";
-import { SessionAlreadyExistsError, InputValidationError } from "./errors";
+} from "./types.js";
+import { SessionAlreadyExistsError, InputValidationError } from "./errors.js";
 
 /**
  * 默认会话 TTL (30分钟)

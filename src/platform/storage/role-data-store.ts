@@ -9,7 +9,7 @@
  */
 
 import type Database from "better-sqlite3";
-import type { VectorStore } from "./types";
+import type { VectorStore } from "./types.js";
 
 // ============ 类型 ============
 

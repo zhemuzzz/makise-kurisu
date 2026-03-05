@@ -17,7 +17,7 @@ import type {
   MCPStdioServerConfig,
   MCPConfig,
   VariableContext,
-} from "./types";
+} from "./types.js";
 
 /**
  * 全局 MCP Servers 配置文件格式

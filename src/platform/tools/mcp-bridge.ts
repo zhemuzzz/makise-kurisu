@@ -19,18 +19,18 @@ import {
   type CompatibilityCallToolResult,
 } from "@modelcontextprotocol/sdk/types.js";
 import { EventEmitter } from "events";
-import type { ToolDef } from "./types";
+import type { ToolDef } from "./types.js";
 import type {
   MCPServerConfig,
   MCPStdioServerConfig,
   MCPHttpServerConfig,
   MCPConfig,
-} from "../skills/types";
-import { withTimeout } from "../utils/timeout";
+} from "../skills/types.js";
+import { withTimeout } from "../utils/timeout.js";
 import {
   MCPAutoReconnect,
   type MCPConnectionStatus,
-} from "./mcp-auto-reconnect";
+} from "./mcp-auto-reconnect.js";
 
 // --- Inlined from deleted src/evolution/types (KURISU-035) ---
 /** Event emitted when MCP tools change */

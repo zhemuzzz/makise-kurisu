@@ -19,7 +19,7 @@ import type {
   IModelProvider,
   Message,
   ChatOptions,
-} from "../models/types";
+} from "../models/types.js";
 
 // ===========================================
 // 类型定义

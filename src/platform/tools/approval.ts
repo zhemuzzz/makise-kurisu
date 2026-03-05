@@ -6,8 +6,8 @@
  * KURISU-019 Phase 4: 扩展风险评估和审批消息功能
  */
 
-import type { ToolCall, ApprovalState } from "./types";
-import type { FilePermissionLevel } from "../models/executor-types";
+import type { ToolCall, ApprovalState } from "./types.js";
+import type { FilePermissionLevel } from "../models/executor-types.js";
 
 // ============================================
 // 风险评估类型

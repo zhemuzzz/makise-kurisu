@@ -7,21 +7,21 @@
 import Docker from "dockerode";
 import path from "path";
 import fs from "fs";
-import type { PermissionLevel } from "../types";
+import type { PermissionLevel } from "../types.js";
 import type {
   ToolExecutor,
   ExecutorCapabilities,
   ExecuteOptions,
   ExecuteResult,
   DockerExecutorConfig,
-} from "./types";
-import { DEFAULT_DOCKER_CONFIG } from "./types";
-import { detectPlatform } from "./platform";
+} from "./types.js";
+import { DEFAULT_DOCKER_CONFIG } from "./types.js";
+import { detectPlatform } from "./platform.js";
 import {
   checkDangerousCommand,
   filterSensitiveEnvVars,
   validateAllowedPaths,
-} from "./security";
+} from "./security.js";
 
 /**
  * 权限级别到容器配置的映射

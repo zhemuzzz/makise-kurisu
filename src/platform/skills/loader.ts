@@ -17,17 +17,17 @@ import type {
   ToolServerRef,
   VariableContext,
   SkillRequires,
-} from "./types";
-import type { ToolDef } from "../tools/types";
-import type { MCPBridge } from "../tools/mcp-bridge";
+} from "./types.js";
+import type { ToolDef } from "../tools/types.js";
+import type { MCPBridge } from "../tools/mcp-bridge.js";
 import {
   SKILL_CONFIG_FILE,
   DEFAULT_TRIGGER_RULE,
   isToolBindingLegacy,
   isToolServerRef,
   isToolMultiServerRef,
-} from "./types";
-import { getMCPServerConfigLoader } from "./mcp-server-config";
+} from "./types.js";
+import { getMCPServerConfigLoader } from "./mcp-server-config.js";
 
 /**
  * Skill 加载配置

@@ -6,7 +6,7 @@
  * 复用 zhipu-embedding.ts 的 API 调用模式
  */
 
-import type { EmbeddingProvider } from "./types";
+import type { EmbeddingProvider } from "./types.js";
 
 // ============ 配置 ============
 

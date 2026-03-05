@@ -14,8 +14,8 @@ import type {
   SafetyResult,
   SafetyError,
   ToolCall,
-} from "./types";
-import { DEFAULT_SAFETY_CONFIG } from "./types";
+} from "./types.js";
+import { DEFAULT_SAFETY_CONFIG } from "./types.js";
 
 /**
  * 静默安全拦截器

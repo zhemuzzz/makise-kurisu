@@ -14,7 +14,7 @@ import type {
   ChatOptions,
   ChatResponse,
   StreamChunk,
-} from "./types";
+} from "./types.js";
 
 // ============================================
 // 配置

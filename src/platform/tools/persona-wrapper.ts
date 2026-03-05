@@ -12,8 +12,8 @@
  * KURISU-019 Phase 4: 扩展审批相关方法
  */
 
-import type { ToolResult } from "./types";
-import type { ApprovalRequest, RiskLevel } from "./approval";
+import type { ToolResult } from "./types.js";
+import type { ApprovalRequest, RiskLevel } from "./approval.js";
 
 /**
  * 工具输出类型

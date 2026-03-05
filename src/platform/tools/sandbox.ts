@@ -7,8 +7,8 @@
 import Docker from "dockerode";
 import path from "path";
 import fs from "fs";
-import type { SandboxConfig, SandboxResult } from "./types";
-import { DEFAULT_SANDBOX_CONFIG } from "./types";
+import type { SandboxConfig, SandboxResult } from "./types.js";
+import { DEFAULT_SANDBOX_CONFIG } from "./types.js";
 
 /**
  * 验证挂载卷路径是否安全

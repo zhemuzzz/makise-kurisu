@@ -12,9 +12,9 @@
 import path from "path";
 import os from "os";
 import fs from "fs";
-import type { FilePermissionLevel } from "../models/executor-types";
-import { DEFAULT_RESTRICTED_CONFIG } from "../models/executor-types";
-import { getRecommendedWorkDir } from "./executors/platform";
+import type { FilePermissionLevel } from "../models/executor-types.js";
+import { DEFAULT_RESTRICTED_CONFIG } from "../models/executor-types.js";
+import { getRecommendedWorkDir } from "./executors/platform.js";
 
 /**
  * 会话工作目录状态

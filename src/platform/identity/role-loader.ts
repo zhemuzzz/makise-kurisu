@@ -16,7 +16,7 @@ import {
   type Episode,
   type Relationship,
   type RoleLoadResult,
-} from "./soul-types";
+} from "./soul-types.js";
 
 // ============================================
 // 错误类
