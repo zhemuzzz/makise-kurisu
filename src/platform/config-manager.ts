@@ -91,7 +91,7 @@ class ConfigManagerImpl implements ConfigManager {
     }
 
     // Step 6: Deep freeze
-    this.config = deepFreeze(validated) as PlatformConfig;
+    this.config = deepFreeze(validated);
   }
 
   get<K extends keyof PlatformConfig>(key: K): Readonly<PlatformConfig[K]> {
@@ -162,7 +162,7 @@ class ConfigManagerImpl implements ConfigManager {
     // Layer 4: Permissions YAML
     config["permissions"] = {
       ...CONFIG_DEFAULTS.permissions,
-      ...(permissionsYaml as Record<string, unknown>),
+      ...(permissionsYaml),
     };
 
     // Layer 5: Environment variable overrides (CFG-3)

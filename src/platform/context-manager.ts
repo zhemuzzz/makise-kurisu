@@ -302,7 +302,7 @@ class ContextManagerImpl implements ContextManager {
     // Extract emotions first (always at the end of text)
     const emotionMatch = text.match(/\n?\[emotions:\s*([^\]]+)\]\s*$/);
     if (emotionMatch) {
-      text = text.slice(0, text.indexOf(emotionMatch[0]!));
+      text = text.slice(0, text.indexOf(emotionMatch[0]));
       emotionTags = emotionMatch[1]!.split(",").map((t) => t.trim());
     }
 
