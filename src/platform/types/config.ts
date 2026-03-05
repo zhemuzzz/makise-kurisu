@@ -123,6 +123,10 @@ export const ROUTINE_CONFIG_DEFAULTS: RoutineConfig = {
 // ============ Skills (Phase 3c: Skill System 2.0) ============
 
 export interface SkillsConfig {
+  /** Skills 目录路径 */
+  readonly skillsDir: string;
+  /** 是否在 bootstrap 时自动加载 Skills（默认 true） */
+  readonly autoLoad: boolean;
   /** 分类器 capability (用于 LLM prompt，如 "conversation", "coding") */
   readonly classifierCapability: string;
   /** LLM 分类器超时 (毫秒) */
@@ -140,6 +144,8 @@ export interface SkillsConfig {
 }
 
 export const SkillsConfigSchema = z.object({
+  skillsDir: z.string().min(1).default("./config/skills"),
+  autoLoad: z.boolean().default(true),
   classifierCapability: z.string().min(1).default("conversation"),
   classifierTimeout: z.number().positive().default(3000),
   classifierConfidence: z.number().min(0).max(1).default(0.6),
@@ -150,6 +156,8 @@ export const SkillsConfigSchema = z.object({
 });
 
 export const SKILLS_CONFIG_DEFAULTS: SkillsConfig = {
+  skillsDir: "./config/skills",
+  autoLoad: true,
   classifierCapability: "conversation",
   classifierTimeout: 3000,
   classifierConfidence: 0.6,

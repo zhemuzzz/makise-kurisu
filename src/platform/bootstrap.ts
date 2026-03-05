@@ -25,7 +25,6 @@ import type {
 } from "../agent/types.js";
 import type {
   PlatformServices,
-  SkillManagerPort,
   ContextManagerPort,
   ToolExecutorPort,
   ApprovalPort,
@@ -47,11 +46,19 @@ import { MemoryAdapter } from "./adapters/memory-adapter.js";
 import { createApprovalService } from "./approval-service.js";
 import type { ApprovalService } from "./approval-service.js";
 import { ToolRegistry } from "./tools/registry.js";
+import { createMCPBridge } from "./tools/mcp-bridge.js";
+import type { MCPBridge } from "./tools/mcp-bridge.js";
 import { HybridMemoryEngine } from "./memory/hybrid-engine.js";
 import { createModelProvider } from "./models/index.js";
 import type { ModelConfig } from "./models/types.js";
 import type { IModelProvider } from "./models/types.js";
 import type { ModelProviderConfig as PlatformModelProviderConfig } from "./types/config.js";
+import { createSkillRegistry } from "./skills/registry.js";
+import type { SkillRegistry } from "./skills/registry.js";
+import { createSkillIntentClassifier } from "./skills/intent-classifier.js";
+import type { ISkillIntentClassifier } from "./skills/intent-classifier.js";
+import { createSkillManager } from "./skills/skill-manager.js";
+import type { ISkillManager } from "./skills/skill-manager.js";
 import type { EventBus } from "./event-bus.js";
 import { createEventBus } from "./event-bus.js";
 import type { Scheduler } from "./scheduler.js";
@@ -262,11 +269,14 @@ function convertToModelConfigs(
 
 interface SharedInfra {
   readonly subAgentManager: SubAgentManager;
-  readonly noopSkillManager: SkillManagerPort;
+  readonly skillManager: ISkillManager;
   readonly approvalService: ApprovalService;
   readonly toolRegistry: ToolRegistry;
   readonly memoryEngine: HybridMemoryEngine;
   readonly modelProvider: IModelProvider | null;
+  readonly mcpBridge: MCPBridge;
+  readonly skillRegistry: SkillRegistry;
+  readonly intentClassifier: ISkillIntentClassifier;
   readonly summarizeFn: (text: string) => Promise<string>;
   readonly setExecuteTask: (fn: ExecuteTaskFn) => void;
 }
@@ -290,9 +300,7 @@ function initSharedInfra(foundation: Foundation): SharedInfra {
     executeTask: (config) => currentExecuteTask(config),
   });
 
-  const noopSkillManager = createNoopSkillManagerPort();
   const approvalService: ApprovalService = createApprovalService();
-  const toolRegistry = new ToolRegistry();
   const memoryEngine = new HybridMemoryEngine();
 
   // ModelProvider: convert PlatformConfig → ModelConfig[] with secret resolution
@@ -315,6 +323,40 @@ function initSharedInfra(foundation: Foundation): SharedInfra {
     });
   }
 
+  // MCPBridge: MCP Server 连接管理
+  const mcpBridge = createMCPBridge({
+    connectionTimeout: 10000,
+    toolCallTimeout: 30000,
+    autoReconnect: true,
+  });
+
+  // ToolRegistry: 工具注册表（注入 MCPBridge）
+  const toolRegistry = new ToolRegistry({ mcpBridge });
+
+  // SkillRegistry: Skill 注册表（注入 MCPBridge）
+  const skillsConfig = foundation.config.get("skills");
+  const skillRegistry = createSkillRegistry({
+    mcpBridge,
+    skillsDir: skillsConfig.skillsDir,
+  });
+
+  // IntentClassifier: 意图分类器（注入 SkillRegistry + ModelProvider）
+  const intentClassifierConfig = {
+    skillRegistry,
+    capability: skillsConfig.classifierCapability,
+    confidenceThreshold: skillsConfig.classifierConfidence,
+    timeout: skillsConfig.classifierTimeout,
+    ...(modelProvider !== null && { modelProvider }),
+  };
+  const intentClassifier = createSkillIntentClassifier(intentClassifierConfig);
+
+  // SkillManager: Skill 管理器（注入 SkillRegistry + IntentClassifier）
+  const skillManager = createSkillManager({
+    skillRegistry,
+    intentClassifier,
+    maxActivePerSession: skillsConfig.maxActivePerSession,
+  });
+
   // summarizeFn: uses chat model for compact summaries (fallback: truncate)
   const capturedModelProvider = modelProvider;
   const summarizeFn = async (text: string): Promise<string> => {
@@ -335,11 +377,14 @@ function initSharedInfra(foundation: Foundation): SharedInfra {
 
   return {
     subAgentManager,
-    noopSkillManager,
+    skillManager,
     approvalService,
     toolRegistry,
     memoryEngine,
     modelProvider,
+    mcpBridge,
+    skillRegistry,
+    intentClassifier,
     summarizeFn,
     setExecuteTask(fn: ExecuteTaskFn) {
       currentExecuteTask = fn;
@@ -380,7 +425,7 @@ async function initRoleServices(
       const services: PlatformServices = {
         context: new ContextManagerAdapter(contextManagerOptions, shared.summarizeFn),
         tools: new ToolExecutorAdapter(shared.toolRegistry),
-        skills: shared.noopSkillManager,
+        skills: shared.skillManager,
         subAgents: shared.subAgentManager,
         permission: new PermissionAdapter(foundation.permissions),
         approval: new ApprovalAdapter(shared.approvalService),
@@ -534,6 +579,32 @@ export async function bootstrapFull(
   // Phase 2: Shared infrastructure (SubAgentManager, ModelProvider, adapters)
   const shared = initSharedInfra(foundation);
 
+  // Phase 2.5: Load Skills from directory (if autoLoad enabled)
+  const skillsConfig = foundation.config.get("skills");
+  if (skillsConfig.autoLoad) {
+    try {
+      await shared.skillRegistry.loadFromDirectory(skillsConfig.skillsDir);
+      foundation.tracing.log({
+        level: "info",
+        category: "agent",
+        event: "bootstrap:skills-loaded",
+        data: {
+          skillsDir: skillsConfig.skillsDir,
+          count: shared.skillRegistry.list().length,
+        },
+        timestamp: Date.now(),
+      });
+    } catch (error) {
+      foundation.tracing.log({
+        level: "warn",
+        category: "agent",
+        event: "bootstrap:skills-load-failed",
+        data: { error: String(error) },
+        timestamp: Date.now(),
+      });
+    }
+  }
+
   // Phase 3: Per-role Identity + PlatformServices
   const roles = await initRoleServices(options, foundation, shared);
 
@@ -633,22 +704,6 @@ function createInMemorySqlite(): { exec(sql: string): void; prepare(sql: string)
   const db = new BetterSqlite3(":memory:");
   db.pragma("journal_mode = WAL");
   return db;
-}
-
-function createNoopSkillManagerPort(): SkillManagerPort {
-  return {
-    findSkill: async () => [],
-    getActiveSkills: async () => [],
-    activate: async (skillId, _sessionId, injectionLevel) => ({
-      id: skillId,
-      name: skillId,
-      injectionLevel,
-      activatedAt: Date.now(),
-    }),
-    archive: async () => true,
-    createDraft: async () => "draft-noop",
-    confirmDraft: async () => true,
-  };
 }
 
 export function createNoopContextManagerPort(): ContextManagerPort {
