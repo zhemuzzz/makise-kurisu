@@ -25,9 +25,10 @@ import {
 import { createChangeDirHandler } from "./handlers/change-dir-handler.js";
 import { createChangePermissionHandler } from "./handlers/change-permission-handler.js";
 import { createDeleteConfirmHandler } from "./handlers/delete-confirm-handler.js";
-import { SessionManager } from "./session-manager.js";
 import { StreamHandler } from "./stream-handler.js";
-import { GatewayError, InputValidationError } from "./errors.js";
+import { GatewayError } from "./errors.js";
+import { GatewayOrchestrator } from "./gateway-orchestrator.js";
+import { GatewaySessionManager } from "./gateway-session.js";
 
 /**
  * 默认会话 TTL (30分钟)
@@ -68,8 +69,9 @@ export class Gateway {
     | { disconnectAll(timeout?: number): Promise<void> }
     | undefined;
   private readonly config: Required<GatewayConfig>;
-  private sessionManager?: SessionManager;
-  private streamHandler: StreamHandler;
+  private readonly streamHandler: StreamHandler;
+  private readonly gatewayOrchestrator: GatewayOrchestrator;
+  private readonly gatewaySessionManager: GatewaySessionManager;
 
   // KURISU-024: 会话设置注册表（替代 3 个 recognizer + 3 个 pending Map）
   private readonly settingRegistry: SessionSettingRegistry;
@@ -122,6 +124,22 @@ export class Gateway {
         ),
       );
     }
+
+    // 初始化子模块
+    this.gatewayOrchestrator = new GatewayOrchestrator(
+      this.orchestrator,
+      this.streamHandler,
+      this.settingRegistry,
+    );
+
+    this.gatewaySessionManager = new GatewaySessionManager(
+      this.orchestrator,
+      {
+        sessionTTL: this.config.sessionTTL,
+        maxSessions: this.config.maxSessions,
+        cleanupInterval: this.config.cleanupInterval,
+      },
+    );
   }
 
   /**
@@ -132,11 +150,7 @@ export class Gateway {
       return;
     }
 
-    this.sessionManager = new SessionManager({
-      ttl: this.config.sessionTTL,
-      cleanupInterval: this.config.cleanupInterval,
-    });
-
+    this.gatewaySessionManager.initialize();
     this.running = true;
   }
 
@@ -148,10 +162,7 @@ export class Gateway {
       return;
     }
 
-    if (this.sessionManager) {
-      this.sessionManager.stopCleanup();
-      this.sessionManager.clear();
-    }
+    this.gatewaySessionManager.shutdown();
 
     // KURISU-029: 优雅退出 — 清理 MCP 连接
     if (this.mcpBridge) {
@@ -178,85 +189,54 @@ export class Gateway {
     metadata?: Record<string, unknown>,
   ): Promise<SessionInfo> {
     this.ensureRunning();
-    this.ensureSessionManager();
-
-    // 检查最大会话数
-    if (this.sessionManager!.count() >= this.config.maxSessions) {
-      throw new GatewayError(
-        "Maximum number of sessions reached",
-        "MAX_SESSIONS_REACHED",
-      );
-    }
-
-    const session = this.sessionManager!.create({
+    return this.gatewaySessionManager.createSession(
       sessionId,
       userId,
       channelType,
-      ...(metadata ? { metadata } : {}),
-    });
-
-    // 通知 orchestrator
-    this.orchestrator.createSession({
-      sessionId,
-      userId,
-      channelType,
-    });
-
-    return session;
+      metadata,
+    );
   }
 
   /**
    * 获取会话
    */
   getSession(sessionId: string): SessionInfo | null {
-    this.ensureSessionManager();
-    return this.sessionManager!.get(sessionId);
+    return this.gatewaySessionManager.getSession(sessionId);
   }
 
   /**
    * 删除会话
    */
   async deleteSession(sessionId: string): Promise<boolean> {
-    this.ensureSessionManager();
-
-    const deleted = this.sessionManager!.delete(sessionId);
-
-    if (deleted) {
-      this.orchestrator.deleteSession?.(sessionId);
-    }
-
-    return deleted;
+    return this.gatewaySessionManager.deleteSession(sessionId);
   }
 
   /**
    * 获取会话数量
    */
   getSessionCount(): number {
-    return this.sessionManager?.count() ?? 0;
+    return this.gatewaySessionManager.getSessionCount();
   }
 
   /**
    * 获取用户的所有会话
    */
   getSessionsByUserId(userId: string): SessionInfo[] {
-    this.ensureSessionManager();
-    return this.sessionManager!.findByUserId(userId);
+    return this.gatewaySessionManager.getSessionsByUserId(userId);
   }
 
   /**
    * 清除所有会话
    */
   async clearAllSessions(): Promise<void> {
-    this.ensureSessionManager();
-    this.sessionManager!.clear();
+    return this.gatewaySessionManager.clearAllSessions();
   }
 
   /**
    * 手动触发过期会话清理
    */
   cleanupExpiredSessions(): void {
-    this.ensureSessionManager();
-    this.sessionManager!.cleanup();
+    this.gatewaySessionManager.cleanupExpiredSessions();
   }
 
   /**
@@ -270,92 +250,23 @@ export class Gateway {
   ): Promise<GatewayStreamResult> {
     this.ensureRunning();
 
-    // 验证输入
-    const trimmedInput = input.trim();
-    if (!trimmedInput) {
-      throw new InputValidationError("Invalid input: cannot be empty");
-    }
+    const sessionManager = this.gatewaySessionManager.getManager();
 
-    this.ensureSessionManager();
-
-    // 确保会话存在
-    if (!this.sessionManager!.has(sessionId)) {
+    // 确保会话存在（如果不存在则创建）
+    if (!sessionManager.has(sessionId)) {
       if (!userId) {
         throw new GatewayError("userId is required for new session");
       }
-
       await this.createSession(sessionId, userId, ChannelType.CLI);
     }
 
-    // 更新活跃时间
-    this.sessionManager!.touch(sessionId);
-
-    // KURISU-024: 使用 SessionSettingRegistry 统一处理会话设置流水线
-    // 替代原有的 174 行 waterfall if-else
-    const pipelineResult = await this.settingRegistry.processPipeline(
+    return this.gatewayOrchestrator.processStream(
+      sessionManager,
       sessionId,
-      trimmedInput,
-    );
-
-    if (pipelineResult.handled) {
-      const textStream = this.streamHandler.textStreamFromChunks([
-        pipelineResult.message ?? "",
-      ]);
-      const streamResult = this.streamHandler.createStreamResult(
-        textStream,
-        callbacks,
-      );
-
-      if (pipelineResult.requiresApproval && pipelineResult.approvalMessage) {
-        return {
-          ...streamResult,
-          approvalRequired: true,
-          approvalMessage: pipelineResult.approvalMessage,
-        };
-      }
-
-      return streamResult;
-    }
-
-    // 调用 orchestrator
-    const session = this.sessionManager!.get(sessionId);
-    const result = await this.orchestrator.processStream({
-      sessionId,
-      input: trimmedInput,
-      ...(userId ? { userId } : {}),
-      ...(session?.channelType ? { channelType: session.channelType } : {}),
-    });
-
-    // 如果返回字符串，包装为流结果
-    if (typeof result === "string") {
-      const textStream = this.streamHandler.textStreamFromChunks([result]);
-      return this.streamHandler.createStreamResult(textStream, callbacks);
-    }
-
-    // 使用 createStreamResult 统一处理，确保返回值一致
-    // 这样 callbacks 路径和非 callbacks 路径都会返回完整的 GatewayStreamResult
-    const streamResult = this.streamHandler.createStreamResult(
-      result.textStream,
+      input,
+      userId,
       callbacks,
     );
-
-    // KURISU-033: 传递审批字段到 Channel 层（不可变构造）
-    if ("approvalRequired" in result && result.approvalRequired) {
-      return {
-        ...streamResult,
-        approvalRequired: true,
-        ...("approvalMessage" in result &&
-          typeof result.approvalMessage === "string" && {
-            approvalMessage: result.approvalMessage,
-          }),
-        ...("pendingToolCall" in result &&
-          result.pendingToolCall && {
-            pendingToolCall: result.pendingToolCall,
-          }),
-      };
-    }
-
-    return streamResult;
   }
 
   /**
@@ -455,15 +366,7 @@ export class Gateway {
     sessionId: string,
     toolCall: ToolCall,
   ): Promise<string> {
-    // 检查 orchestrator 是否支持 executeTool
-    if (!this.orchestrator.executeTool) {
-      throw new GatewayError(
-        "Orchestrator does not support tool execution",
-        "TOOL_EXECUTION_NOT_SUPPORTED",
-      );
-    }
-
-    return this.orchestrator.executeTool(sessionId, toolCall);
+    return this.gatewayOrchestrator.executeApprovedTool(sessionId, toolCall);
   }
 
   // ===========================================
@@ -606,15 +509,6 @@ export class Gateway {
       throw new GatewayError("Gateway is not started");
     }
   }
-
-  /**
-   * 确保 session manager 存在
-   */
-  private ensureSessionManager(): void {
-    if (!this.sessionManager) {
-      throw new GatewayError("Session manager not initialized");
-    }
-  }
 }
 
 // Re-export types
@@ -628,3 +522,5 @@ export { TelegramChannel } from "./channels/telegram.js";
 export { QQChannel } from "./channels/qq.js";
 export { BaseChannel, ChannelRoute } from "./channels/base.js";
 export { KurisuServer } from "./server.js";
+export { GatewayOrchestrator } from "./gateway-orchestrator.js";
+export { GatewaySessionManager } from "./gateway-session.js";
