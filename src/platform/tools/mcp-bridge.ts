@@ -7,23 +7,13 @@
  * KURISU-029: 进程管理优化 — 健康检查 + 自动恢复 + 优雅退出
  */
 
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
-import { filterSensitiveEnvVars } from "./executors/security.js";
-import {
-  ListToolsResultSchema,
-  CompatibilityCallToolResultSchema,
-  type ListToolsResult,
-  type CompatibilityCallToolResult,
-} from "@modelcontextprotocol/sdk/types.js";
 import { EventEmitter } from "events";
 import type { ToolDef } from "./types.js";
 import type {
   MCPServerConfig,
-  MCPStdioServerConfig,
-  MCPHttpServerConfig,
   MCPConfig,
 } from "../skills/types.js";
 import { withTimeout } from "../utils/timeout.js";
@@ -31,6 +21,11 @@ import {
   MCPAutoReconnect,
   type MCPConnectionStatus,
 } from "./mcp-auto-reconnect.js";
+import {
+  MCPConnectionManager,
+  type MCPConnection,
+} from "./mcp-connection.js";
+import { MCPToolExecutor } from "./mcp-tool-executor.js";
 
 // --- Inlined from deleted src/evolution/types (KURISU-035) ---
 /** Event emitted when MCP tools change */
@@ -39,46 +34,6 @@ export interface ToolsChangedEvent {
   readonly serverName: string;
   readonly tools: readonly ToolDef[];
   readonly timestamp: number;
-}
-
-/** Commands that should never be allowed as MCP server commands */
-const DANGEROUS_MCP_COMMANDS: readonly string[] = [
-  "rm", "del", "format", "mkfs", "dd", "shutdown", "reboot",
-  "halt", "init", "kill", "killall", "pkill",
-];
-
-/** Known-safe commands commonly used for MCP servers */
-const ALLOWED_MCP_COMMANDS: readonly string[] = [
-  "node", "npx", "python", "python3", "pip", "pipx",
-  "uvx", "uv", "docker", "deno", "bun",
-];
-// --- End inlined definitions ---
-
-/**
- * MCP 客户端连接信息
- */
-interface MCPConnection {
-  client: Client;
-  transport: StdioClientTransport | StreamableHTTPClientTransport;
-  status: MCPConnectionStatus;
-  config: MCPServerConfig;
-  error?: string;
-}
-
-/**
- * 类型守卫：判断是否为 HTTP 类型配置
- */
-function isHttpConfig(config: MCPServerConfig): config is MCPHttpServerConfig {
-  return "type" in config && (config as unknown as Record<string, unknown>)["type"] === "http";
-}
-
-/**
- * 类型守卫：判断是否为 Stdio 类型配置
- */
-function isStdioConfig(
-  config: MCPServerConfig,
-): config is MCPStdioServerConfig {
-  return "command" in config;
 }
 
 /**
@@ -155,6 +110,12 @@ export class MCPBridge extends EventEmitter {
   /** 工具变更事件发射器 */
   private toolsChangedEmitter: EventEmitter;
 
+  /** Connection manager */
+  private readonly connectionManager: MCPConnectionManager;
+
+  /** Tool executor */
+  private readonly toolExecutor: MCPToolExecutor;
+
   constructor(config: MCPBridgeConfig = {}) {
     super();
     this.connectionTimeout =
@@ -192,6 +153,14 @@ export class MCPBridge extends EventEmitter {
       },
     );
     this.toolsChangedEmitter = new EventEmitter();
+    this.connectionManager = new MCPConnectionManager({
+      connectionTimeout: this.connectionTimeout,
+      reconnectMaxRetries: this.reconnectMaxRetries,
+      reconnectDelay: this.reconnectDelay,
+    });
+    this.toolExecutor = new MCPToolExecutor({
+      toolCallTimeout: this.toolCallTimeout,
+    });
   }
 
   /**
@@ -207,127 +176,31 @@ export class MCPBridge extends EventEmitter {
       return existing.client;
     }
 
-    // 根据配置类型选择传输方式
-    if (isHttpConfig(serverConfig)) {
-      return this.connectHttp(serverName, serverConfig);
-    }
-
-    return this.connectStdio(serverName, serverConfig);
-  }
-
-  /**
-   * 通过 stdio 传输连接 MCP Server
-   */
-  private async connectStdio(
-    serverName: string,
-    serverConfig: MCPStdioServerConfig,
-  ): Promise<Client> {
-    // 运行时命令安全验证
-    const commandLower = serverConfig.command.toLowerCase();
-
-    // 检查是否在危险命令黑名单中
-    const isDangerous = DANGEROUS_MCP_COMMANDS.some(
-      (c) => c.toLowerCase() === commandLower,
-    );
-    if (isDangerous) {
-      throw new Error(
-        `Security: Refusing to connect to MCP server "${serverName}" with dangerous command "${serverConfig.command}". ` +
-          `This command could be used to execute arbitrary code.`,
-      );
-    }
-
-    // 检查命令是否在白名单中或看起来安全
-    const isAllowed = ALLOWED_MCP_COMMANDS.some(
-      (c) => c.toLowerCase() === commandLower,
-    );
-    if (!isAllowed) {
-      console.warn(
-        `Warning: MCP server "${serverName}" uses non-whitelisted command "${serverConfig.command}". ` +
-          `Ensure this is from a trusted source.`,
-      );
-    }
-
-    // 创建传输层 — 只传递白名单环境变量给子进程
-    const baseEnv = filterSensitiveEnvVars(
-      process.env as Record<string, string>,
-      "permissive",
-    );
-    const transport = new StdioClientTransport({
-      command: serverConfig.command,
-      args: serverConfig.args ? [...serverConfig.args] : [],
-      env: serverConfig.env
-        ? ({ ...baseEnv, ...serverConfig.env } as Record<string, string>)
-        : baseEnv,
-      ...(serverConfig.cwd ? { cwd: serverConfig.cwd } : {}),
-    });
-
-    // 创建客户端
-    const client = new Client(
-      { name: "kurisu-mcp-client", version: "1.0.0" },
-      { capabilities: {} },
-    );
-
     // 记录连接状态
     this.connections.set(serverName, {
-      client,
-      transport,
+      client: {} as Client, // 临时占位
+      transport: {} as StdioClientTransport | StreamableHTTPClientTransport,
       status: "connecting",
       config: serverConfig,
     });
 
     try {
-      await withTimeout(
-        client.connect(transport as Transport),
-        this.connectionTimeout,
-        `Connection to ${serverName}`,
+      // 使用 ConnectionManager 建立连接
+      const { client, transport } = await this.connectionManager.connect(
+        serverName,
+        serverConfig,
       );
 
-      this.updateConnection(serverName, { status: "connected" });
+      // 更新连接信息
+      this.connections.set(serverName, {
+        client,
+        transport,
+        status: "connected",
+        config: serverConfig,
+      });
 
       // KURISU-029: 绑定 transport 事件（崩溃检测，仅 stdio）
       this.bindTransportEvents(serverName, transport);
-
-      return client;
-    } catch (error) {
-      this.updateConnection(serverName, {
-        status: "error",
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw error;
-    }
-  }
-
-  /**
-   * 通过 HTTP 传输连接 MCP Server（Streamable HTTP）
-   */
-  private async connectHttp(
-    serverName: string,
-    serverConfig: MCPHttpServerConfig,
-  ): Promise<Client> {
-    const transport = new StreamableHTTPClientTransport(
-      new URL(serverConfig.url),
-    );
-
-    const client = new Client(
-      { name: "kurisu-mcp-client", version: "1.0.0" },
-      { capabilities: {} },
-    );
-
-    this.connections.set(serverName, {
-      client,
-      transport,
-      status: "connecting",
-      config: serverConfig,
-    });
-
-    try {
-      await withTimeout(
-        client.connect(transport as Transport),
-        this.connectionTimeout,
-        `Connection to ${serverName}`,
-      );
-
-      this.updateConnection(serverName, { status: "connected" });
 
       return client;
     } catch (error) {
@@ -467,7 +340,7 @@ export class MCPBridge extends EventEmitter {
     this.updateConnection(serverName, { status: "disconnected" });
 
     try {
-      await conn.client.close();
+      await this.connectionManager.disconnect(conn.client);
     } finally {
       this.connections.delete(serverName);
     }
@@ -505,28 +378,7 @@ export class MCPBridge extends EventEmitter {
       throw new Error(`MCP server not connected: ${serverName}`);
     }
 
-    try {
-      // 使用 MCP SDK 的 ListToolsResultSchema 验证响应
-      const result: ListToolsResult = await conn.client.request(
-        { method: "tools/list", params: {} },
-        ListToolsResultSchema,
-      );
-
-      // 转换为 ToolDef
-      return result.tools.map((tool) => ({
-        name: tool.name,
-        description: tool.description ?? `Tool: ${tool.name}`,
-        inputSchema: tool.inputSchema as unknown as ToolDef["inputSchema"],
-        permission: "safe" as const, // 默认 safe，由 PermissionChecker 覆盖
-        source: {
-          type: "mcp" as const,
-          serverName,
-        },
-      }));
-    } catch (error) {
-      console.error(`Failed to list tools from ${serverName}:`, error);
-      return [];
-    }
+    return this.toolExecutor.listTools(conn.client, serverName);
   }
 
   /**
@@ -554,46 +406,7 @@ export class MCPBridge extends EventEmitter {
       throw new Error(`MCP server not connected: ${serverName}`);
     }
 
-    // 使用 MCP SDK 的 CompatibilityCallToolResultSchema 验证响应（带超时）
-    const result = (await withTimeout(
-      conn.client.request(
-        { method: "tools/call", params: { name: toolName, arguments: args } },
-        CompatibilityCallToolResultSchema,
-      ),
-      this.toolCallTimeout,
-      `Tool call ${toolName}`,
-    )) as CompatibilityCallToolResult;
-
-    // 处理错误
-    if (result.isError) {
-      // 兼容新旧两种格式
-      /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unnecessary-type-assertion */
-      const errorContent =
-        "content" in result
-          ? (result as unknown as { content: Array<{ text?: string }> }).content
-              .map((c) => c.text ?? "")
-              .join("\n")
-          : "Unknown error";
-      /* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unnecessary-type-assertion */
-      throw new Error(`Tool execution error: ${errorContent}`);
-    }
-
-    // 兼容新旧两种格式返回内容
-    if ("content" in result) {
-      /* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unnecessary-type-assertion */
-      return (
-        result as unknown as {
-          content: Array<{ text?: string; data?: string }>;
-        }
-      ).content
-        .map((c) => c.text ?? c.data ?? "")
-        .join("\n");
-      /* eslint-enable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unnecessary-type-assertion */
-    }
-
-    // 旧格式：直接返回 toolResult
-    /* eslint-disable-next-line @typescript-eslint/no-unsafe-return */
-    return (result as { toolResult: unknown }).toolResult;
+    return this.toolExecutor.callTool(conn.client, toolName, args);
   }
 
   /**
@@ -774,40 +587,7 @@ export class MCPBridge extends EventEmitter {
     oldConfig: MCPServerConfig,
     newConfig: MCPServerConfig,
   ): boolean {
-    // 类型不同（stdio vs http）
-    const oldIsHttp = isHttpConfig(oldConfig);
-    const newIsHttp = isHttpConfig(newConfig);
-    if (oldIsHttp !== newIsHttp) return true;
-
-    // HTTP 类型比较 URL
-    if (oldIsHttp && newIsHttp) {
-      return oldConfig.url !== newConfig.url;
-    }
-
-    // Stdio 类型比较命令、参数、环境变量
-    if (isStdioConfig(oldConfig) && isStdioConfig(newConfig)) {
-      if (oldConfig.command !== newConfig.command) return true;
-
-      const oldArgs = oldConfig.args ?? [];
-      const newArgs = newConfig.args ?? [];
-      if (
-        oldArgs.length !== newArgs.length ||
-        oldArgs.some((a, i) => a !== newArgs[i])
-      ) {
-        return true;
-      }
-
-      const oldEnv = oldConfig.env ?? {};
-      const newEnv = newConfig.env ?? {};
-      const oldKeys = Object.keys(oldEnv);
-      const newKeys = Object.keys(newEnv);
-      if (oldKeys.length !== newKeys.length) return true;
-      for (const [key, value] of Object.entries(newEnv)) {
-        if (oldEnv[key] !== value) return true;
-      }
-    }
-
-    return false;
+    return this.connectionManager.configChanged(oldConfig, newConfig);
   }
 
   /**
