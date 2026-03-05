@@ -26,7 +26,7 @@ import { createChangeDirHandler } from "./handlers/change-dir-handler.js";
 import { createChangePermissionHandler } from "./handlers/change-permission-handler.js";
 import { createDeleteConfirmHandler } from "./handlers/delete-confirm-handler.js";
 import { StreamHandler } from "./stream-handler.js";
-import { GatewayError } from "./errors.js";
+import { GatewayError, InputValidationError } from "./errors.js";
 import { GatewayOrchestrator } from "./gateway-orchestrator.js";
 import { GatewaySessionManager } from "./gateway-session.js";
 
@@ -249,6 +249,12 @@ export class Gateway {
     callbacks?: StreamCallbacks,
   ): Promise<GatewayStreamResult> {
     this.ensureRunning();
+
+    // 验证输入（fail fast）
+    const trimmedInput = input.trim();
+    if (!trimmedInput) {
+      throw new InputValidationError("Invalid input: cannot be empty");
+    }
 
     const sessionManager = this.gatewaySessionManager.getManager();
 
