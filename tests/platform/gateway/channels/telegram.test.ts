@@ -114,9 +114,32 @@ describe("TelegramChannel", () => {
       });
     });
 
-    it("verifySignature 应该返回 true", () => {
+    it("verifySignature 无 secretToken 应该返回 true（向后兼容）", () => {
       expect(channel.verifySignature({})).toBe(true);
       expect(channel.verifySignature(null)).toBe(true);
+    });
+
+    it("verifySignature 配置 secretToken 应该验证 header", () => {
+      const secureChannel = new TelegramChannel({
+        botToken: "test-bot-token-123",
+        webhookSecretToken: "my-secret-token",
+      });
+
+      // 正确的 token
+      const validReq = {
+        headers: { "x-telegram-bot-api-secret-token": "my-secret-token" },
+      };
+      expect(secureChannel.verifySignature(validReq)).toBe(true);
+
+      // 错误的 token
+      const invalidReq = {
+        headers: { "x-telegram-bot-api-secret-token": "wrong-token" },
+      };
+      expect(secureChannel.verifySignature(invalidReq)).toBe(false);
+
+      // 缺少 header
+      const missingReq = { headers: {} };
+      expect(secureChannel.verifySignature(missingReq)).toBe(false);
     });
   });
 
@@ -338,6 +361,29 @@ describe("TelegramChannel", () => {
       expect(await channel.healthCheck()).toBe(false);
       await channel.initialize();
       expect(await channel.healthCheck()).toBe(true);
+    });
+
+    it("initialize 应该设置 webhook 并传递 secret_token", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ ok: true }),
+      });
+
+      const secureChannel = new TelegramChannel({
+        botToken: "test-bot-token-123",
+        webhookUrl: "https://example.com/webhook",
+        webhookSecretToken: "my-secret",
+      });
+
+      await secureChannel.initialize();
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        "https://api.telegram.org/bottest-bot-token-123/setWebhook",
+        expect.objectContaining({
+          method: "POST",
+          body: expect.stringContaining('"secret_token":"my-secret"'),
+        }),
+      );
     });
   });
 

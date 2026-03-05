@@ -209,9 +209,13 @@ export class TermuxExecutor implements ToolExecutor {
         ? filterSensitiveEnvVars(options.env)
         : undefined;
 
-      // Termux 环境变量
+      // Termux 环境变量 — 只传递白名单变量
+      const safeBaseEnv = filterSensitiveEnvVars(
+        process.env as Record<string, string>,
+        "permissive",
+      );
       const termuxEnv = {
-        ...process.env,
+        ...safeBaseEnv,
         ...filteredEnv,
         TERMUX_VERSION: process.env["TERMUX_VERSION"] || "",
         PREFIX: process.env["PREFIX"] || "/data/data/com.termux/files/usr",

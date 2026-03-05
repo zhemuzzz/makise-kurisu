@@ -11,6 +11,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
+import { filterSensitiveEnvVars } from "./executors/security.js";
 import {
   ListToolsResultSchema,
   CompatibilityCallToolResultSchema,
@@ -246,13 +247,17 @@ export class MCPBridge extends EventEmitter {
       );
     }
 
-    // 创建传输层
+    // 创建传输层 — 只传递白名单环境变量给子进程
+    const baseEnv = filterSensitiveEnvVars(
+      process.env as Record<string, string>,
+      "permissive",
+    );
     const transport = new StdioClientTransport({
       command: serverConfig.command,
       args: serverConfig.args ? [...serverConfig.args] : [],
       env: serverConfig.env
-        ? ({ ...process.env, ...serverConfig.env } as Record<string, string>)
-        : (process.env as Record<string, string>),
+        ? ({ ...baseEnv, ...serverConfig.env } as Record<string, string>)
+        : baseEnv,
       ...(serverConfig.cwd ? { cwd: serverConfig.cwd } : {}),
     });
 
@@ -794,6 +799,9 @@ export class MCPBridge extends EventEmitter {
 
       const oldEnv = oldConfig.env ?? {};
       const newEnv = newConfig.env ?? {};
+      const oldKeys = Object.keys(oldEnv);
+      const newKeys = Object.keys(newEnv);
+      if (oldKeys.length !== newKeys.length) return true;
       for (const [key, value] of Object.entries(newEnv)) {
         if (oldEnv[key] !== value) return true;
       }

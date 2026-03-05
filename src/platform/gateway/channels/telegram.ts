@@ -127,6 +127,8 @@ export interface TelegramConfig extends ChannelConfig {
   botToken: string;
   /** Webhook URL (可选，用于设置 Webhook) */
   webhookUrl?: string;
+  /** Webhook Secret Token (可选，用于验证 Telegram 请求签名) */
+  webhookSecretToken?: string;
   /** Gateway 实例（KURISU-013 Phase 2.1） */
   gateway?: GatewayLike;
 }
@@ -163,10 +165,17 @@ export class TelegramChannel extends BaseChannel {
 
   /**
    * 验证签名
-   * @description Telegram 无强制签名验证，直接返回 true
+   * @description 验证 Telegram secret_token header (如果配置了 webhookSecretToken)
    */
-  verifySignature(_req: unknown): boolean {
-    return true;
+  verifySignature(req: unknown): boolean {
+    const secretToken = this.telegramConfig.webhookSecretToken;
+    if (!secretToken) {
+      // 未配置 secret token 时不校验（向后兼容，但建议配置）
+      return true;
+    }
+    const typedReq = req as { headers?: Record<string, string | string[] | undefined> };
+    const header = typedReq.headers?.["x-telegram-bot-api-secret-token"];
+    return header === secretToken;
   }
 
   /**
@@ -408,11 +417,16 @@ export class TelegramChannel extends BaseChannel {
   private async setWebhook(webhookUrl: string): Promise<void> {
     const url = `https://api.telegram.org/bot${this.telegramConfig.botToken}/setWebhook`;
 
+    const payload: Record<string, string> = { url: webhookUrl };
+    if (this.telegramConfig.webhookSecretToken) {
+      payload["secret_token"] = this.telegramConfig.webhookSecretToken;
+    }
+
     try {
       const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: webhookUrl }),
+        body: JSON.stringify(payload),
       });
 
       const result = (await response.json()) as {

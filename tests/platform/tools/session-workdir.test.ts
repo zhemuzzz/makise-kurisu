@@ -153,6 +153,36 @@ describe("SessionWorkDirManager", () => {
       expect(result.reason).toContain("受限模式");
     });
 
+    it("应该拒绝路径前缀攻击（path boundary check）", () => {
+      // 如果 allowedPath = "/tmp/safe"，则 "/tmp/safe-evil" 不应被允许
+      const safeDir = path.join(testDir, "safe");
+      const evilDir = path.join(testDir, "safe-evil");
+      fs.mkdirSync(safeDir, { recursive: true });
+      fs.mkdirSync(evilDir, { recursive: true });
+
+      const allowedPaths = [safeDir];
+
+      // 子目录应该被允许
+      const subDir = path.join(safeDir, "sub");
+      fs.mkdirSync(subDir, { recursive: true });
+      const allowedResult = manager.changeWorkingDir(
+        "test-session",
+        subDir,
+        "restricted",
+        allowedPaths,
+      );
+      expect(allowedResult.success).toBe(true);
+
+      // 前缀攻击目录不应被允许
+      const evilResult = manager.changeWorkingDir(
+        "test-session",
+        evilDir,
+        "restricted",
+        allowedPaths,
+      );
+      expect(evilResult.success).toBe(false);
+    });
+
     it("应该使用默认 allowedPaths 如果未指定", () => {
       // 默认 allowedPaths 是 ~/Documents, ~/Projects
       const documentsDir = path.join(os.homedir(), "Documents");

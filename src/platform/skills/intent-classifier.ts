@@ -179,13 +179,16 @@ If no skill matches, respond: {"matches": []}`;
     try {
       const model = modelProvider.getByCapability(capability);
 
-      // 带超时的 LLM 调用
+      // 带超时的 LLM 调用（确保 timer 被清理）
+      let timeoutTimer: ReturnType<typeof setTimeout> | undefined;
       const response = await Promise.race([
         model.chat(messages, { temperature: 0.1, maxTokens: 200 }),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("LLM classification timeout")), timeout),
-        ),
-      ]);
+        new Promise<never>((_, reject) => {
+          timeoutTimer = setTimeout(() => reject(new Error("LLM classification timeout")), timeout);
+        }),
+      ]).finally(() => {
+        if (timeoutTimer !== undefined) clearTimeout(timeoutTimer);
+      });
 
       const parsed = parseLLMResponse(response.content);
       const matches = filterAndSort(parsed, confidenceThreshold);

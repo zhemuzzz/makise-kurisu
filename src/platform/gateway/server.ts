@@ -72,13 +72,18 @@ export class KurisuServer {
   registerChannel(name: string, channel: BaseChannel): void {
     this.channels.set(name, channel);
 
-    // 自动注册 Channel 路由
+    // 自动注册 Channel 路由 (含签名验证)
     const routes = channel.getRoutes();
     for (const route of routes) {
       const key = this.routeKey(route.method, route.path);
       this.routes.set(key, async (req, res, body) => {
+        // 验证请求签名
+        if (!channel.verifySignature(req)) {
+          this.sendJson(res, 401, { error: "Unauthorized" });
+          return;
+        }
+
         // 将 body 附加到 req 对象以兼容现有 Channel 实现
-        // TODO: 后续重构 Channel 接口，直接传递 body 参数
         const reqWithBody = req as http.IncomingMessage & { body: unknown };
         reqWithBody.body = body;
         await channel.handleRequest(reqWithBody, res);
@@ -178,10 +183,15 @@ export class KurisuServer {
     req: http.IncomingMessage,
     res: http.ServerResponse,
   ): Promise<void> {
-    // CORS
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    // Security headers
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("X-Frame-Options", "DENY");
+    res.setHeader("X-XSS-Protection", "1; mode=block");
+
+    // CORS — restrict to same origin (no wildcard)
+    res.setHeader("Access-Control-Allow-Origin", "");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
     if (req.method === "OPTIONS") {
       res.writeHead(204);
@@ -243,9 +253,8 @@ export class KurisuServer {
       this.sendJson(res, 404, { error: "Not found" });
     } catch (error) {
       console.error("Request error:", error);
-      this.sendJson(res, 500, {
-        error: error instanceof Error ? error.message : "Internal error",
-      });
+      // Never leak internal error details to client
+      this.sendJson(res, 500, { error: "Internal server error" });
     }
   }
 
@@ -271,11 +280,18 @@ export class KurisuServer {
   /**
    * 解析请求 body
    */
+  /** Maximum request body size (1 MB) */
+  private static readonly MAX_BODY_SIZE = 1024 * 1024;
+
   private parseBody<T>(req: http.IncomingMessage): Promise<T> {
     return new Promise((resolve, reject) => {
       let body = "";
       req.on("data", (chunk: Buffer) => {
         body += chunk.toString("utf-8");
+        if (body.length > KurisuServer.MAX_BODY_SIZE) {
+          reject(new Error("Request body too large"));
+          req.destroy();
+        }
       });
       req.on("end", () => {
         try {

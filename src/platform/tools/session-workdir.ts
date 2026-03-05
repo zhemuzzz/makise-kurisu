@@ -353,8 +353,11 @@ export class SessionWorkDirManager {
 
       const expandedAllowed = this.expandPath(allowedPath);
 
-      // 检查目标路径是否在允许路径下
-      if (targetPath.startsWith(expandedAllowed)) {
+      // 检查目标路径是否在允许路径下（含路径分隔符边界）
+      if (
+        targetPath === expandedAllowed ||
+        targetPath.startsWith(expandedAllowed + path.sep)
+      ) {
         return true;
       }
     }
