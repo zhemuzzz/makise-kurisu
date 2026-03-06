@@ -1,6 +1,8 @@
 /**
  * L1 交互网关 - Gateway 集成测试
  * 测试 Gateway 主类、模块整合、完整流程
+ *
+ * KURISU-041: AgentHandle 替代 IOrchestrator
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -10,10 +12,11 @@ import {
   type GatewayDeps,
   type SessionInfo,
   type StreamCallbacks,
+  type AgentHandle,
   createSessionInfo,
 } from "../../../src/platform/gateway/types";
 import {
-  createMockOrchestrator,
+  createMockAgentHandle,
   createMockSession,
   createMockTextStream,
   MOCK_AI_RESPONSE_CHUNKS,
@@ -23,18 +26,37 @@ import {
   BOUNDARY_TEST_DATA,
   ERROR_SCENARIOS,
 } from "../../fixtures/gateway-fixtures";
+import type { AgentEvent, AgentResult } from "../../../src/agent/types";
+
+/**
+ * 创建 Agent.execute() 的 mock AsyncGenerator
+ * 产出 text_delta 事件, 最终返回 AgentResult
+ */
+function createMockAgentExecute(chunks: string[], finalText: string) {
+  return async function* (): AsyncGenerator<AgentEvent, AgentResult> {
+    for (const chunk of chunks) {
+      yield { type: "text_delta" as const, delta: chunk } as AgentEvent;
+    }
+    return {
+      finalResponse: finalText,
+      emotionTags: [],
+      toolCalls: [],
+      metadata: {},
+    } as AgentResult;
+  };
+}
 
 describe("Gateway", () => {
   let gateway: Gateway;
-  let mockOrchestrator: ReturnType<typeof createMockOrchestrator>;
+  let mockAgentHandle: ReturnType<typeof createMockAgentHandle>;
 
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockOrchestrator = createMockOrchestrator();
+    mockAgentHandle = createMockAgentHandle();
 
     gateway = new Gateway({
-      orchestrator: mockOrchestrator,
+      agentHandle: mockAgentHandle,
     });
   });
 
@@ -47,15 +69,15 @@ describe("Gateway", () => {
       expect(gateway).toBeDefined();
     });
 
-    it("should throw error if orchestrator is missing", () => {
+    it("should throw error if agentHandle is missing", () => {
       expect(() => new Gateway({} as GatewayDeps)).toThrow(
-        /orchestrator.*required/i,
+        /agenthandle.*required/i,
       );
     });
 
     it("should accept optional configuration", () => {
       const customGateway = new Gateway({
-        orchestrator: mockOrchestrator,
+        agentHandle: mockAgentHandle,
         sessionTTL: 60000,
         maxSessions: 100,
       });
@@ -65,7 +87,7 @@ describe("Gateway", () => {
 
     it("should initialize with default configuration", () => {
       const defaultGateway = new Gateway({
-        orchestrator: mockOrchestrator,
+        agentHandle: mockAgentHandle,
       });
 
       expect(defaultGateway).toBeDefined();
@@ -193,18 +215,6 @@ describe("Gateway", () => {
 
       expect(session.metadata).toEqual(metadata);
     });
-
-    it("should call orchestrator createSession", async () => {
-      await gateway.createSession("session-1", "user-1", ChannelType.CLI);
-
-      expect(mockOrchestrator.createSession).toHaveBeenCalledWith(
-        expect.objectContaining({
-          sessionId: "session-1",
-          userId: "user-1",
-          channelType: ChannelType.CLI,
-        }),
-      );
-    });
   });
 
   describe("getSession", () => {
@@ -270,14 +280,6 @@ describe("Gateway", () => {
 
       expect(gateway.getSessionCount()).toBe(0);
     });
-
-    it("should call orchestrator deleteSession", async () => {
-      await gateway.createSession("session-1", "user-1", ChannelType.CLI);
-
-      await gateway.deleteSession("session-1");
-
-      expect(mockOrchestrator.deleteSession).toHaveBeenCalledWith("session-1");
-    });
   });
 
   describe("processStream", () => {
@@ -286,16 +288,9 @@ describe("Gateway", () => {
     });
 
     it("should process input and return stream result", async () => {
-      // Setup mock stream
-      async function* mockGen() {
-        yield* MOCK_AI_RESPONSE_CHUNKS;
-      }
-
-      mockOrchestrator.processStream.mockResolvedValue({
-        textStream: mockGen(),
-        fullStream: mockGen() as AsyncGenerator<any>,
-        finalResponse: Promise.resolve(MOCK_AI_RESPONSE_FULL),
-      });
+      mockAgentHandle.agent.execute.mockImplementation(
+        createMockAgentExecute(MOCK_AI_RESPONSE_CHUNKS, MOCK_AI_RESPONSE_FULL),
+      );
 
       const result = await gateway.processStream("session-1", "你好", "user-1");
 
@@ -305,27 +300,27 @@ describe("Gateway", () => {
     });
 
     it("should create session if not exists", async () => {
-      mockOrchestrator.processStream.mockResolvedValue({
-        textStream: createMockTextStream(["response"]),
-        finalResponse: Promise.resolve("response"),
-      });
+      mockAgentHandle.agent.execute.mockImplementation(
+        createMockAgentExecute(["response"], "response"),
+      );
 
       await gateway.processStream("new-session", "Hello", "user-1");
 
-      expect(mockOrchestrator.createSession).toHaveBeenCalled();
+      // Session should have been auto-created
+      expect(gateway.getSession("new-session")).not.toBeNull();
     });
 
     it("should reuse existing session", async () => {
       await gateway.createSession("session-1", "user-1", ChannelType.CLI);
 
-      mockOrchestrator.processStream.mockResolvedValue({
-        textStream: createMockTextStream(["response"]),
-        finalResponse: Promise.resolve("response"),
-      });
+      mockAgentHandle.agent.execute.mockImplementation(
+        createMockAgentExecute(["response"], "response"),
+      );
 
       await gateway.processStream("session-1", "Hello", "user-1");
 
-      expect(mockOrchestrator.createSession).toHaveBeenCalledTimes(1);
+      // Session count should still be 1
+      expect(gateway.getSessionCount()).toBe(1);
     });
 
     it("should update session lastActiveAt", async () => {
@@ -336,10 +331,9 @@ describe("Gateway", () => {
       );
       const originalActiveAt = session.lastActiveAt;
 
-      mockOrchestrator.processStream.mockResolvedValue({
-        textStream: createMockTextStream(["response"]),
-        finalResponse: Promise.resolve("response"),
-      });
+      mockAgentHandle.agent.execute.mockImplementation(
+        createMockAgentExecute(["response"], "response"),
+      );
 
       await new Promise((resolve) => setTimeout(resolve, 10));
       await gateway.processStream("session-1", "Hello");
@@ -354,10 +348,9 @@ describe("Gateway", () => {
       const onChunk = vi.fn();
       const onComplete = vi.fn();
 
-      mockOrchestrator.processStream.mockResolvedValue({
-        textStream: createMockTextStream(["chunk1", "chunk2"]),
-        finalResponse: Promise.resolve("chunk1chunk2"),
-      });
+      mockAgentHandle.agent.execute.mockImplementation(
+        createMockAgentExecute(["chunk1", "chunk2"], "chunk1chunk2"),
+      );
 
       const callbacks: StreamCallbacks = { onChunk, onComplete };
       const result = await gateway.processStream(
@@ -377,7 +370,7 @@ describe("Gateway", () => {
     });
 
     it("should throw error if gateway not started", async () => {
-      const stoppedGateway = new Gateway({ orchestrator: mockOrchestrator });
+      const stoppedGateway = new Gateway({ agentHandle: mockAgentHandle });
 
       await expect(
         stoppedGateway.processStream("session-1", "Hello"),
@@ -402,29 +395,34 @@ describe("Gateway", () => {
       await gateway.start();
     });
 
-    it("should handle orchestrator errors gracefully", async () => {
-      mockOrchestrator.processStream.mockRejectedValue(
-        new Error("Orchestrator error"),
-      );
+    it("should handle agent execution errors gracefully", async () => {
+      mockAgentHandle.agent.execute.mockImplementation(async function* () {
+        throw new Error("Agent error");
+      });
 
-      await expect(
-        gateway.processStream("session-1", "Hello", "user-1"),
-      ).rejects.toThrow("Orchestrator error");
+      // processStream returns a stream result; the error surfaces when consuming
+      const result = await gateway.processStream("session-1", "Hello", "user-1");
+
+      // The error propagates through the text stream
+      try {
+        for await (const _ of result.textStream) {
+          // consume
+        }
+        expect.fail("Should have thrown");
+      } catch (err) {
+        expect((err as Error).message).toBe("Agent error");
+      }
+
+      // Suppress unhandled rejection from finalResponse
+      result.finalResponse.catch(() => {});
     });
 
     it("should emit error event for stream failures", async () => {
       const onError = vi.fn();
 
-      async function* failingGen() {
-        yield "partial";
+      mockAgentHandle.agent.execute.mockImplementation(async function* () {
+        yield { type: "text_delta", delta: "partial" } as AgentEvent;
         throw new Error("Stream failed");
-      }
-
-      mockOrchestrator.processStream.mockResolvedValue({
-        textStream: failingGen(),
-        fullStream: failingGen() as AsyncGenerator<any>,
-        // Use a promise that never resolves to avoid unhandled rejection
-        finalResponse: new Promise(() => {}),
       });
 
       const result = await gateway.processStream(
@@ -433,6 +431,9 @@ describe("Gateway", () => {
         "user-1",
         { onError },
       );
+
+      // Immediately attach catch to prevent unhandled rejection
+      result.finalResponse.catch(() => {});
 
       // Consume the textStream to trigger the error
       try {
@@ -443,34 +444,7 @@ describe("Gateway", () => {
         // Expected error
       }
 
-      // Handle finalResponse rejection to avoid unhandled rejection warning
-      result.finalResponse.catch(() => {
-        // Expected - stream failed
-      });
-
       expect(onError).toHaveBeenCalled();
-    });
-
-    it("should handle timeout errors", async () => {
-      mockOrchestrator.processStream.mockRejectedValue(
-        Object.assign(new Error("Timeout"), { code: "ETIMEDOUT" }),
-      );
-
-      await expect(
-        gateway.processStream("session-1", "Hello", "user-1"),
-      ).rejects.toMatchObject({
-        message: expect.stringContaining("Timeout"),
-      });
-    });
-
-    it("should handle network errors", async () => {
-      mockOrchestrator.processStream.mockRejectedValue(
-        Object.assign(new Error("Network error"), { code: "ENETUNREACH" }),
-      );
-
-      await expect(
-        gateway.processStream("session-1", "Hello", "user-1"),
-      ).rejects.toThrow();
     });
   });
 
@@ -500,7 +474,7 @@ describe("Gateway", () => {
 
     it("should enforce maximum session limit", async () => {
       const limitedGateway = new Gateway(
-        { orchestrator: mockOrchestrator },
+        { agentHandle: mockAgentHandle },
         { maxSessions: 2 },
       );
 
@@ -569,10 +543,9 @@ describe("Gateway", () => {
       await gateway.createSession("session-1", "user-1", ChannelType.CLI);
 
       for (const turn of MOCK_CONVERSATION_TURNS) {
-        mockOrchestrator.processStream.mockResolvedValue({
-          textStream: createMockTextStream([turn.ai]),
-          finalResponse: Promise.resolve(turn.ai),
-        });
+        mockAgentHandle.agent.execute.mockImplementation(
+          createMockAgentExecute([turn.ai], turn.ai),
+        );
 
         const result = await gateway.processStream("session-1", turn.user);
         const response = await result.finalResponse;
@@ -580,8 +553,8 @@ describe("Gateway", () => {
         expect(response).toBe(turn.ai);
       }
 
-      // Should have processed all turns
-      expect(mockOrchestrator.processStream).toHaveBeenCalledTimes(
+      // Should have been called for all turns
+      expect(mockAgentHandle.agent.execute).toHaveBeenCalledTimes(
         MOCK_CONVERSATION_TURNS.length,
       );
     });
@@ -593,10 +566,9 @@ describe("Gateway", () => {
         ChannelType.CLI,
       );
 
-      mockOrchestrator.processStream.mockResolvedValue({
-        textStream: createMockTextStream(["response"]),
-        finalResponse: Promise.resolve("response"),
-      });
+      mockAgentHandle.agent.execute.mockImplementation(
+        createMockAgentExecute(["response"], "response"),
+      );
 
       await gateway.processStream("session-1", "Turn 1");
       await gateway.processStream("session-1", "Turn 2");
@@ -613,10 +585,9 @@ describe("Gateway", () => {
     });
 
     it("should handle concurrent stream requests", async () => {
-      mockOrchestrator.processStream.mockResolvedValue({
-        textStream: createMockTextStream(["response"]),
-        finalResponse: Promise.resolve("response"),
-      });
+      mockAgentHandle.agent.execute.mockImplementation(
+        createMockAgentExecute(["response"], "response"),
+      );
 
       const requests = Array.from({ length: 10 }, (_, i) =>
         gateway.processStream(`session-${i}`, `Input ${i}`, `user-${i}`),
@@ -629,29 +600,6 @@ describe("Gateway", () => {
         expect(result.textStream).toBeDefined();
       });
     });
-
-    it("should isolate sessions between concurrent requests", async () => {
-      mockOrchestrator.processStream.mockImplementation(async (params) => {
-        return {
-          textStream: createMockTextStream([
-            `Response for ${params.sessionId}`,
-          ]),
-          finalResponse: Promise.resolve(`Response for ${params.sessionId}`),
-        };
-      });
-
-      const requests = Array.from({ length: 5 }, (_, i) =>
-        gateway
-          .processStream(`session-${i}`, `Input ${i}`, `user-${i}`)
-          .then((r) => r.finalResponse),
-      );
-
-      const responses = await Promise.all(requests);
-
-      responses.forEach((response, i) => {
-        expect(response).toBe(`Response for session-${i}`);
-      });
-    });
   });
 
   describe("boundary cases", () => {
@@ -660,10 +608,9 @@ describe("Gateway", () => {
     });
 
     it("should handle very long input", async () => {
-      mockOrchestrator.processStream.mockResolvedValue({
-        textStream: createMockTextStream(["response"]),
-        finalResponse: Promise.resolve("response"),
-      });
+      mockAgentHandle.agent.execute.mockImplementation(
+        createMockAgentExecute(["response"], "response"),
+      );
 
       const longInput = "a".repeat(100000);
 
@@ -677,10 +624,9 @@ describe("Gateway", () => {
     });
 
     it("should handle unicode input", async () => {
-      mockOrchestrator.processStream.mockResolvedValue({
-        textStream: createMockTextStream(["你好世界"]),
-        finalResponse: Promise.resolve("你好世界"),
-      });
+      mockAgentHandle.agent.execute.mockImplementation(
+        createMockAgentExecute(["你好世界"], "你好世界"),
+      );
 
       const result = await gateway.processStream(
         "session-1",
@@ -693,10 +639,9 @@ describe("Gateway", () => {
     });
 
     it("should handle special characters safely", async () => {
-      mockOrchestrator.processStream.mockResolvedValue({
-        textStream: createMockTextStream(["response"]),
-        finalResponse: Promise.resolve("response"),
-      });
+      mockAgentHandle.agent.execute.mockImplementation(
+        createMockAgentExecute(["response"], "response"),
+      );
 
       const specialInputs = [
         "<script>alert(1)</script>",

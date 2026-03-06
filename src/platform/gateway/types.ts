@@ -239,6 +239,8 @@ import type {
   ApprovalState as ApprovalStateType,
 } from "../tools/types.js";
 import type { MCPWorkDirSync } from "../tools/mcp-workdir-sync.js";
+import type { Agent } from "../../agent/agent.js";
+import type { PersonaEngineAPI } from "../../inner-life/types.js";
 
 export type ToolCall = ToolCallType;
 export type ApprovalState = ApprovalStateType;
@@ -259,32 +261,26 @@ export interface ApprovalManagerLike {
 }
 
 /**
- * Orchestrator 接口
+ * Agent 句柄 — Gateway 持有的 Agent 依赖
+ * 替代 v1 的 IOrchestrator God Object
+ *
+ * KURISU-041: Gateway 直接依赖 Agent，不再通过兼容层
  */
-export interface IOrchestrator {
-  processStream(params: {
-    sessionId: string;
-    input: string;
-    userId?: string;
-    channelType?: ChannelType;
-  }): Promise<GatewayStreamResult | string>;
-  createSession(params: {
-    sessionId: string;
-    userId: string;
-    channelType: ChannelType;
-  }): void;
-  hasSession(sessionId: string): boolean;
-  getSession?(sessionId: string): SessionInfo | null;
-  deleteSession?(sessionId: string): void;
-  /** 执行已批准的工具（可选） */
-  executeTool?(sessionId: string, toolCall: ToolCall): Promise<string>;
+export interface AgentHandle {
+  /** Agent 实例（纯执行实体） */
+  readonly agent: Agent;
+  /** 获取角色认知文本（cognition.md 内容） */
+  readonly getCognition: () => string;
+  /** ILE PersonaEngine（可选，用于构建 MentalModel + post-turn 反馈） */
+  readonly personaEngine: PersonaEngineAPI | null;
 }
 
 /**
  * Gateway 依赖接口
  */
 export interface GatewayDeps {
-  orchestrator: IOrchestrator;
+  /** Agent 句柄（KURISU-041: 替代 IOrchestrator） */
+  agentHandle: AgentHandle;
   /** 审批管理器（可选） */
   approvalManager?: ApprovalManagerLike;
   /** 会话工作目录管理器（可选，KURISU-020） */

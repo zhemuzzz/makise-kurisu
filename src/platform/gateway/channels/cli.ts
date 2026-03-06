@@ -1,11 +1,31 @@
 /**
  * L1 交互网关 - CLI 渠道
  * 命令行交互实现
+ *
+ * KURISU-041: 依赖 GatewayLike 接口（避免循环依赖），不再直接依赖 IOrchestrator
  */
 
 import * as readline from "readline";
-import { ChannelType, type IOrchestrator } from "../types.js";
+import { ChannelType, type GatewayStreamResult, type SessionInfo } from "../types.js";
 import { ChannelError } from "../errors.js";
+
+/**
+ * CLIChannel 依赖的 Gateway 最小接口
+ * 避免 cli.ts → index.ts → cli.ts 循环依赖
+ */
+export interface GatewayLike {
+  processStream(
+    sessionId: string,
+    input: string,
+    userId?: string,
+  ): Promise<GatewayStreamResult>;
+  createSession(
+    sessionId: string,
+    userId: string,
+    channelType: ChannelType,
+  ): Promise<SessionInfo>;
+  getSession(sessionId: string): SessionInfo | null;
+}
 
 /**
  * CLI 渠道配置
@@ -62,19 +82,19 @@ type CLIChannelInternalConfig = Required<
 export class CLIChannel {
   readonly channelType = ChannelType.CLI;
 
-  private readonly orchestrator: IOrchestrator;
+  private readonly gateway: GatewayLike;
   private readonly config: CLIChannelInternalConfig;
   private rl?: readline.Interface;
   private _isRunning = false;
   private currentSessionId: string | undefined;
   private userId: string;
 
-  constructor(orchestrator: IOrchestrator, config: CLIChannelConfig = {}) {
-    if (!orchestrator) {
-      throw new ChannelError("Orchestrator is required");
+  constructor(gateway: GatewayLike, config: CLIChannelConfig = {}) {
+    if (!gateway) {
+      throw new ChannelError("Gateway is required");
     }
 
-    this.orchestrator = orchestrator;
+    this.gateway = gateway;
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.userId = `cli-user-${Date.now()}`;
   }
@@ -165,13 +185,12 @@ export class CLIChannel {
         process.stdout.write("...");
       }
 
-      // 处理流
-      const result = await this.orchestrator.processStream({
-        sessionId: this.currentSessionId!,
-        input: trimmedInput,
-        userId: this.userId,
-        channelType: ChannelType.CLI,
-      });
+      // 处理流 — Gateway.processStream 自动管理 session
+      const result = await this.gateway.processStream(
+        this.currentSessionId!,
+        trimmedInput,
+        this.userId,
+      );
 
       // 清除输入指示器
       if (this.config.showTypingIndicator) {
@@ -207,14 +226,14 @@ export class CLIChannel {
   private async ensureSession(): Promise<void> {
     if (
       !this.currentSessionId ||
-      !this.orchestrator.hasSession(this.currentSessionId)
+      this.gateway.getSession(this.currentSessionId) === null
     ) {
       this.currentSessionId = `cli-session-${Date.now()}`;
-      this.orchestrator.createSession({
-        sessionId: this.currentSessionId,
-        userId: this.userId,
-        channelType: ChannelType.CLI,
-      });
+      await this.gateway.createSession(
+        this.currentSessionId,
+        this.userId,
+        ChannelType.CLI,
+      );
     }
   }
 
@@ -222,14 +241,8 @@ export class CLIChannel {
    * 输出响应
    */
   private async outputResponse(
-    result: Awaited<ReturnType<IOrchestrator["processStream"]>>,
+    result: GatewayStreamResult,
   ): Promise<void> {
-    if (typeof result === "string") {
-      // 简单字符串响应
-      console.log(result);
-      return;
-    }
-
     // 流式响应
     if (this.config.streamOutput && result.textStream) {
       for await (const chunk of result.textStream) {

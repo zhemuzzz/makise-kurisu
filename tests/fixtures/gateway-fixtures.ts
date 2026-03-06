@@ -181,13 +181,13 @@ export const BOUNDARY_TEST_DATA = {
 // Mock Dependencies
 // ===========================================
 
-// 模拟 Orchestrator 依赖
-export const createMockOrchestrator = () => ({
-  processStream: vi.fn(),
-  createSession: vi.fn(),
-  hasSession: vi.fn().mockReturnValue(false),
-  getSession: vi.fn(),
-  deleteSession: vi.fn(),
+// 模拟 AgentHandle 依赖 (KURISU-041: 替代 IOrchestrator)
+export const createMockAgentHandle = () => ({
+  agent: {
+    execute: vi.fn(),
+  },
+  getCognition: vi.fn().mockReturnValue(""),
+  personaEngine: null,
 });
 
 // 模拟 AsyncGenerator

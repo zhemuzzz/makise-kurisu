@@ -9,7 +9,7 @@ import {
   type SessionInfo,
   type StreamCallbacks,
   type GatewayStreamResult,
-  type IOrchestrator,
+  type AgentHandle,
   type ApprovalManagerLike,
   type ToolCall,
   type SessionWorkDirManagerLike,
@@ -58,7 +58,7 @@ export interface GatewayStatus {
  * 负责多渠道接入和会话管理
  */
 export class Gateway {
-  private readonly orchestrator: IOrchestrator;
+  private readonly agentHandle: AgentHandle;
   private readonly approvalManager: ApprovalManagerLike | undefined;
   private readonly sessionWorkDirManager: SessionWorkDirManagerLike | undefined;
   private readonly sessionPermissionManager:
@@ -79,11 +79,11 @@ export class Gateway {
   private running = false;
 
   constructor(deps: GatewayDeps, config: GatewayConfig = {}) {
-    if (!deps.orchestrator) {
-      throw new GatewayError("Orchestrator is required");
+    if (!deps.agentHandle) {
+      throw new GatewayError("AgentHandle is required");
     }
 
-    this.orchestrator = deps.orchestrator;
+    this.agentHandle = deps.agentHandle;
     this.approvalManager = deps.approvalManager;
     this.sessionWorkDirManager = deps.sessionWorkDirManager;
     this.sessionPermissionManager = deps.sessionPermissionManager;
@@ -127,13 +127,12 @@ export class Gateway {
 
     // 初始化子模块
     this.gatewayOrchestrator = new GatewayOrchestrator(
-      this.orchestrator,
+      this.agentHandle,
       this.streamHandler,
       this.settingRegistry,
     );
 
     this.gatewaySessionManager = new GatewaySessionManager(
-      this.orchestrator,
       {
         sessionTTL: this.config.sessionTTL,
         maxSessions: this.config.maxSessions,

@@ -1,13 +1,15 @@
 /**
  * L1 交互网关 - CLI 渠道测试
  * 测试命令行输入输出、流式输出、退出命令
+ *
+ * KURISU-041: CLIChannel 依赖 GatewayLike 接口
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { CLIChannel } from "../../../../src/platform/gateway/channels/cli";
-import { ChannelType, type GatewayDeps } from "../../../../src/platform/gateway/types";
+import { CLIChannel, type GatewayLike } from "../../../../src/platform/gateway/channels/cli";
+import { ChannelType } from "../../../../src/platform/gateway/types";
 import {
-  createMockOrchestrator,
+  createMockSession,
   MOCK_AI_RESPONSE_CHUNKS,
   MOCK_AI_RESPONSE_FULL,
 } from "../../../fixtures/gateway-fixtures";
@@ -18,9 +20,24 @@ vi.mock("readline", () => ({
   createInterface: vi.fn(),
 }));
 
+/**
+ * 创建 mock GatewayLike
+ */
+function createMockGateway(): {
+  processStream: ReturnType<typeof vi.fn>;
+  createSession: ReturnType<typeof vi.fn>;
+  getSession: ReturnType<typeof vi.fn>;
+} {
+  return {
+    processStream: vi.fn(),
+    createSession: vi.fn().mockResolvedValue(createMockSession()),
+    getSession: vi.fn().mockReturnValue(null),
+  };
+}
+
 describe("CLIChannel", () => {
   let cliChannel: CLIChannel;
-  let mockOrchestrator: ReturnType<typeof createMockOrchestrator>;
+  let mockGateway: ReturnType<typeof createMockGateway>;
   let mockReadline: {
     question: ReturnType<typeof vi.fn>;
     close: ReturnType<typeof vi.fn>;
@@ -32,7 +49,7 @@ describe("CLIChannel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockOrchestrator = createMockOrchestrator();
+    mockGateway = createMockGateway();
 
     mockReadline = {
       question: vi.fn(),
@@ -55,13 +72,13 @@ describe("CLIChannel", () => {
 
   describe("constructor", () => {
     it("should create CLI channel with default options", () => {
-      cliChannel = new CLIChannel(mockOrchestrator);
+      cliChannel = new CLIChannel(mockGateway);
 
       expect(cliChannel.channelType).toBe(ChannelType.CLI);
     });
 
     it("should create CLI channel with custom options", () => {
-      cliChannel = new CLIChannel(mockOrchestrator, {
+      cliChannel = new CLIChannel(mockGateway, {
         prompt: "> ",
         exitCommands: ["/quit", "/exit"],
       });
@@ -69,16 +86,16 @@ describe("CLIChannel", () => {
       expect(cliChannel).toBeDefined();
     });
 
-    it("should throw error if orchestrator is missing", () => {
+    it("should throw error if gateway is missing", () => {
       expect(
-        () => new CLIChannel(null as unknown as GatewayDeps["orchestrator"]),
-      ).toThrow(/orchestrator.*required/i);
+        () => new CLIChannel(null as unknown as GatewayLike),
+      ).toThrow(/gateway.*required/i);
     });
   });
 
   describe("start", () => {
     it("should create readline interface", async () => {
-      cliChannel = new CLIChannel(mockOrchestrator);
+      cliChannel = new CLIChannel(mockGateway);
 
       await cliChannel.start();
 
@@ -91,7 +108,7 @@ describe("CLIChannel", () => {
     it("should show welcome message", async () => {
       const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
-      cliChannel = new CLIChannel(mockOrchestrator, {
+      cliChannel = new CLIChannel(mockGateway, {
         welcomeMessage: "Welcome to Kurisu!",
       });
 
@@ -103,7 +120,7 @@ describe("CLIChannel", () => {
     });
 
     it("should start input loop", async () => {
-      cliChannel = new CLIChannel(mockOrchestrator);
+      cliChannel = new CLIChannel(mockGateway);
       await cliChannel.start();
 
       expect(mockReadline.on).toHaveBeenCalledWith(
@@ -115,7 +132,7 @@ describe("CLIChannel", () => {
 
   describe("stop", () => {
     it("should close readline interface", async () => {
-      cliChannel = new CLIChannel(mockOrchestrator);
+      cliChannel = new CLIChannel(mockGateway);
       await cliChannel.start();
       cliChannel.stop();
 
@@ -123,7 +140,7 @@ describe("CLIChannel", () => {
     });
 
     it("should be idempotent", async () => {
-      cliChannel = new CLIChannel(mockOrchestrator);
+      cliChannel = new CLIChannel(mockGateway);
       await cliChannel.start();
 
       cliChannel.stop();
@@ -136,9 +153,17 @@ describe("CLIChannel", () => {
 
   describe("input handling", () => {
     it("should handle user input and get AI response", async () => {
-      mockOrchestrator.processStream.mockResolvedValue(MOCK_AI_RESPONSE_FULL);
+      // CLIChannel now calls gateway.processStream(sessionId, input, userId)
+      // which returns GatewayStreamResult
+      async function* mockStream() {
+        yield MOCK_AI_RESPONSE_FULL;
+      }
+      mockGateway.processStream.mockResolvedValue({
+        textStream: mockStream(),
+        finalResponse: Promise.resolve(MOCK_AI_RESPONSE_FULL),
+      });
 
-      cliChannel = new CLIChannel(mockOrchestrator);
+      cliChannel = new CLIChannel(mockGateway);
       await cliChannel.start();
 
       // Simulate user input callback
@@ -147,15 +172,15 @@ describe("CLIChannel", () => {
 
       await inputCallback("你好");
 
-      expect(mockOrchestrator.processStream).toHaveBeenCalledWith(
-        expect.objectContaining({
-          input: "你好",
-        }),
+      expect(mockGateway.processStream).toHaveBeenCalledWith(
+        expect.any(String), // sessionId
+        "你好",
+        expect.any(String), // userId
       );
     });
 
     it("should handle empty input gracefully", async () => {
-      cliChannel = new CLIChannel(mockOrchestrator);
+      cliChannel = new CLIChannel(mockGateway);
       await cliChannel.start();
 
       const questionCall = mockReadline.question.mock.calls[0];
@@ -164,11 +189,11 @@ describe("CLIChannel", () => {
       await inputCallback("");
 
       // Should not process empty input
-      expect(mockOrchestrator.processStream).not.toHaveBeenCalled();
+      expect(mockGateway.processStream).not.toHaveBeenCalled();
     });
 
     it("should handle whitespace-only input", async () => {
-      cliChannel = new CLIChannel(mockOrchestrator);
+      cliChannel = new CLIChannel(mockGateway);
       await cliChannel.start();
 
       const questionCall = mockReadline.question.mock.calls[0];
@@ -176,13 +201,19 @@ describe("CLIChannel", () => {
 
       await inputCallback("   \t\n   ");
 
-      expect(mockOrchestrator.processStream).not.toHaveBeenCalled();
+      expect(mockGateway.processStream).not.toHaveBeenCalled();
     });
 
     it("should trim input whitespace", async () => {
-      mockOrchestrator.processStream.mockResolvedValue("Response");
+      async function* mockStream() {
+        yield "Response";
+      }
+      mockGateway.processStream.mockResolvedValue({
+        textStream: mockStream(),
+        finalResponse: Promise.resolve("Response"),
+      });
 
-      cliChannel = new CLIChannel(mockOrchestrator);
+      cliChannel = new CLIChannel(mockGateway);
       await cliChannel.start();
 
       const questionCall = mockReadline.question.mock.calls[0];
@@ -190,17 +221,17 @@ describe("CLIChannel", () => {
 
       await inputCallback("  hello world  ");
 
-      expect(mockOrchestrator.processStream).toHaveBeenCalledWith(
-        expect.objectContaining({
-          input: "hello world",
-        }),
+      expect(mockGateway.processStream).toHaveBeenCalledWith(
+        expect.any(String), // sessionId
+        "hello world",
+        expect.any(String), // userId
       );
     });
   });
 
   describe("exit commands", () => {
     it("should exit on /quit command", async () => {
-      cliChannel = new CLIChannel(mockOrchestrator);
+      cliChannel = new CLIChannel(mockGateway);
       await cliChannel.start();
 
       const questionCall = mockReadline.question.mock.calls[0];
@@ -212,7 +243,7 @@ describe("CLIChannel", () => {
     });
 
     it("should exit on /exit command", async () => {
-      cliChannel = new CLIChannel(mockOrchestrator);
+      cliChannel = new CLIChannel(mockGateway);
       await cliChannel.start();
 
       const questionCall = mockReadline.question.mock.calls[0];
@@ -224,7 +255,7 @@ describe("CLIChannel", () => {
     });
 
     it("should support custom exit commands", async () => {
-      cliChannel = new CLIChannel(mockOrchestrator, {
+      cliChannel = new CLIChannel(mockGateway, {
         exitCommands: ["/bye", "/goodbye"],
       });
       await cliChannel.start();
@@ -240,7 +271,7 @@ describe("CLIChannel", () => {
     it("should show goodbye message on exit", async () => {
       const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
-      cliChannel = new CLIChannel(mockOrchestrator, {
+      cliChannel = new CLIChannel(mockGateway, {
         goodbyeMessage: "Goodbye!",
       });
       await cliChannel.start();
@@ -262,18 +293,19 @@ describe("CLIChannel", () => {
         .spyOn(process.stdout, "write")
         .mockImplementation(() => true);
 
-      // Mock orchestrator to return stream
+      // Mock gateway to return stream result
       async function* mockStream() {
         for (const chunk of MOCK_AI_RESPONSE_CHUNKS) {
           yield chunk;
         }
       }
 
-      mockOrchestrator.processStream.mockResolvedValue({
+      mockGateway.processStream.mockResolvedValue({
         textStream: mockStream(),
+        finalResponse: Promise.resolve(MOCK_AI_RESPONSE_FULL),
       });
 
-      cliChannel = new CLIChannel(mockOrchestrator, { streamOutput: true });
+      cliChannel = new CLIChannel(mockGateway, { streamOutput: true });
       await cliChannel.start();
 
       const questionCall = mockReadline.question.mock.calls[0];
@@ -290,9 +322,11 @@ describe("CLIChannel", () => {
     it("should output full response when streaming disabled", async () => {
       const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
-      mockOrchestrator.processStream.mockResolvedValue(MOCK_AI_RESPONSE_FULL);
+      mockGateway.processStream.mockResolvedValue({
+        finalResponse: Promise.resolve(MOCK_AI_RESPONSE_FULL),
+      });
 
-      cliChannel = new CLIChannel(mockOrchestrator, { streamOutput: false });
+      cliChannel = new CLIChannel(mockGateway, { streamOutput: false });
       await cliChannel.start();
 
       const questionCall = mockReadline.question.mock.calls[0];
@@ -310,9 +344,15 @@ describe("CLIChannel", () => {
     it("should add newline after response", async () => {
       const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
-      mockOrchestrator.processStream.mockResolvedValue("Response");
+      async function* mockStream() {
+        yield "Response";
+      }
+      mockGateway.processStream.mockResolvedValue({
+        textStream: mockStream(),
+        finalResponse: Promise.resolve("Response"),
+      });
 
-      cliChannel = new CLIChannel(mockOrchestrator);
+      cliChannel = new CLIChannel(mockGateway);
       await cliChannel.start();
 
       const questionCall = mockReadline.question.mock.calls[0];
@@ -328,16 +368,16 @@ describe("CLIChannel", () => {
   });
 
   describe("error handling", () => {
-    it("should display error message on orchestrator failure", async () => {
+    it("should display error message on gateway failure", async () => {
       const consoleErrorSpy = vi
         .spyOn(console, "error")
         .mockImplementation(() => {});
 
-      mockOrchestrator.processStream.mockRejectedValue(
-        new Error("Orchestrator failed"),
+      mockGateway.processStream.mockRejectedValue(
+        new Error("Gateway failed"),
       );
 
-      cliChannel = new CLIChannel(mockOrchestrator);
+      cliChannel = new CLIChannel(mockGateway);
       await cliChannel.start();
 
       const questionCall = mockReadline.question.mock.calls[0];
@@ -353,9 +393,9 @@ describe("CLIChannel", () => {
     });
 
     it("should continue input loop after error", async () => {
-      mockOrchestrator.processStream.mockRejectedValue(new Error("Failed"));
+      mockGateway.processStream.mockRejectedValue(new Error("Failed"));
 
-      cliChannel = new CLIChannel(mockOrchestrator);
+      cliChannel = new CLIChannel(mockGateway);
       await cliChannel.start();
 
       const questionCall = mockReadline.question.mock.calls[0];
@@ -372,11 +412,11 @@ describe("CLIChannel", () => {
         .spyOn(console, "error")
         .mockImplementation(() => {});
 
-      mockOrchestrator.processStream.mockRejectedValue(
+      mockGateway.processStream.mockRejectedValue(
         Object.assign(new Error("Timeout"), { code: "ETIMEDOUT" }),
       );
 
-      cliChannel = new CLIChannel(mockOrchestrator);
+      cliChannel = new CLIChannel(mockGateway);
       await cliChannel.start();
 
       const questionCall = mockReadline.question.mock.calls[0];
@@ -392,9 +432,15 @@ describe("CLIChannel", () => {
 
   describe("session management", () => {
     it("should create session on first input", async () => {
-      mockOrchestrator.processStream.mockResolvedValue("Response");
+      async function* mockStream() {
+        yield "Response";
+      }
+      mockGateway.processStream.mockResolvedValue({
+        textStream: mockStream(),
+        finalResponse: Promise.resolve("Response"),
+      });
 
-      cliChannel = new CLIChannel(mockOrchestrator);
+      cliChannel = new CLIChannel(mockGateway);
       await cliChannel.start();
 
       const questionCall = mockReadline.question.mock.calls[0];
@@ -402,14 +448,22 @@ describe("CLIChannel", () => {
 
       await inputCallback("Hello");
 
-      expect(mockOrchestrator.createSession).toHaveBeenCalled();
+      expect(mockGateway.createSession).toHaveBeenCalled();
     });
 
     it("should reuse session for subsequent inputs", async () => {
-      mockOrchestrator.processStream.mockResolvedValue("Response");
-      mockOrchestrator.hasSession.mockReturnValue(true);
+      mockGateway.processStream.mockImplementation(async () => {
+        async function* ms() { yield "Response"; }
+        return { textStream: ms(), finalResponse: Promise.resolve("Response") };
+      });
+      // After createSession is called, getSession should return non-null
+      mockGateway.createSession.mockImplementation(async () => {
+        // Once session is created, subsequent getSession calls return it
+        mockGateway.getSession.mockReturnValue(createMockSession());
+        return createMockSession();
+      });
 
-      cliChannel = new CLIChannel(mockOrchestrator);
+      cliChannel = new CLIChannel(mockGateway);
       await cliChannel.start();
 
       // First input
@@ -423,13 +477,13 @@ describe("CLIChannel", () => {
       await inputCallback2("World");
 
       // Should only create session once
-      expect(mockOrchestrator.createSession).toHaveBeenCalledTimes(1);
+      expect(mockGateway.createSession).toHaveBeenCalledTimes(1);
     });
   });
 
   describe("prompt customization", () => {
     it("should use custom prompt string", async () => {
-      cliChannel = new CLIChannel(mockOrchestrator, {
+      cliChannel = new CLIChannel(mockGateway, {
         prompt: "Kurisu> ",
       });
       await cliChannel.start();
@@ -441,7 +495,7 @@ describe("CLIChannel", () => {
     });
 
     it("should use default prompt if not specified", async () => {
-      cliChannel = new CLIChannel(mockOrchestrator);
+      cliChannel = new CLIChannel(mockGateway);
       await cliChannel.start();
 
       expect(mockReadline.question).toHaveBeenCalledWith(
@@ -458,12 +512,24 @@ describe("CLIChannel", () => {
         .mockImplementation(() => true);
 
       // Delay the response
-      mockOrchestrator.processStream.mockImplementation(
+      async function* mockStream() {
+        yield "Response";
+      }
+      mockGateway.processStream.mockImplementation(
         () =>
-          new Promise((resolve) => setTimeout(() => resolve("Response"), 100)),
+          new Promise((resolve) =>
+            setTimeout(
+              () =>
+                resolve({
+                  textStream: mockStream(),
+                  finalResponse: Promise.resolve("Response"),
+                }),
+              100,
+            ),
+          ),
       );
 
-      cliChannel = new CLIChannel(mockOrchestrator, {
+      cliChannel = new CLIChannel(mockGateway, {
         showTypingIndicator: true,
       });
       await cliChannel.start();
@@ -484,9 +550,15 @@ describe("CLIChannel", () => {
         .spyOn(process.stdout, "write")
         .mockImplementation(() => true);
 
-      mockOrchestrator.processStream.mockResolvedValue("Response");
+      async function* mockStream() {
+        yield "Response";
+      }
+      mockGateway.processStream.mockResolvedValue({
+        textStream: mockStream(),
+        finalResponse: Promise.resolve("Response"),
+      });
 
-      cliChannel = new CLIChannel(mockOrchestrator, {
+      cliChannel = new CLIChannel(mockGateway, {
         showTypingIndicator: true,
       });
       await cliChannel.start();
@@ -505,7 +577,7 @@ describe("CLIChannel", () => {
 
   describe("special input handling", () => {
     it("should handle multi-line input with escape sequence", async () => {
-      cliChannel = new CLIChannel(mockOrchestrator, {
+      cliChannel = new CLIChannel(mockGateway, {
         multilineEnabled: true,
       });
       await cliChannel.start();
@@ -516,7 +588,7 @@ describe("CLIChannel", () => {
     });
 
     it("should handle interrupt signal (Ctrl+C)", async () => {
-      cliChannel = new CLIChannel(mockOrchestrator);
+      cliChannel = new CLIChannel(mockGateway);
       await cliChannel.start();
 
       // Get the 'close' event handler
@@ -538,15 +610,21 @@ describe("CLIChannel", () => {
 
   describe("integration with Gateway", () => {
     it("should use channel type CLI", () => {
-      cliChannel = new CLIChannel(mockOrchestrator);
+      cliChannel = new CLIChannel(mockGateway);
 
       expect(cliChannel.channelType).toBe(ChannelType.CLI);
     });
 
-    it("should pass session info to orchestrator", async () => {
-      mockOrchestrator.processStream.mockResolvedValue("Response");
+    it("should pass input to gateway processStream", async () => {
+      async function* mockStream() {
+        yield "Response";
+      }
+      mockGateway.processStream.mockResolvedValue({
+        textStream: mockStream(),
+        finalResponse: Promise.resolve("Response"),
+      });
 
-      cliChannel = new CLIChannel(mockOrchestrator);
+      cliChannel = new CLIChannel(mockGateway);
       await cliChannel.start();
 
       const questionCall = mockReadline.question.mock.calls[0];
@@ -554,20 +632,26 @@ describe("CLIChannel", () => {
 
       await inputCallback("Hello");
 
-      expect(mockOrchestrator.processStream).toHaveBeenCalledWith(
-        expect.objectContaining({
-          channelType: ChannelType.CLI,
-        }),
+      expect(mockGateway.processStream).toHaveBeenCalledWith(
+        expect.any(String), // sessionId
+        "Hello",
+        expect.any(String), // userId
       );
     });
   });
 
   describe("boundary cases", () => {
     it("should handle very long input", async () => {
-      mockOrchestrator.processStream.mockResolvedValue("Response");
+      async function* mockStream() {
+        yield "Response";
+      }
+      mockGateway.processStream.mockResolvedValue({
+        textStream: mockStream(),
+        finalResponse: Promise.resolve("Response"),
+      });
       const longInput = "a".repeat(10000);
 
-      cliChannel = new CLIChannel(mockOrchestrator);
+      cliChannel = new CLIChannel(mockGateway);
       await cliChannel.start();
 
       const questionCall = mockReadline.question.mock.calls[0];
@@ -575,17 +659,23 @@ describe("CLIChannel", () => {
 
       await inputCallback(longInput);
 
-      expect(mockOrchestrator.processStream).toHaveBeenCalledWith(
-        expect.objectContaining({
-          input: longInput,
-        }),
+      expect(mockGateway.processStream).toHaveBeenCalledWith(
+        expect.any(String),
+        longInput,
+        expect.any(String),
       );
     });
 
     it("should handle unicode input", async () => {
-      mockOrchestrator.processStream.mockResolvedValue("Response");
+      async function* mockStream() {
+        yield "Response";
+      }
+      mockGateway.processStream.mockResolvedValue({
+        textStream: mockStream(),
+        finalResponse: Promise.resolve("Response"),
+      });
 
-      cliChannel = new CLIChannel(mockOrchestrator);
+      cliChannel = new CLIChannel(mockGateway);
       await cliChannel.start();
 
       const questionCall = mockReadline.question.mock.calls[0];
@@ -593,17 +683,23 @@ describe("CLIChannel", () => {
 
       await inputCallback("你好世界 🌍 مرحبا");
 
-      expect(mockOrchestrator.processStream).toHaveBeenCalledWith(
-        expect.objectContaining({
-          input: "你好世界 🌍 مرحبا",
-        }),
+      expect(mockGateway.processStream).toHaveBeenCalledWith(
+        expect.any(String),
+        "你好世界 🌍 مرحبا",
+        expect.any(String),
       );
     });
 
     it("should handle special characters safely", async () => {
-      mockOrchestrator.processStream.mockResolvedValue("Response");
+      async function* mockStream() {
+        yield "Response";
+      }
+      mockGateway.processStream.mockResolvedValue({
+        textStream: mockStream(),
+        finalResponse: Promise.resolve("Response"),
+      });
 
-      cliChannel = new CLIChannel(mockOrchestrator);
+      cliChannel = new CLIChannel(mockGateway);
       await cliChannel.start();
 
       const questionCall = mockReadline.question.mock.calls[0];

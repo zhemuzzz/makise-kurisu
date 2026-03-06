@@ -1,36 +1,36 @@
 /**
  * KurisuServer 测试
  * @description 测试统一 HTTP Server 的健康检查和 Channel 路由
+ *
+ * KURISU-041: AgentHandle 替代 IOrchestrator
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import * as http from "http";
 import { Gateway, KurisuServer, MockChannel, ChannelType } from "@/platform/gateway";
-import type { IOrchestrator } from "@/platform/gateway/types";
+import type { AgentHandle } from "@/platform/gateway/types";
+import type { AgentEvent, AgentResult } from "@/agent/types";
 
 /**
- * 创建 Mock Orchestrator
+ * 创建 Mock AgentHandle
  */
-function createMockOrchestrator(): IOrchestrator {
+function createMockAgentHandle(): AgentHandle {
   return {
-    processStream: vi.fn().mockImplementation(async () => {
-      async function* textStream() {
-        yield "Hello";
-        yield " World";
-      }
-      async function* fullStream() {
-        yield { type: 0, text: "Hello", isFinal: false, timestamp: new Date() };
-        yield { type: 0, text: " World", isFinal: false, timestamp: new Date() };
-      }
-      return {
-        textStream: textStream(),
-        fullStream: fullStream(),
-        finalResponse: Promise.resolve("Hello World"),
-      };
-    }),
-    createSession: vi.fn(),
-    hasSession: vi.fn().mockReturnValue(true),
-  };
+    agent: {
+      execute: vi.fn().mockImplementation(async function* () {
+        yield { type: "text_delta", delta: "Hello" } as AgentEvent;
+        yield { type: "text_delta", delta: " World" } as AgentEvent;
+        return {
+          finalResponse: "Hello World",
+          emotionTags: [],
+          toolCalls: [],
+          metadata: {},
+        } as AgentResult;
+      }),
+    },
+    getCognition: vi.fn().mockReturnValue(""),
+    personaEngine: null,
+  } as unknown as AgentHandle;
 }
 
 /**
@@ -74,12 +74,12 @@ async function httpRequest(
 describe("KurisuServer", () => {
   let gateway: Gateway;
   let server: KurisuServer;
-  let mockOrchestrator: IOrchestrator;
+  let mockAgentHandle: AgentHandle;
   let port: number;
 
   beforeEach(async () => {
-    mockOrchestrator = createMockOrchestrator();
-    gateway = new Gateway({ orchestrator: mockOrchestrator });
+    mockAgentHandle = createMockAgentHandle();
+    gateway = new Gateway({ agentHandle: mockAgentHandle });
 
     // 使用随机端口
     port = 30000 + Math.floor(Math.random() * 1000);

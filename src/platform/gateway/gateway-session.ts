@@ -1,12 +1,13 @@
 /**
  * Gateway Session Manager
  * 会话生命周期管理
+ *
+ * KURISU-041: 不再依赖 IOrchestrator，Gateway 自己管理 session
  */
 
 import type {
   SessionInfo,
   ChannelType,
-  IOrchestrator,
 } from "./types.js";
 import { SessionManager } from "./session-manager.js";
 import { GatewayError } from "./errors.js";
@@ -28,7 +29,6 @@ export class GatewaySessionManager {
   private sessionManager?: SessionManager;
 
   constructor(
-    private readonly orchestrator: IOrchestrator,
     private readonly config: SessionManagerConfig,
   ) {}
 
@@ -93,13 +93,6 @@ export class GatewaySessionManager {
       ...(metadata ? { metadata } : {}),
     });
 
-    // 通知 orchestrator
-    this.orchestrator.createSession({
-      sessionId,
-      userId,
-      channelType,
-    });
-
     return session;
   }
 
@@ -116,14 +109,7 @@ export class GatewaySessionManager {
    */
   async deleteSession(sessionId: string): Promise<boolean> {
     this.ensureInitialized();
-
-    const deleted = this.sessionManager!.delete(sessionId);
-
-    if (deleted) {
-      this.orchestrator.deleteSession?.(sessionId);
-    }
-
-    return deleted;
+    return this.sessionManager!.delete(sessionId);
   }
 
   /**

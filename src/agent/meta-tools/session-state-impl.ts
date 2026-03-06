@@ -46,7 +46,7 @@ export class SessionStateImpl implements SessionState {
   setCognitionState(state: CognitionState): void {
     this.cognitionState = state;
 
-    // 通知外部（如 OrchestratorAdapter）认知已更新
+    // 通知外部（如 GatewayOrchestrator）认知已更新
     if (this.onCognitionUpdate) {
       this.onCognitionUpdate(state.content);
     }
