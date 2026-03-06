@@ -208,10 +208,13 @@ export interface BootstrapFullOptions extends BootstrapOptions {
 export interface RoleServices {
   readonly identity: Identity;
   readonly services: PlatformServices;
-  /** 初始认知内容 (来自 cognition.md)，运行时由 manage-cognition 更新 */
-  readonly initialCognition: string;
   /** 认知持久化 (stateDir/cognition.md) */
   readonly cognitionStore: CognitionStore;
+  /**
+   * 获取最新认知内容（内存优先，始终是最新值）
+   * OrchestratorAdapter 用此 getter 注入 prompt
+   */
+  readonly getCognition: () => string;
 }
 
 export interface BackgroundServices {
@@ -439,6 +442,12 @@ async function initRoleServices(
       });
       const persistedCognition = await cognitionStore.read();
 
+      // 共享认知引用: SessionStateImpl 写入时更新，OrchestratorAdapter 每轮读取
+      let latestCognition = persistedCognition;
+      const onCognitionUpdate = (content: string): void => {
+        latestCognition = content;
+      };
+
       // Per-role SessionState 管理 (MetaToolContext 需要)
       const sessionStates = new Map<string, SessionState>();
 
@@ -450,8 +459,9 @@ async function initRoleServices(
             ? new SessionStateImpl({
                 cognitionStore,
                 initialCognition: { content: persistedCognition, formattedText: persistedCognition },
+                onCognitionUpdate,
               })
-            : new SessionStateImpl({ cognitionStore });
+            : new SessionStateImpl({ cognitionStore, onCognitionUpdate });
           sessionStates.set(sessionId, newState);
           return newState;
         },
@@ -477,8 +487,8 @@ async function initRoleServices(
       roles.set(roleId, {
         identity,
         services,
-        initialCognition: persistedCognition,
         cognitionStore,
+        getCognition: () => latestCognition,
       });
     } catch (error) {
       foundation.shutdown();

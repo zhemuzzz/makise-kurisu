@@ -19,13 +19,16 @@ export class SessionStateImpl implements SessionState {
   private todoState: TodoState | undefined;
   private cognitionState: CognitionState | undefined;
   private readonly cognitionStore: CognitionStore | undefined;
+  private readonly onCognitionUpdate: ((content: string) => void) | undefined;
 
   constructor(options?: {
     readonly cognitionStore?: CognitionStore;
     readonly initialCognition?: CognitionState;
+    readonly onCognitionUpdate?: (content: string) => void;
   }) {
     this.cognitionStore = options?.cognitionStore;
     this.cognitionState = options?.initialCognition;
+    this.onCognitionUpdate = options?.onCognitionUpdate;
   }
 
   getTodoState(): TodoState | undefined {
@@ -42,6 +45,11 @@ export class SessionStateImpl implements SessionState {
 
   setCognitionState(state: CognitionState): void {
     this.cognitionState = state;
+
+    // 通知外部（如 OrchestratorAdapter）认知已更新
+    if (this.onCognitionUpdate) {
+      this.onCognitionUpdate(state.content);
+    }
 
     // 异步持久化（fire-and-forget，不阻塞元工具执行）
     if (this.cognitionStore) {

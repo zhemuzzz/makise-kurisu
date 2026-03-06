@@ -279,6 +279,58 @@ describe("ContextManagerAdapter", () => {
       expect(memBlock!.content).toContain("Past event");
     });
 
+    it("should create cognition block with priority 3 when cognitionText provided", async () => {
+      const input = createMinimalAgentInput({
+        cognitionText: "冈部是我的实验伙伴，他总是做出中二的举动。",
+      });
+
+      mock.assemblePrompt.mockImplementation((assembleInput: { blocks: readonly ContextBlock[] }) => ({
+        included: assembleInput.blocks,
+        skipped: [],
+        tokenUsage: { total: 50, perBlock: new Map() },
+      }));
+
+      await adapter.assemblePrompt(input, minimalConfig);
+
+      const callArg = mock.assemblePrompt.mock.calls[0][0] as { blocks: readonly ContextBlock[] };
+      const cognitionBlock = callArg.blocks.find((b: ContextBlock) => b.label === "cognition");
+      expect(cognitionBlock).toBeDefined();
+      expect(cognitionBlock!.priority).toBe(3);
+      expect(cognitionBlock!.content).toBe("冈部是我的实验伙伴，他总是做出中二的举动。");
+    });
+
+    it("should not create cognition block when cognitionText is undefined", async () => {
+      const input = createMinimalAgentInput(); // no cognitionText
+
+      mock.assemblePrompt.mockImplementation((assembleInput: { blocks: readonly ContextBlock[] }) => ({
+        included: assembleInput.blocks,
+        skipped: [],
+        tokenUsage: { total: 50, perBlock: new Map() },
+      }));
+
+      await adapter.assemblePrompt(input, minimalConfig);
+
+      const callArg = mock.assemblePrompt.mock.calls[0][0] as { blocks: readonly ContextBlock[] };
+      const cognitionBlock = callArg.blocks.find((b: ContextBlock) => b.label === "cognition");
+      expect(cognitionBlock).toBeUndefined();
+    });
+
+    it("should not create cognition block when cognitionText is empty string", async () => {
+      const input = createMinimalAgentInput({ cognitionText: "" });
+
+      mock.assemblePrompt.mockImplementation((assembleInput: { blocks: readonly ContextBlock[] }) => ({
+        included: assembleInput.blocks,
+        skipped: [],
+        tokenUsage: { total: 50, perBlock: new Map() },
+      }));
+
+      await adapter.assemblePrompt(input, minimalConfig);
+
+      const callArg = mock.assemblePrompt.mock.calls[0][0] as { blocks: readonly ContextBlock[] };
+      const cognitionBlock = callArg.blocks.find((b: ContextBlock) => b.label === "cognition");
+      expect(cognitionBlock).toBeUndefined();
+    });
+
     it("should create todo block with priority 4 when present", async () => {
       const input = createMinimalAgentInput({
         todoState: {

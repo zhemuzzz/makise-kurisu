@@ -58,18 +58,11 @@ const DEFAULT_MENTAL_MODEL: MentalModelSnapshot = {
 export class OrchestratorAdapter implements IOrchestrator {
   private readonly agent: Agent;
   private readonly sessions = new Map<string, SessionState>();
-  private cognitionContent: string;
+  private readonly getCognition: () => string;
 
-  constructor(agent: Agent, initialCognition?: string) {
+  constructor(agent: Agent, getCognition?: () => string) {
     this.agent = agent;
-    this.cognitionContent = initialCognition ?? "";
-  }
-
-  /**
-   * 更新认知内容 (由 manage-cognition 元工具调用)
-   */
-  updateCognition(content: string): void {
-    this.cognitionContent = content;
+    this.getCognition = getCognition ?? (() => "");
   }
 
   // --------------------------------------------------------------------------
@@ -85,13 +78,14 @@ export class OrchestratorAdapter implements IOrchestrator {
     const session = this.sessions.get(params.sessionId);
 
     // Build minimal AgentInput from gateway params
+    const cognition = this.getCognition();
     const agentInput: AgentInput = {
       userMessage: params.input,
       activatedSkills: [],
       recalledMemories: [],
       conversationHistory: [],
       mentalModel: DEFAULT_MENTAL_MODEL,
-      ...(this.cognitionContent.length > 0 ? { cognitionText: this.cognitionContent } : {}),
+      ...(cognition.length > 0 ? { cognitionText: cognition } : {}),
     };
 
     const agentConfig: AgentConfig = {

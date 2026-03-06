@@ -99,4 +99,33 @@ describe("SessionStateImpl", () => {
       expect(state.getCognitionState()?.content).toBe("test");
     });
   });
+
+  describe("onCognitionUpdate callback", () => {
+    it("should invoke callback when cognition state is set", () => {
+      const callback = vi.fn();
+      const state = new SessionStateImpl({ onCognitionUpdate: callback });
+
+      state.setCognitionState({ content: "新认知", formattedText: "## 新认知" });
+
+      expect(callback).toHaveBeenCalledWith("新认知");
+    });
+
+    it("should not fail when callback is not provided", () => {
+      const state = new SessionStateImpl();
+      state.setCognitionState({ content: "test", formattedText: "## test" });
+      expect(state.getCognitionState()?.content).toBe("test");
+    });
+
+    it("should invoke callback with latest content on each update", () => {
+      const callback = vi.fn();
+      const state = new SessionStateImpl({ onCognitionUpdate: callback });
+
+      state.setCognitionState({ content: "v1", formattedText: "## v1" });
+      state.setCognitionState({ content: "v2", formattedText: "## v2" });
+
+      expect(callback).toHaveBeenCalledTimes(2);
+      expect(callback).toHaveBeenNthCalledWith(1, "v1");
+      expect(callback).toHaveBeenNthCalledWith(2, "v2");
+    });
+  });
 });

@@ -146,6 +146,60 @@ describe("OrchestratorAdapter", () => {
       expect(final).toBe("Hello World");
     });
 
+    it("should inject cognitionText from getCognition getter", async () => {
+      const cognitionAdapter = new OrchestratorAdapter(mockAgent, () => "我认识冈部");
+
+      await cognitionAdapter.processStream({
+        sessionId: "s1",
+        input: "你好",
+      });
+
+      const [agentInput] = (mockAgent.execute as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(agentInput.cognitionText).toBe("我认识冈部");
+
+      // Consume
+      const result = await cognitionAdapter.processStream({ sessionId: "s1", input: "x" });
+      const sr = result as { textStream: AsyncGenerator<string> };
+      for await (const _ of sr.textStream) { /* drain */ }
+    });
+
+    it("should reflect cognition updates on next turn", async () => {
+      let cognition = "初始认知";
+      const dynamicAdapter = new OrchestratorAdapter(mockAgent, () => cognition);
+
+      // First turn: initial cognition
+      await dynamicAdapter.processStream({ sessionId: "s1", input: "a" });
+      const [input1] = (mockAgent.execute as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(input1.cognitionText).toBe("初始认知");
+
+      // Simulate cognition update (e.g. by manage-cognition meta-tool)
+      cognition = "更新后的认知";
+
+      // Need a new mock agent for second call (generator can only be consumed once)
+      const mockAgent2 = createMockAgent(
+        [makeTextDelta("OK")],
+        makeResult("OK"),
+      );
+      const dynamicAdapter2 = new OrchestratorAdapter(mockAgent2, () => cognition);
+      await dynamicAdapter2.processStream({ sessionId: "s1", input: "b" });
+      const [input2] = (mockAgent2.execute as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(input2.cognitionText).toBe("更新后的认知");
+    });
+
+    it("should not include cognitionText when getCognition returns empty", async () => {
+      const emptyAdapter = new OrchestratorAdapter(mockAgent, () => "");
+
+      await emptyAdapter.processStream({ sessionId: "s1", input: "test" });
+
+      const [agentInput] = (mockAgent.execute as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(agentInput.cognitionText).toBeUndefined();
+
+      // Consume
+      const result = await emptyAdapter.processStream({ sessionId: "s1", input: "x" });
+      const sr = result as { textStream: AsyncGenerator<string> };
+      for await (const _ of sr.textStream) { /* drain */ }
+    });
+
     it("should build correct AgentInput from gateway params", async () => {
       const result = await adapter.processStream({
         sessionId: "s1",
