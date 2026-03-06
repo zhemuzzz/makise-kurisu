@@ -84,13 +84,3 @@ export class ChannelError extends GatewayError {
     this.name = 'ChannelError';
   }
 }
-
-/**
- * Orchestrator 错误
- */
-export class OrchestratorError extends GatewayError {
-  constructor(message: string, code: string = 'ORCHESTRATOR_ERROR') {
-    super(message, code);
-    this.name = 'OrchestratorError';
-  }
-}

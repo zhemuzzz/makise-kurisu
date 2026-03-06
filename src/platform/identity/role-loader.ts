@@ -1,7 +1,7 @@
 /**
  * 角色配置加载器
  *
- * 配置结构: soul.md + persona.yaml + lore.md + memories/
+ * 配置结构: soul.md + persona.yaml + lore.md + cognition.md
  */
 
 import { parse as parseYaml } from "yaml";
@@ -12,10 +12,7 @@ import {
   type SoulConfig,
   type PersonaConfig,
   type LoreConfig,
-  type MemoriesConfig,
   type CognitionConfig,
-  type Episode,
-  type Relationship,
   type RoleLoadResult,
 } from "./soul-types.js";
 
@@ -109,11 +106,10 @@ export class RoleLoader {
     roleId: string,
     rolePath: string,
   ): Promise<RoleConfig> {
-    const [soul, persona, lore, memories, cognition] = await Promise.all([
+    const [soul, persona, lore, cognition] = await Promise.all([
       this.loadSoul(rolePath),
       this.loadPersona(rolePath),
       this.loadLore(rolePath),
-      this.loadMemories(rolePath),
       this.loadCognition(rolePath),
     ]);
 
@@ -126,7 +122,6 @@ export class RoleLoader {
       soul,
       persona,
       lore,
-      memories,
       cognition,
     };
   }
@@ -175,41 +170,6 @@ export class RoleLoader {
   private async loadLore(rolePath: string): Promise<LoreConfig> {
     const content = await this.readFile(join(rolePath, "lore.md"));
     return { rawContent: content };
-  }
-
-  private async loadMemories(rolePath: string): Promise<MemoriesConfig> {
-    const memoriesPath = join(rolePath, "memories");
-
-    let episodes: readonly Episode[] = [];
-    let relationships: readonly Relationship[] = [];
-
-    try {
-      const [episodesContent, relationshipsContent] = await Promise.all([
-        this.tryReadFile(join(memoriesPath, "episodes.yaml")),
-        this.tryReadFile(join(memoriesPath, "relationships.yaml")),
-      ]);
-
-      if (episodesContent) {
-        const parsed = parseYaml(episodesContent) as { episodes?: Episode[] };
-        episodes = parsed?.episodes ?? [];
-      }
-
-      if (relationshipsContent) {
-        const parsed = parseYaml(relationshipsContent) as {
-          relationships?: Record<string, Relationship>;
-        };
-        // YAML 中 relationships 是对象，需要转换为数组
-        if (parsed?.relationships) {
-          relationships = Object.entries(parsed.relationships).map(
-            ([key, value]) => ({ ...value, name: value.name || key }),
-          );
-        }
-      }
-    } catch {
-      // Memories 是可选的，加载失败时使用默认值
-    }
-
-    return { episodes, relationships };
   }
 
   private async loadCognition(rolePath: string): Promise<CognitionConfig> {

@@ -96,62 +96,8 @@ export interface LoreConfig {
 }
 
 // ============================================
-// 记忆类型
+// 认知类型
 // ============================================
-
-/**
- * 历史事件记录
- */
-export interface RelationshipHistory {
-  readonly date: string;
-  readonly event: string;
-  /** 感情变化值 */
-  readonly feelingChange: number;
-}
-
-/**
- * 关系定义
- */
-export interface Relationship {
-  /** 角色名称 */
-  readonly name: string;
-  /** 初次相遇时间 */
-  readonly firstMet: string;
-  /** 当前感觉 */
-  readonly currentFeeling: string;
-  /** 亲密度 (1-10) */
-  readonly closeness: number;
-  /** 备注 */
-  readonly notes: readonly string[];
-  /** 历史事件 */
-  readonly history?: readonly RelationshipHistory[];
-}
-
-/**
- * 经历事件
- */
-export interface Episode {
-  /** 事件 ID */
-  readonly id: string;
-  /** 日期 */
-  readonly date: string;
-  /** 摘要 */
-  readonly summary: string;
-  /** 详情 */
-  readonly details: string;
-  /** 情感标签 */
-  readonly emotions?: readonly string[];
-}
-
-/**
- * 记忆配置
- * 来源: memories/episodes.yaml + memories/relationships.yaml
- * @deprecated 记忆已合并到 cognition.md，保留接口兼容
- */
-export interface MemoriesConfig {
-  readonly episodes: readonly Episode[];
-  readonly relationships: readonly Relationship[];
-}
 
 /**
  * 认知配置
@@ -191,8 +137,6 @@ export interface RoleConfig {
   readonly persona: PersonaConfig;
   /** 世界观 */
   readonly lore: LoreConfig;
-  /** 记忆 */
-  readonly memories: MemoriesConfig;
   /** 认知 (活跃认知笔记本) */
   readonly cognition: CognitionConfig;
 }

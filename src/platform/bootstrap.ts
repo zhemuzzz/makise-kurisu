@@ -216,7 +216,7 @@ export interface RoleServices {
   readonly cognitionStore: CognitionStore;
   /**
    * 获取最新认知内容（内存优先，始终是最新值）
-   * OrchestratorAdapter 用此 getter 注入 prompt
+   * GatewayOrchestrator 用此 getter 注入 prompt
    */
   readonly getCognition: () => string;
   /** ILE PersonaEngine（mood/关系/时间感知） */
@@ -456,7 +456,7 @@ async function initRoleServices(
       });
       const persistedCognition = await cognitionStore.read();
 
-      // 共享认知引用: SessionStateImpl 写入时更新，OrchestratorAdapter 每轮读取
+      // 共享认知引用: SessionStateImpl 写入时更新，GatewayOrchestrator 每轮读取
       let latestCognition = persistedCognition;
       const onCognitionUpdate = (content: string): void => {
         latestCognition = content;
@@ -663,7 +663,7 @@ function initBackgroundServices(
   return { eventBus, scheduler, routineSystem, pipeline, evolution };
 }
 
-// ============ BootstrapFull (Orchestrator) ============
+// ============ BootstrapFull ============
 
 /**
  * 完整启动序列: Foundation → SharedInfra → RoleServices → Background → Browser

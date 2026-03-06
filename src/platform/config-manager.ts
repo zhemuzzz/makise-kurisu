@@ -295,7 +295,7 @@ function maskSecrets(secrets: PlatformConfig["secrets"]): PlatformConfig["secret
 }
 
 /**
- * 将 v1 models.yaml 格式转换为新 ModelProviderConfig 格式
+ * 将 models.yaml 格式转换为 ModelProviderConfig 格式
  */
 function transformModelsToProviders(
   models: readonly Record<string, unknown>[],

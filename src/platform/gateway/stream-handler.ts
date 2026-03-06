@@ -117,6 +117,10 @@ export class StreamHandler {
           }
           return results;
         })();
+        // 防止 unhandled rejection: 源流出错时两个 consumer 共享同一个
+        // rejected promise，若其中一个尚未被 await 则 Node 会报 warning。
+        // 这里的 catch 仅做抑制，错误仍会在 consumer await 时正常抛出。
+        chunksCache.catch(() => {});
       }
       return chunksCache;
     };
@@ -158,6 +162,10 @@ export class StreamHandler {
 
     // Create final response promise from the second copy
     const finalResponse = this.collectFullResponse(stream2);
+    // 防止 unhandled rejection: finalResponse 在后台消费 stream2，
+    // 若源流出错，rejection 可能在调用方 await 之前触发。
+    // 这里仅做抑制，调用方 await finalResponse 时仍会正常抛错。
+    finalResponse.catch(() => {});
 
     return {
       textStream: wrappedStream as AsyncGenerator<string>,

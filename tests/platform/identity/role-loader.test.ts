@@ -52,15 +52,6 @@ describe("RoleLoader", () => {
       expect(config.lore.rawContent).toContain("世界线");
     });
 
-    it("should handle empty memories gracefully (data moved to cognition.md)", async () => {
-      const config = await loader.load(KURISU_ROLE_ID);
-
-      expect(config.memories.episodes).toBeInstanceOf(Array);
-      expect(config.memories.episodes.length).toBe(0);
-      expect(config.memories.relationships).toBeInstanceOf(Array);
-      expect(config.memories.relationships.length).toBe(0);
-    });
-
     it("should load cognition.md content", async () => {
       const config = await loader.load(KURISU_ROLE_ID);
 
