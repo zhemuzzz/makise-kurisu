@@ -16,6 +16,7 @@ import type {
   CharacterState,
   UserMoodProjection,
 } from "../types.js";
+import { describeMood, STAGE_NAMES } from "../core/snapshot-formatter.js";
 
 // ============================================================================
 // Mental Model 文本构建
@@ -62,14 +63,7 @@ export function buildMentalModelText(
   }
 
   // 关系
-  const stageNames: Record<string, string> = {
-    stranger: "陌生人",
-    acquaintance: "认识",
-    familiar: "熟悉",
-    friend: "朋友",
-    close_friend: "挚友",
-  };
-  const stageName = stageNames[relationship.stage] ?? relationship.stage;
+  const stageName = STAGE_NAMES[relationship.stage] ?? relationship.stage;
   lines.push(
     `与 ${userId}: ${stageName}阶段, trust:${Math.round(relationship.trust)}, warmth:${Math.round(relationship.warmth)}`,
   );
@@ -129,29 +123,6 @@ export function buildPromptSegments(
 // ============================================================================
 // 工具函数
 // ============================================================================
-
-/**
- * 描述心境 (自然语言)
- */
-function describeMood(mood: MoodState): string {
-  const parts: string[] = [];
-
-  // Pleasure
-  if (mood.pleasure > 0.3) parts.push("开心");
-  else if (mood.pleasure > 0) parts.push("微妙开心");
-  else if (mood.pleasure > -0.3) parts.push("略微不悦");
-  else parts.push("烦躁");
-
-  // Arousal
-  if (mood.arousal > 0.3) parts.push("活跃");
-  else if (mood.arousal < -0.3) parts.push("低沉");
-
-  // Dominance
-  if (mood.dominance > 0.5) parts.push("自信掌控");
-  else if (mood.dominance < -0.3) parts.push("不安");
-
-  return parts.join("但") || "平静";
-}
 
 /**
  * 格式化数字为保留一位小数

@@ -368,11 +368,19 @@ export class Agent {
         type: "user_message",
       });
 
-      // 记录角色回复
-      await this.#services.memory.store(result.finalResponse, userId, {
+      // 记录角色回复 (附带 emotion_tags 供记忆检索时使用)
+      const assistantMeta: Record<string, unknown> = {
         type: "assistant_response",
         roleId: this.#identity.roleId,
-      });
+      };
+      if (result.emotionTags.length > 0) {
+        assistantMeta["emotionTags"] = [...result.emotionTags];
+      }
+      await this.#services.memory.store(
+        result.finalResponse,
+        userId,
+        assistantMeta,
+      );
     }
 
     // 2. 更新 Session 状态

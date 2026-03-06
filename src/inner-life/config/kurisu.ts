@@ -76,6 +76,9 @@ export const KURISU_GROWTH_BOUNDS: GrowthBounds = {
 // 完整引擎配置
 // ============================================================================
 
+/** 成长 drift 间隔: 24 小时 */
+const GROWTH_DRIFT_INTERVAL_MS = 86_400_000;
+
 /**
  * 红莉栖 PersonaEngine 配置
  */
@@ -84,4 +87,6 @@ export const KURISU_ENGINE_CONFIG: PersonaEngineConfig = {
   personality: KURISU_PERSONALITY,
   baseMoodSyncRatio: 0.03,
   forgettingDays: 30,
+  growthBounds: KURISU_GROWTH_BOUNDS,
+  growthDriftIntervalMs: GROWTH_DRIFT_INTERVAL_MS,
 } as const;

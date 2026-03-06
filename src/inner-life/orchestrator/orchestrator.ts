@@ -19,6 +19,7 @@ import type {
   UserMoodProjection,
   RelationshipState,
   TimeTickResult,
+  GrowthExperience,
 } from "../types.js";
 
 import { mapEmotionTags } from "../core/emotion-mapping.js";
@@ -36,7 +37,7 @@ import {
   createInitialRelationship,
   adjustedThreshold,
 } from "../core/relationship-rules.js";
-import { syncBaseMood } from "../core/growth-rules.js";
+import { syncBaseMood, computeAverageEmotionPad, computeGrowthDrift } from "../core/growth-rules.js";
 import { buildPromptSegments } from "./context-builder.js";
 import { formatTimeContext } from "../core/time-context.js";
 import {
@@ -199,6 +200,25 @@ class PersonaOrchestrator implements PersonaEngineAPI {
       };
     }
 
+    // 5.5. 积累 GrowthExperience (长期人格漂移素材)
+    if (this.config.growthBounds && emotions.length > 0) {
+      const avgPad = computeAverageEmotionPad(emotions);
+      const isNonZero = avgPad.p !== 0 || avgPad.a !== 0 || avgPad.d !== 0;
+      if (isNonZero) {
+        const experience: GrowthExperience = {
+          padDelta: avgPad,
+          weight: emotions.reduce((sum, e) => sum + e.weight, 0) / emotions.length,
+          timestamp: Date.now(),
+        };
+        const growthState = this.store.getGrowthState(this.config.roleId);
+        const prevExperiences = growthState?.experiences ?? [];
+        this.store.saveGrowthState(this.config.roleId, {
+          experiences: [...prevExperiences, experience],
+          lastDriftAt: growthState?.lastDriftAt ?? 0,
+        });
+      }
+    }
+
     // 6. 重新计算投影
     const newProjection: UserMoodProjection = {
       projectedMood: computeProjection(
@@ -326,8 +346,9 @@ class PersonaOrchestrator implements PersonaEngineAPI {
    *
    * 1. mood 衰减 + 性格方向回归 (computeMoodDecay)
    * 2. 关系衰减 (computeRelationshipDecay)
+   * 2.5. 成长 drift (≥24h 门控，漂移人格基线)
    * 3. 持久化衰减后状态
-   * 4. shouldAct 判定 (B2 补全，当前 stranger 一律 false)
+   * 4. shouldAct 判定
    * 5. 生成时间上下文
    */
   processTimeTick(
@@ -335,7 +356,7 @@ class PersonaOrchestrator implements PersonaEngineAPI {
     elapsedMs: number,
     currentTime: number,
   ): TimeTickResult {
-    const charState = this.getOrCreateCharacterState();
+    let charState = this.getOrCreateCharacterState();
     const relationship = this.getOrCreateRelationship(userId);
     const projection = this.getOrCreateProjection(userId, charState);
 
@@ -352,6 +373,44 @@ class PersonaOrchestrator implements PersonaEngineAPI {
       relationship,
       relDays,
     );
+
+    // 2.5. 成长 drift (时间门控: ≥ driftInterval 且有 growthBounds)
+    if (this.config.growthBounds) {
+      const driftInterval = this.config.growthDriftIntervalMs ?? MS_PER_DAY;
+      const growthState = this.store.getGrowthState(this.config.roleId);
+      const lastDrift = growthState?.lastDriftAt ?? 0;
+      const experiences = growthState?.experiences ?? [];
+
+      if (
+        experiences.length > 0 &&
+        currentTime - lastDrift >= driftInterval
+      ) {
+        // 执行 drift
+        const driftedPersonality = computeGrowthDrift(
+          charState.personality,
+          experiences,
+          this.config.growthBounds,
+          currentTime,
+        );
+
+        // 更新 CharacterState personality
+        charState = {
+          ...charState,
+          personality: driftedPersonality,
+        };
+        this.store.saveCharacterState(this.config.roleId, charState);
+
+        // 清理超过 7 天的旧经历 + 更新 lastDriftAt
+        const pruneThreshold = currentTime - 7 * MS_PER_DAY;
+        const prunedExperiences = experiences.filter(
+          (e) => e.timestamp > pruneThreshold,
+        );
+        this.store.saveGrowthState(this.config.roleId, {
+          experiences: prunedExperiences,
+          lastDriftAt: currentTime,
+        });
+      }
+    }
 
     // 3. 持久化衰减后状态
     const updatedProjection: UserMoodProjection = {

@@ -11,6 +11,7 @@ import type {
   CharacterState,
   UserMoodProjection,
   RelationshipState,
+  GrowthState,
 } from "../types.js";
 
 // ============================================================================
@@ -43,6 +44,8 @@ export interface StateStore {
     userId: string,
     state: RelationshipState,
   ): void;
+  getGrowthState(roleId: string): GrowthState | undefined;
+  saveGrowthState(roleId: string, state: GrowthState): void;
 }
 
 // ============================================================================
@@ -59,6 +62,7 @@ class InMemoryStateStore implements StateStore {
   private readonly characters = new Map<string, CharacterState>();
   private readonly projections = new Map<string, UserMoodProjection>();
   private readonly relationships = new Map<string, RelationshipState>();
+  private readonly growthStates = new Map<string, GrowthState>();
 
   getCharacterState(roleId: string): CharacterState | undefined {
     return this.characters.get(roleId);
@@ -96,6 +100,14 @@ class InMemoryStateStore implements StateStore {
     state: RelationshipState,
   ): void {
     this.relationships.set(compositeKey(roleId, userId), state);
+  }
+
+  getGrowthState(roleId: string): GrowthState | undefined {
+    return this.growthStates.get(roleId);
+  }
+
+  saveGrowthState(roleId: string, state: GrowthState): void {
+    this.growthStates.set(roleId, state);
   }
 }
 

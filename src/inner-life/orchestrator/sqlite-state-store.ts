@@ -25,6 +25,8 @@ import type {
   PersonalityDefaults,
   ActiveEmotion,
   Milestone,
+  GrowthState,
+  GrowthExperience,
 } from "../types.js";
 import type { StateStore } from "./state-store.js";
 
@@ -69,6 +71,12 @@ const ILE_SCHEMA = `
 
   CREATE INDEX IF NOT EXISTS idx_ile_projections_role ON ile_user_projections(role_id);
   CREATE INDEX IF NOT EXISTS idx_ile_relationships_role ON ile_relationships(role_id);
+
+  CREATE TABLE IF NOT EXISTS ile_growth_state (
+    role_id TEXT PRIMARY KEY,
+    experiences_json TEXT NOT NULL DEFAULT '[]',
+    last_drift_at INTEGER NOT NULL DEFAULT 0
+  );
 `;
 
 // ============================================================================
@@ -87,6 +95,8 @@ class SQLiteStateStoreImpl implements StateStore {
   private stmtUpsertRelationship: Database.Statement | undefined;
   private stmtGetAllProjections: Database.Statement | undefined;
   private stmtGetAllRelationships: Database.Statement | undefined;
+  private stmtGetGrowthState: Database.Statement | undefined;
+  private stmtUpsertGrowthState: Database.Statement | undefined;
 
   constructor(db: Database.Database) {
     this.db = db;
@@ -241,6 +251,27 @@ class SQLiteStateStoreImpl implements StateStore {
   }
 
   // --------------------------------------------------------------------------
+  // GrowthState
+  // --------------------------------------------------------------------------
+
+  getGrowthState(roleId: string): GrowthState | undefined {
+    const row = this.getGrowthStateStmt().get(roleId) as GrowthStateRow | undefined;
+    if (row === undefined) return undefined;
+    return {
+      experiences: JSON.parse(row.experiences_json) as GrowthExperience[],
+      lastDriftAt: row.last_drift_at,
+    };
+  }
+
+  saveGrowthState(roleId: string, state: GrowthState): void {
+    this.getUpsertGrowthStateStmt().run(
+      roleId,
+      JSON.stringify(state.experiences),
+      state.lastDriftAt,
+    );
+  }
+
+  // --------------------------------------------------------------------------
   // Private: Lazy Prepared Statements
   // --------------------------------------------------------------------------
 
@@ -328,6 +359,25 @@ class SQLiteStateStoreImpl implements StateStore {
     );
     return this.stmtGetAllRelationships;
   }
+
+  private getGrowthStateStmt(): Database.Statement {
+    this.stmtGetGrowthState ??= this.db.prepare(
+      `SELECT experiences_json, last_drift_at
+       FROM ile_growth_state WHERE role_id = ?`,
+    );
+    return this.stmtGetGrowthState;
+  }
+
+  private getUpsertGrowthStateStmt(): Database.Statement {
+    this.stmtUpsertGrowthState ??= this.db.prepare(
+      `INSERT INTO ile_growth_state (role_id, experiences_json, last_drift_at)
+       VALUES (?, ?, ?)
+       ON CONFLICT(role_id) DO UPDATE SET
+         experiences_json = excluded.experiences_json,
+         last_drift_at = excluded.last_drift_at`,
+    );
+    return this.stmtUpsertGrowthState;
+  }
 }
 
 // ============================================================================
@@ -361,6 +411,11 @@ interface RelationshipRow {
   readonly interaction_count: number;
   readonly last_interaction: number;
   readonly milestone_history_json: string;
+}
+
+interface GrowthStateRow {
+  readonly experiences_json: string;
+  readonly last_drift_at: number;
 }
 
 // ============================================================================

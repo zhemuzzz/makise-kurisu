@@ -21,6 +21,7 @@ export interface BackgroundTaskContext {
   readonly routineName: string;
   readonly taskGoal: string;
   readonly maxTokens: number;
+  readonly ileSummary?: string;
 }
 
 export type ExecuteBackgroundTaskFn = (context: BackgroundTaskContext) => Promise<void>;
@@ -32,6 +33,7 @@ export interface EvolutionServiceConfig {
   readonly pipeline: MutationPipeline;
   readonly tracing: EvolutionTracing;
   readonly executeBackgroundTask: ExecuteBackgroundTaskFn;
+  readonly getILESummary?: () => string;
 }
 
 // ============ Interface ============
@@ -83,11 +85,13 @@ class EvolutionServiceImpl implements EvolutionService {
     }
 
     try {
+      const ileSummary = this.config.getILESummary?.();
       await this.config.executeBackgroundTask({
         routineId,
         routineName,
         taskGoal,
         maxTokens: this.config.evolutionConfig.reflectionMaxTokens,
+        ...(ileSummary ? { ileSummary } : {}),
       });
 
       this.config.tracing.log({

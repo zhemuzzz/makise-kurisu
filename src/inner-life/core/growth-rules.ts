@@ -15,6 +15,7 @@ import type {
   GrowthBounds,
   MoodState,
   PADVector,
+  ActiveEmotion,
 } from "../types.js";
 
 // ============================================================================
@@ -139,4 +140,43 @@ function clampDrift(drift: number, maxAbsDrift: number): number {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
+}
+
+// ============================================================================
+// 情绪 → GrowthExperience 辅助
+// ============================================================================
+
+/**
+ * 计算一轮情绪的加权平均 PAD 向量
+ *
+ * 用于从 processTurn 的 ActiveEmotion[] 创建 GrowthExperience。
+ * 空列表返回零向量。
+ *
+ * @param emotions - 本轮活跃情绪
+ * @returns 加权平均 PAD 向量
+ */
+export function computeAverageEmotionPad(
+  emotions: readonly ActiveEmotion[],
+): PADVector {
+  if (emotions.length === 0) return { p: 0, a: 0, d: 0 };
+
+  let totalWeight = 0;
+  let sumP = 0;
+  let sumA = 0;
+  let sumD = 0;
+
+  for (const e of emotions) {
+    sumP += e.pad.p * e.weight;
+    sumA += e.pad.a * e.weight;
+    sumD += e.pad.d * e.weight;
+    totalWeight += e.weight;
+  }
+
+  if (totalWeight === 0) return { p: 0, a: 0, d: 0 };
+
+  return {
+    p: sumP / totalWeight,
+    a: sumA / totalWeight,
+    d: sumD / totalWeight,
+  };
 }

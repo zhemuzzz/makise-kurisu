@@ -229,6 +229,16 @@ export interface GrowthBounds {
   readonly maxDrift: PADVector;
 }
 
+/**
+ * 成长状态 (积累经历 + 上次 drift 时间)
+ */
+export interface GrowthState {
+  /** 积累的成长经历 */
+  readonly experiences: readonly GrowthExperience[];
+  /** 上次执行 drift 的时间戳 */
+  readonly lastDriftAt: number;
+}
+
 // ============================================================================
 // 角色完整状态
 // ============================================================================
@@ -467,4 +477,8 @@ export interface PersonaEngineConfig {
   readonly baseMoodSyncRatio: number;
   /** 自然遗忘天数 (默认 30) */
   readonly forgettingDays: number;
+  /** 成长边界 (不设置则不启用长期 drift) */
+  readonly growthBounds?: GrowthBounds;
+  /** 成长 drift 间隔毫秒 (默认 86400000 = 24h) */
+  readonly growthDriftIntervalMs?: number;
 }

@@ -24,6 +24,7 @@ export type {
   Milestone,
   GrowthExperience,
   GrowthBounds,
+  GrowthState,
   CharacterState,
   InteractionType,
   PersonaEvent,
@@ -75,7 +76,15 @@ export {
 export {
   computeGrowthDrift,
   syncBaseMood,
+  computeAverageEmotionPad,
 } from "./core/growth-rules.js";
+
+// snapshot-formatter
+export {
+  describeMood,
+  formatILESummary,
+  STAGE_NAMES,
+} from "./core/snapshot-formatter.js";
 
 // time-context
 export { formatTimeContext } from "./core/time-context.js";

@@ -85,7 +85,7 @@ import { SessionStateImpl } from "../agent/meta-tools/session-state-impl.js";
 import type { SessionState } from "../agent/meta-tools/types.js";
 import type { MetaToolDeps } from "./adapters/tool-executor-adapter.js";
 import type { PersonaEngineAPI } from "../inner-life/types.js";
-import { createPersonaEngine, KURISU_ENGINE_CONFIG } from "../inner-life/index.js";
+import { createPersonaEngine, KURISU_ENGINE_CONFIG, formatILESummary } from "../inner-life/index.js";
 import { createSQLiteStateStore } from "../inner-life/orchestrator/sqlite-state-store.js";
 import { handleTimeTick, createTickPreCheck } from "./time-tick-handler.js";
 
@@ -614,6 +614,14 @@ function initBackgroundServices(
   });
 
   // EvolutionService
+  const getILESummary = (): string => {
+    const summaries: string[] = [];
+    for (const [, role] of roles) {
+      summaries.push(formatILESummary(role.personaEngine.getDebugSnapshot()));
+    }
+    return summaries.join("\n");
+  };
+
   const evolution = createEvolutionService({
     evolutionConfig,
     pipeline,
@@ -621,6 +629,7 @@ function initBackgroundServices(
     executeBackgroundTask: async () => {
       // Stub — replaced via setExecuteTask in production
     },
+    getILESummary,
   });
 
   // Wire RoutineSystem task handler → route by routine name
