@@ -87,7 +87,7 @@ import type { MetaToolDeps } from "./adapters/tool-executor-adapter.js";
 import type { PersonaEngineAPI } from "../inner-life/types.js";
 import { createPersonaEngine, KURISU_ENGINE_CONFIG } from "../inner-life/index.js";
 import { createSQLiteStateStore } from "../inner-life/orchestrator/sqlite-state-store.js";
-import { handleTimeTick } from "./time-tick-handler.js";
+import { handleTimeTick, createTickPreCheck } from "./time-tick-handler.js";
 
 // ============ 类型 ============
 
@@ -648,16 +648,8 @@ function initBackgroundServices(
     }
   });
 
-  // Register preCheck: ile:shouldTick — skip if no users tracked
-  routineSystem.registerPreCheck("ile:shouldTick", async () => {
-    for (const engine of engines.values()) {
-      const snapshot = engine.getDebugSnapshot();
-      if (Object.keys(snapshot.userProjections).length > 0) {
-        return true;
-      }
-    }
-    return false;
-  });
+  // Register preCheck: ile:shouldTick — frequency tiering by silence duration
+  routineSystem.registerPreCheck("ile:shouldTick", createTickPreCheck(engines));
 
   return { eventBus, scheduler, routineSystem, pipeline, evolution };
 }

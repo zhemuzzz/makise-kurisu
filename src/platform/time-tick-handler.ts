@@ -33,6 +33,68 @@ export interface TimeTickStats {
 }
 
 // ============================================================================
+// Constants
+// ============================================================================
+
+/** 跳过刚交互的用户 (< 5min) */
+const MIN_ELAPSED_MS = 300_000;
+
+/** 沉默超过 24h 视为长期沉默 */
+const LONG_SILENCE_THRESHOLD_MS = 86_400_000;
+
+/** 长期沉默时每 N 次 tick 才执行 1 次 */
+const LONG_SILENCE_SKIP_INTERVAL = 12;
+
+// ============================================================================
+// Tick Frequency PreCheck
+// ============================================================================
+
+/**
+ * 创建 tick 频率分层 preCheck 函数
+ *
+ * 分层策略:
+ * - Tier 1: 活跃对话中 → RoutineSystem inSession 机制跳过
+ * - Tier 2: 沉默 < 1h → computeShouldAct 下游拦截 (probability=0)
+ * - Tier 3: 沉默 1h~24h → 每次 tick 执行
+ * - Tier 4: 全部用户沉默 > 24h → 每 12 次 tick 执行 1 次 (≈6h)
+ */
+export function createTickPreCheck(
+  engines: ReadonlyMap<string, PersonaEngineAPI>,
+): () => Promise<boolean> {
+  let tickCounter = 0;
+
+  return async () => {
+    const now = Date.now();
+    let hasAnyUser = false;
+    let allLongSilence = true;
+
+    for (const engine of engines.values()) {
+      const snapshot = engine.getDebugSnapshot();
+      for (const projection of Object.values(snapshot.userProjections)) {
+        hasAnyUser = true;
+        if (now - projection.lastInteraction < LONG_SILENCE_THRESHOLD_MS) {
+          allLongSilence = false;
+          break;
+        }
+      }
+      if (!allLongSilence) break;
+    }
+
+    // 没有已知用户 → 跳过
+    if (!hasAnyUser) return false;
+
+    tickCounter++;
+
+    // Tier 4: 所有用户沉默 > 24h → 降频
+    if (allLongSilence && tickCounter % LONG_SILENCE_SKIP_INTERVAL !== 1) {
+      return false;
+    }
+
+    return true;
+  };
+}
+
+// ============================================================================
 // Handler
 // ============================================================================
 
@@ -56,7 +118,7 @@ export function handleTimeTick(deps: TimeTickDeps): TimeTickStats {
       const elapsed = now - projection.lastInteraction;
 
       // 跳过刚交互的用户 (< 5min，避免无效计算)
-      if (elapsed < 300_000) continue;
+      if (elapsed < MIN_ELAPSED_MS) continue;
 
       const result: TimeTickResult = engine.processTimeTick(userId, elapsed, now);
       usersProcessed++;
@@ -66,7 +128,7 @@ export function handleTimeTick(deps: TimeTickDeps): TimeTickStats {
         deps.onAction?.({
           roleId,
           userId,
-          action: result.shouldAct ? "proactive" : "none",
+          action: "proactive",
           probability: 0, // probability is internal to computeShouldAct
           timeContext: result.timeContext,
           timestamp: now,
