@@ -433,6 +433,45 @@ formatting:
     }
   });
 
+  it("BFULL-10a: RoleServices 包含 PersonaEngine", async () => {
+    vi.stubEnv("ZHIPU_API_KEY", "test-key");
+
+    const { bootstrapFull } = await import("@/platform/bootstrap.js");
+
+    const result = await bootstrapFull({
+      configDir,
+      roles: ["test-role"],
+      personasDir,
+      skipQdrant: true,
+      skipDotenv: true,
+    });
+
+    try {
+      const role = result.roles.get("test-role")!;
+
+      // PersonaEngine 存在且有正确的 API
+      expect(role.personaEngine).toBeDefined();
+      expect(typeof role.personaEngine.buildContext).toBe("function");
+      expect(typeof role.personaEngine.processTurn).toBe("function");
+      expect(typeof role.personaEngine.getDebugSnapshot).toBe("function");
+
+      // buildContext 不抛错
+      const segments = role.personaEngine.buildContext("u1", {
+        type: "private",
+        targetUserId: "u1",
+      });
+      expect(segments.mentalModel).toBeDefined();
+      expect(Array.isArray(segments.mentalModel)).toBe(true);
+
+      // getDebugSnapshot 返回有效快照
+      const snapshot = role.personaEngine.getDebugSnapshot("u1");
+      expect(snapshot.roleId).toBe("test-role");
+      expect(snapshot.snapshotAt).toBeGreaterThan(0);
+    } finally {
+      result.shutdown();
+    }
+  });
+
   it("BFULL-10: SkillManagerPort 基本操作不抛错", async () => {
     vi.stubEnv("ZHIPU_API_KEY", "test-key");
 

@@ -84,6 +84,9 @@ import type { CognitionStore } from "./storage/cognition-store.js";
 import { SessionStateImpl } from "../agent/meta-tools/session-state-impl.js";
 import type { SessionState } from "../agent/meta-tools/types.js";
 import type { MetaToolDeps } from "./adapters/tool-executor-adapter.js";
+import type { PersonaEngineAPI } from "../inner-life/types.js";
+import { createPersonaEngine, KURISU_ENGINE_CONFIG } from "../inner-life/index.js";
+import { createSQLiteStateStore } from "../inner-life/orchestrator/sqlite-state-store.js";
 
 // ============ 类型 ============
 
@@ -215,6 +218,8 @@ export interface RoleServices {
    * OrchestratorAdapter 用此 getter 注入 prompt
    */
   readonly getCognition: () => string;
+  /** ILE PersonaEngine（mood/关系/时间感知） */
+  readonly personaEngine: PersonaEngineAPI;
 }
 
 export interface BackgroundServices {
@@ -434,10 +439,18 @@ async function initRoleServices(
         tokenEstimateDivisor: contextConfig.tokenEstimateDivisor,
       };
 
+      // PersonaEngine (ILE): mood/关系/时间感知
+      const roleStore = foundation.stores.get(roleId);
+      const ileStateStore = roleStore?.sqlite
+        ? createSQLiteStateStore(roleStore.sqlite)
+        : undefined;
+      // TODO: per-role engine config — 当前单角色 MVP 只用 Kurisu 配置
+      const engineConfig = { ...KURISU_ENGINE_CONFIG, roleId };
+      const personaEngine = createPersonaEngine(engineConfig, ileStateStore);
+
       // CognitionStore: 持久化到 stateDir，启动时加载已保存内容
-      const store = foundation.stores.get(roleId);
       const cognitionStore = createCognitionStore({
-        stateDir: store?.files.stateDir ?? "",
+        stateDir: roleStore?.files.stateDir ?? "",
         initialContent: roleConfig.cognition.rawContent,
       });
       const persistedCognition = await cognitionStore.read();
@@ -489,6 +502,7 @@ async function initRoleServices(
         services,
         cognitionStore,
         getCognition: () => latestCognition,
+        personaEngine,
       });
     } catch (error) {
       foundation.shutdown();

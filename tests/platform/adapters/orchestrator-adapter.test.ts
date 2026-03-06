@@ -7,6 +7,7 @@ import { OrchestratorAdapter } from "../../../src/platform/adapters/orchestrator
 import { ChannelType, StreamEventType } from "../../../src/platform/gateway/types.js";
 import type { Agent } from "../../../src/agent/agent.js";
 import type { AgentEvent, AgentResult } from "../../../src/agent/types.js";
+import type { PersonaEngineAPI } from "../../../src/inner-life/types.js";
 
 // ============================================================================
 // Mock Agent
@@ -274,6 +275,229 @@ describe("OrchestratorAdapter", () => {
         arguments: {},
       } as never);
       expect(typeof result).toBe("string");
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // ILE Integration (B0)
+  // --------------------------------------------------------------------------
+
+  describe("ILE integration", () => {
+    function createMockPersonaEngine(
+      overrides?: Partial<PersonaEngineAPI>,
+    ): PersonaEngineAPI {
+      return {
+        buildContext: vi.fn().mockReturnValue({
+          identity: ["I am Kurisu"],
+          mentalModel: ["心境: 略带防御性", "关系: 熟悉"],
+          lore: ["Steins;Gate worldline"],
+        }),
+        processTurn: vi.fn(),
+        injectEvent: vi.fn(),
+        getDebugSnapshot: vi.fn().mockReturnValue({
+          roleId: "kurisu",
+          baseMood: { pleasure: -0.2, arousal: 0.3, dominance: 0.6, updatedAt: Date.now() },
+          personality: { defaultMood: { pleasure: -0.2, arousal: 0.3, dominance: 0.6, updatedAt: Date.now() } },
+          userProjections: {
+            u1: {
+              userId: "u1",
+              projectedMood: { pleasure: 0.1, arousal: 0.4, dominance: 0.5, updatedAt: Date.now() },
+              recentEmotions: [
+                { tag: "curiosity", timestamp: Date.now() },
+                { tag: "pride", timestamp: Date.now() },
+              ],
+            },
+          },
+          relationships: {
+            u1: {
+              userId: "u1",
+              stage: "familiar" as const,
+              familiarity: 45,
+              warmth: 30,
+              trust: 50,
+              lastInteractionAt: Date.now(),
+              interactionCount: 10,
+            },
+          },
+          snapshotAt: Date.now(),
+        }),
+        ...overrides,
+      } as PersonaEngineAPI;
+    }
+
+    it("should use PersonaEngine to build mental model when provided", async () => {
+      const engine = createMockPersonaEngine();
+      const agent = createMockAgent(
+        [makeTextDelta("Hi")],
+        makeResult("Hi"),
+      );
+      const ileAdapter = new OrchestratorAdapter(agent, undefined, engine);
+
+      const result = await ileAdapter.processStream({
+        sessionId: "s1",
+        input: "Hello",
+        userId: "u1",
+      });
+
+      // Verify buildContext was called
+      expect(engine.buildContext).toHaveBeenCalledWith("u1", {
+        type: "private",
+        targetUserId: "u1",
+      });
+
+      // Verify getDebugSnapshot was called
+      expect(engine.getDebugSnapshot).toHaveBeenCalledWith("u1");
+
+      // Verify AgentInput has real mental model
+      const [agentInput] = (agent.execute as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(agentInput.mentalModel.mood.pleasure).toBe(0.1);
+      expect(agentInput.mentalModel.mood.arousal).toBe(0.4);
+      expect(agentInput.mentalModel.mood.dominance).toBe(0.5);
+      expect(agentInput.mentalModel.activeEmotions).toEqual(["curiosity", "pride"]);
+      expect(agentInput.mentalModel.relationshipStage).toBe(3); // familiar
+      expect(agentInput.mentalModel.relationshipDescription).toBe("熟悉");
+      expect(agentInput.mentalModel.formattedText).toBe("心境: 略带防御性\n关系: 熟悉");
+
+      // Consume stream
+      const sr = result as { textStream: AsyncGenerator<string> };
+      for await (const _ of sr.textStream) { /* drain */ }
+    });
+
+    it("should fall back to DEFAULT_MENTAL_MODEL when no PersonaEngine", async () => {
+      // Default adapter has no PersonaEngine
+      const result = await adapter.processStream({
+        sessionId: "s1",
+        input: "Hello",
+        userId: "u1",
+      });
+
+      const [agentInput] = (mockAgent.execute as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(agentInput.mentalModel.mood.pleasure).toBe(0);
+      expect(agentInput.mentalModel.mood.arousal).toBe(0);
+      expect(agentInput.mentalModel.mood.dominance).toBe(0);
+      expect(agentInput.mentalModel.activeEmotions).toEqual([]);
+      expect(agentInput.mentalModel.relationshipStage).toBe(1);
+      expect(agentInput.mentalModel.formattedText).toBe("");
+
+      // Consume
+      const sr = result as { textStream: AsyncGenerator<string> };
+      for await (const _ of sr.textStream) { /* drain */ }
+    });
+
+    it("should call processTurn with emotionTags after stream consumption", async () => {
+      const engine = createMockPersonaEngine();
+      const resultWithEmotions = makeResult("感谢");
+      resultWithEmotions.emotionTags = ["gratitude", "warmth"];
+      const agent = createMockAgent(
+        [makeTextDelta("感谢")],
+        resultWithEmotions,
+      );
+      const ileAdapter = new OrchestratorAdapter(agent, undefined, engine);
+
+      const result = await ileAdapter.processStream({
+        sessionId: "s1",
+        input: "你帮了大忙",
+        userId: "u1",
+      });
+
+      // processTurn should NOT be called before stream consumption
+      expect(engine.processTurn).not.toHaveBeenCalled();
+
+      // Consume the stream
+      const sr = result as { textStream: AsyncGenerator<string> };
+      for await (const _ of sr.textStream) { /* drain */ }
+
+      // Now processTurn should have been called
+      expect(engine.processTurn).toHaveBeenCalledWith(
+        "u1",
+        ["gratitude", "warmth"],
+        "text_chat",
+      );
+    });
+
+    it("should NOT call processTurn when emotionTags is empty", async () => {
+      const engine = createMockPersonaEngine();
+      const agent = createMockAgent(
+        [makeTextDelta("OK")],
+        makeResult("OK"), // empty emotionTags
+      );
+      const ileAdapter = new OrchestratorAdapter(agent, undefined, engine);
+
+      const result = await ileAdapter.processStream({
+        sessionId: "s1",
+        input: "test",
+        userId: "u1",
+      });
+
+      // Consume
+      const sr = result as { textStream: AsyncGenerator<string> };
+      for await (const _ of sr.textStream) { /* drain */ }
+
+      // processTurn should NOT be called (empty emotionTags)
+      expect(engine.processTurn).not.toHaveBeenCalled();
+    });
+
+    it("should handle stranger relationship stage", async () => {
+      const engine = createMockPersonaEngine({
+        getDebugSnapshot: vi.fn().mockReturnValue({
+          roleId: "kurisu",
+          baseMood: { pleasure: 0, arousal: 0, dominance: 0, updatedAt: Date.now() },
+          personality: {},
+          userProjections: {},
+          relationships: {},
+          snapshotAt: Date.now(),
+        }),
+      });
+      const agent = createMockAgent(
+        [makeTextDelta("Hi")],
+        makeResult("Hi"),
+      );
+      const ileAdapter = new OrchestratorAdapter(agent, undefined, engine);
+
+      const result = await ileAdapter.processStream({
+        sessionId: "s1",
+        input: "Hello",
+        userId: "new-user",
+      });
+
+      const [agentInput] = (agent.execute as ReturnType<typeof vi.fn>).mock.calls[0];
+      // Unknown user → stranger defaults
+      expect(agentInput.mentalModel.relationshipStage).toBe(1); // stranger
+      expect(agentInput.mentalModel.relationshipDescription).toBe("陌生人");
+      expect(agentInput.mentalModel.mood.pleasure).toBe(0);
+
+      // Consume
+      const sr = result as { textStream: AsyncGenerator<string> };
+      for await (const _ of sr.textStream) { /* drain */ }
+    });
+
+    it("should work with both cognition and PersonaEngine", async () => {
+      const engine = createMockPersonaEngine();
+      const agent = createMockAgent(
+        [makeTextDelta("OK")],
+        makeResult("OK"),
+      );
+      const ileAdapter = new OrchestratorAdapter(
+        agent,
+        () => "我认识冈部伦太郎",
+        engine,
+      );
+
+      const result = await ileAdapter.processStream({
+        sessionId: "s1",
+        input: "test",
+        userId: "u1",
+      });
+
+      const [agentInput] = (agent.execute as ReturnType<typeof vi.fn>).mock.calls[0];
+      // Both cognition and mental model should be set
+      expect(agentInput.cognitionText).toBe("我认识冈部伦太郎");
+      expect(agentInput.mentalModel.mood.pleasure).toBe(0.1);
+      expect(agentInput.mentalModel.relationshipStage).toBe(3);
+
+      // Consume
+      const sr = result as { textStream: AsyncGenerator<string> };
+      for await (const _ of sr.textStream) { /* drain */ }
     });
   });
 });

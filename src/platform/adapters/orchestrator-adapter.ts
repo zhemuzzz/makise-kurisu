@@ -26,6 +26,7 @@ import type {
   ToolCall,
 } from "../gateway/types.js";
 import { StreamEventType } from "../gateway/types.js";
+import type { PersonaEngineAPI, RelationshipStage } from "../../inner-life/types.js";
 
 // ============================================================================
 // Types
@@ -38,6 +39,26 @@ interface SessionState {
   readonly createdAt: Date;
   lastActiveAt: Date;
 }
+
+// ============================================================================
+// Stage Conversion
+// ============================================================================
+
+const STAGE_TO_NUMBER: Readonly<Record<RelationshipStage, number>> = {
+  stranger: 1,
+  acquaintance: 2,
+  familiar: 3,
+  friend: 4,
+  close_friend: 5,
+};
+
+const STAGE_DESCRIPTIONS: Readonly<Record<RelationshipStage, string>> = {
+  stranger: "陌生人",
+  acquaintance: "认识",
+  familiar: "熟悉",
+  friend: "朋友",
+  close_friend: "挚友",
+};
 
 // ============================================================================
 // Default Values
@@ -59,10 +80,16 @@ export class OrchestratorAdapter implements IOrchestrator {
   private readonly agent: Agent;
   private readonly sessions = new Map<string, SessionState>();
   private readonly getCognition: () => string;
+  private readonly personaEngine: PersonaEngineAPI | null;
 
-  constructor(agent: Agent, getCognition?: () => string) {
+  constructor(
+    agent: Agent,
+    getCognition?: () => string,
+    personaEngine?: PersonaEngineAPI,
+  ) {
     this.agent = agent;
     this.getCognition = getCognition ?? (() => "");
+    this.personaEngine = personaEngine ?? null;
   }
 
   // --------------------------------------------------------------------------
@@ -79,12 +106,14 @@ export class OrchestratorAdapter implements IOrchestrator {
 
     // Build minimal AgentInput from gateway params
     const cognition = this.getCognition();
+    const userId = params.userId ?? session?.userId ?? "anonymous";
+    const mentalModel = this.buildMentalModel(userId);
     const agentInput: AgentInput = {
       userMessage: params.input,
       activatedSkills: [],
       recalledMemories: [],
       conversationHistory: [],
-      mentalModel: DEFAULT_MENTAL_MODEL,
+      mentalModel,
       ...(cognition.length > 0 ? { cognitionText: cognition } : {}),
     };
 
@@ -93,7 +122,7 @@ export class OrchestratorAdapter implements IOrchestrator {
       maxIterations: 25,
       timeout: 120000,
       sessionId: params.sessionId,
-      userId: params.userId ?? session?.userId ?? "anonymous",
+      userId,
       isSubAgent: false,
       debugEnabled: false,
     };
@@ -109,6 +138,7 @@ export class OrchestratorAdapter implements IOrchestrator {
     });
 
     // Create the text stream async generator
+    const personaEngine = this.personaEngine;
     async function* createTextStream(): AsyncGenerator<string> {
       let iter = await generator.next();
       while (!iter.done) {
@@ -124,6 +154,11 @@ export class OrchestratorAdapter implements IOrchestrator {
       // Extract final response from AgentResult
       const result: AgentResult = iter.value;
       finalResponseResolve!(result.finalResponse);
+
+      // Post-turn ILE update: feed emotion tags back to PersonaEngine
+      if (personaEngine !== null && result.emotionTags.length > 0) {
+        personaEngine.processTurn(userId, result.emotionTags, "text_chat");
+      }
     }
 
     // Create the full event stream
@@ -159,6 +194,46 @@ export class OrchestratorAdapter implements IOrchestrator {
       textStream,
       fullStream,
       finalResponse: finalResponsePromise,
+    };
+  }
+
+  // --------------------------------------------------------------------------
+  // ILE Integration
+  // --------------------------------------------------------------------------
+
+  private buildMentalModel(userId: string): MentalModelSnapshot {
+    if (this.personaEngine === null) {
+      return DEFAULT_MENTAL_MODEL;
+    }
+
+    const segments = this.personaEngine.buildContext(userId, {
+      type: "private",
+      targetUserId: userId,
+    });
+
+    // Extract relationship info from debug snapshot
+    const snapshot = this.personaEngine.getDebugSnapshot(userId);
+    const relationship = snapshot.relationships[userId];
+    const stage = relationship?.stage ?? "stranger";
+    const projection = snapshot.userProjections[userId];
+    const mood = projection?.projectedMood ?? {
+      pleasure: 0,
+      arousal: 0,
+      dominance: 0,
+      updatedAt: Date.now(),
+    };
+    const emotions = projection?.recentEmotions ?? [];
+
+    return {
+      mood: {
+        pleasure: mood.pleasure,
+        arousal: mood.arousal,
+        dominance: mood.dominance,
+      },
+      activeEmotions: emotions.map((e) => e.tag),
+      relationshipStage: STAGE_TO_NUMBER[stage],
+      relationshipDescription: STAGE_DESCRIPTIONS[stage],
+      formattedText: segments.mentalModel.join("\n"),
     };
   }
 
