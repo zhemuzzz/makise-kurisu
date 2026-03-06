@@ -13,7 +13,7 @@ import type {
   SkillManagerPort,
   SubAgentManagerPort,
 } from "../ports/platform-services.js";
-import type { TodoState } from "../types.js";
+import type { TodoState, CognitionState } from "../types.js";
 
 // ============================================================================
 // MetaToolContext - 元工具执行上下文
@@ -53,6 +53,12 @@ export interface SessionState {
 
   /** 设置 todo 状态 */
   setTodoState(state: TodoState): void;
+
+  /** 获取认知状态 */
+  getCognitionState(): CognitionState | undefined;
+
+  /** 设置认知状态 */
+  setCognitionState(state: CognitionState): void;
 }
 
 // ============================================================================

@@ -38,6 +38,7 @@ import { createContextManager } from "../context-manager.js";
 /** Identity 已由 ContextManager 内部管理（identityContent），不需要 block */
 const PRIORITY_USER_MESSAGE = 2 as const;
 const PRIORITY_MENTAL_MODEL = 3 as const;
+const PRIORITY_COGNITION = 3 as const;
 const PRIORITY_SKILL = 3 as const;
 const PRIORITY_TODO = 4 as const;
 const PRIORITY_MEMORY = 5 as const;
@@ -286,6 +287,15 @@ export class ContextManagerAdapter implements ContextManagerPort {
       label: "mental-model",
       content: input.mentalModel.formattedText,
     });
+
+    // Cognition (priority 3) — 角色活跃认知，每轮注入
+    if (input.cognitionText) {
+      blocks.push({
+        priority: PRIORITY_COGNITION,
+        label: "cognition",
+        content: input.cognitionText,
+      });
+    }
 
     // Activated skills (priority 3)
     for (const skill of input.activatedSkills) {

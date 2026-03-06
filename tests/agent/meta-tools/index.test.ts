@@ -25,6 +25,8 @@ function createMockContext(): MetaToolContext {
   const sessionState: SessionState = {
     getTodoState: () => undefined,
     setTodoState: () => {},
+    getCognitionState: () => undefined,
+    setCognitionState: () => {},
   };
 
   return {
@@ -61,13 +63,14 @@ function createMockContext(): MetaToolContext {
 
 describe("meta-tools index", () => {
   describe("META_TOOL_DEFINITIONS", () => {
-    it("should contain exactly 4 meta-tools", () => {
-      expect(META_TOOL_DEFINITIONS).toHaveLength(4);
+    it("should contain exactly 5 meta-tools", () => {
+      expect(META_TOOL_DEFINITIONS).toHaveLength(5);
     });
 
     it("should include all expected tools", () => {
       const names = META_TOOL_DEFINITIONS.map((d) => d.toolDef.name);
       expect(names).toContain("manage-todo");
+      expect(names).toContain("manage-cognition");
       expect(names).toContain("find-skill");
       expect(names).toContain("manage-skill");
       expect(names).toContain("spawn-sub-agent");
@@ -78,6 +81,7 @@ describe("meta-tools index", () => {
         META_TOOL_DEFINITIONS.map((d) => [d.toolDef.name, d.permission]),
       );
       expect(permMap.get("manage-todo")).toBe("safe");
+      expect(permMap.get("manage-cognition")).toBe("safe");
       expect(permMap.get("find-skill")).toBe("safe");
       expect(permMap.get("manage-skill")).toBe("confirm");
       expect(permMap.get("spawn-sub-agent")).toBe("safe");
@@ -85,9 +89,9 @@ describe("meta-tools index", () => {
   });
 
   describe("getMetaToolDefs", () => {
-    it("should return 4 ToolDef objects", () => {
+    it("should return 5 ToolDef objects", () => {
       const defs = getMetaToolDefs();
-      expect(defs).toHaveLength(4);
+      expect(defs).toHaveLength(5);
       for (const def of defs) {
         expect(def.name).toBeDefined();
         expect(def.description).toBeDefined();
@@ -99,6 +103,7 @@ describe("meta-tools index", () => {
   describe("isMetaTool", () => {
     it("should return true for meta-tools", () => {
       expect(isMetaTool("manage-todo")).toBe(true);
+      expect(isMetaTool("manage-cognition")).toBe(true);
       expect(isMetaTool("find-skill")).toBe(true);
       expect(isMetaTool("manage-skill")).toBe(true);
       expect(isMetaTool("spawn-sub-agent")).toBe(true);
@@ -114,6 +119,7 @@ describe("meta-tools index", () => {
   describe("getMetaToolPermission", () => {
     it("should return correct permission for each meta-tool", () => {
       expect(getMetaToolPermission("manage-todo")).toBe("safe");
+      expect(getMetaToolPermission("manage-cognition")).toBe("safe");
       expect(getMetaToolPermission("find-skill")).toBe("safe");
       expect(getMetaToolPermission("manage-skill")).toBe("confirm");
       expect(getMetaToolPermission("spawn-sub-agent")).toBe("safe");

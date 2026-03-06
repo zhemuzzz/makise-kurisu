@@ -52,13 +52,21 @@ describe("RoleLoader", () => {
       expect(config.lore.rawContent).toContain("世界线");
     });
 
-    it("should load memories from YAML files", async () => {
+    it("should handle empty memories gracefully (data moved to cognition.md)", async () => {
       const config = await loader.load(KURISU_ROLE_ID);
 
       expect(config.memories.episodes).toBeInstanceOf(Array);
-      expect(config.memories.episodes.length).toBeGreaterThan(0);
+      expect(config.memories.episodes.length).toBe(0);
       expect(config.memories.relationships).toBeInstanceOf(Array);
-      expect(config.memories.relationships.length).toBeGreaterThan(0);
+      expect(config.memories.relationships.length).toBe(0);
+    });
+
+    it("should load cognition.md content", async () => {
+      const config = await loader.load(KURISU_ROLE_ID);
+
+      expect(config.cognition).toBeDefined();
+      expect(config.cognition.rawContent).toContain("我的认知");
+      expect(config.cognition.rawContent).toContain("我认识的人");
     });
 
     it("should extract name from soul.md", async () => {

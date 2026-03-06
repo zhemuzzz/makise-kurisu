@@ -13,6 +13,7 @@ import {
   type PersonaConfig,
   type LoreConfig,
   type MemoriesConfig,
+  type CognitionConfig,
   type Episode,
   type Relationship,
   type RoleLoadResult,
@@ -108,11 +109,12 @@ export class RoleLoader {
     roleId: string,
     rolePath: string,
   ): Promise<RoleConfig> {
-    const [soul, persona, lore, memories] = await Promise.all([
+    const [soul, persona, lore, memories, cognition] = await Promise.all([
       this.loadSoul(rolePath),
       this.loadPersona(rolePath),
       this.loadLore(rolePath),
       this.loadMemories(rolePath),
+      this.loadCognition(rolePath),
     ]);
 
     return {
@@ -125,6 +127,7 @@ export class RoleLoader {
       persona,
       lore,
       memories,
+      cognition,
     };
   }
 
@@ -207,6 +210,11 @@ export class RoleLoader {
     }
 
     return { episodes, relationships };
+  }
+
+  private async loadCognition(rolePath: string): Promise<CognitionConfig> {
+    const content = await this.tryReadFile(join(rolePath, "cognition.md"));
+    return { rawContent: content ?? "" };
   }
 
   // ============================================

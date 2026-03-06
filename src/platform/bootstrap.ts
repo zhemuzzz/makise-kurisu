@@ -79,6 +79,11 @@ import { createEvolutionService } from "../evolution/evolution-service.js";
 import type { MutationApplicator } from "../evolution/applicators/types.js";
 import type { IBrowserService } from "./browser/types.js";
 import { createBrowserService } from "./browser/stagehand-service.js";
+import { createCognitionStore } from "./storage/cognition-store.js";
+import type { CognitionStore } from "./storage/cognition-store.js";
+import { SessionStateImpl } from "../agent/meta-tools/session-state-impl.js";
+import type { SessionState } from "../agent/meta-tools/types.js";
+import type { MetaToolDeps } from "./adapters/tool-executor-adapter.js";
 
 // ============ 类型 ============
 
@@ -203,6 +208,10 @@ export interface BootstrapFullOptions extends BootstrapOptions {
 export interface RoleServices {
   readonly identity: Identity;
   readonly services: PlatformServices;
+  /** 初始认知内容 (来自 cognition.md)，运行时由 manage-cognition 更新 */
+  readonly initialCognition: string;
+  /** 认知持久化 (stateDir/cognition.md) */
+  readonly cognitionStore: CognitionStore;
 }
 
 export interface BackgroundServices {
@@ -422,9 +431,38 @@ async function initRoleServices(
         tokenEstimateDivisor: contextConfig.tokenEstimateDivisor,
       };
 
+      // CognitionStore: 持久化到 stateDir，启动时加载已保存内容
+      const store = foundation.stores.get(roleId);
+      const cognitionStore = createCognitionStore({
+        stateDir: store?.files.stateDir ?? "",
+        initialContent: roleConfig.cognition.rawContent,
+      });
+      const persistedCognition = await cognitionStore.read();
+
+      // Per-role SessionState 管理 (MetaToolContext 需要)
+      const sessionStates = new Map<string, SessionState>();
+
+      const metaToolDeps: MetaToolDeps = {
+        getSessionState(sessionId: string): SessionState {
+          const existing = sessionStates.get(sessionId);
+          if (existing) return existing;
+          const newState = persistedCognition.length > 0
+            ? new SessionStateImpl({
+                cognitionStore,
+                initialCognition: { content: persistedCognition, formattedText: persistedCognition },
+              })
+            : new SessionStateImpl({ cognitionStore });
+          sessionStates.set(sessionId, newState);
+          return newState;
+        },
+        skills: shared.skillManager,
+        subAgents: shared.subAgentManager,
+        agentId: roleId,
+      };
+
       const services: PlatformServices = {
         context: new ContextManagerAdapter(contextManagerOptions, shared.summarizeFn),
-        tools: new ToolExecutorAdapter(shared.toolRegistry),
+        tools: new ToolExecutorAdapter(shared.toolRegistry, metaToolDeps),
         skills: shared.skillManager,
         subAgents: shared.subAgentManager,
         permission: new PermissionAdapter(foundation.permissions),
@@ -436,7 +474,12 @@ async function initRoleServices(
           : createNoopLLMProviderPort(),
       };
 
-      roles.set(roleId, { identity, services });
+      roles.set(roleId, {
+        identity,
+        services,
+        initialCognition: persistedCognition,
+        cognitionStore,
+      });
     } catch (error) {
       foundation.shutdown();
       throw error;

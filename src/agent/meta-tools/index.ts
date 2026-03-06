@@ -7,6 +7,7 @@
  */
 
 import { manageTodoDefinition } from "./manage-todo.js";
+import { manageCognitionDefinition } from "./manage-cognition.js";
 import { findSkillDefinition } from "./find-skill.js";
 import { manageSkillDefinition } from "./manage-skill.js";
 import { spawnSubAgentDefinition } from "./spawn-sub-agent.js";
@@ -22,6 +23,7 @@ import type { ToolDef, ToolResult } from "../../platform/tools/types.js";
  */
 export const META_TOOL_DEFINITIONS: readonly MetaToolDefinition[] = [
   manageTodoDefinition,
+  manageCognitionDefinition,
   findSkillDefinition,
   manageSkillDefinition,
   spawnSubAgentDefinition,
@@ -86,6 +88,8 @@ export function getMetaToolPermission(
 
 export type { MetaToolDefinition, MetaToolContext, SessionState } from "./types.js";
 export { manageTodoDefinition } from "./manage-todo.js";
+export { manageCognitionDefinition } from "./manage-cognition.js";
 export { findSkillDefinition } from "./find-skill.js";
 export { manageSkillDefinition } from "./manage-skill.js";
 export { spawnSubAgentDefinition } from "./spawn-sub-agent.js";
+export { SessionStateImpl } from "./session-state-impl.js";

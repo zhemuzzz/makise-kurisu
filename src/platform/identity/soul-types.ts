@@ -146,10 +146,21 @@ export interface Episode {
 /**
  * 记忆配置
  * 来源: memories/episodes.yaml + memories/relationships.yaml
+ * @deprecated 记忆已合并到 cognition.md，保留接口兼容
  */
 export interface MemoriesConfig {
   readonly episodes: readonly Episode[];
   readonly relationships: readonly Relationship[];
+}
+
+/**
+ * 认知配置
+ * 来源: cognition.md (Markdown 文件)
+ * 角色的"活跃认知笔记本"
+ */
+export interface CognitionConfig {
+  /** cognition.md 原始内容 */
+  readonly rawContent: string;
 }
 
 // ============================================
@@ -182,6 +193,8 @@ export interface RoleConfig {
   readonly lore: LoreConfig;
   /** 记忆 */
   readonly memories: MemoriesConfig;
+  /** 认知 (活跃认知笔记本) */
+  readonly cognition: CognitionConfig;
 }
 
 // ============================================

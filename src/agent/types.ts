@@ -294,6 +294,9 @@ export interface AgentInput {
 
   /** 任务目标 (后台模式) */
   readonly taskGoal?: string;
+
+  /** 认知快照 (由 manage-cognition 维护) */
+  readonly cognitionText?: string;
 }
 
 /**
@@ -412,6 +415,20 @@ export interface TodoItem {
   readonly id: string;
   readonly content: string;
   readonly status: "pending" | "in_progress" | "completed" | "cancelled";
+}
+
+/**
+ * 认知状态
+ *
+ * 角色的"活跃认知"——每轮注入，LLM 可更新
+ * @see KURISU-040 Phase A
+ */
+export interface CognitionState {
+  /** 认知内容 (Markdown) */
+  readonly content: string;
+
+  /** 格式化文本 (直接注入 prompt) */
+  readonly formattedText: string;
 }
 
 // ============================================================================
