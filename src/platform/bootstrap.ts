@@ -87,6 +87,7 @@ import type { MetaToolDeps } from "./adapters/tool-executor-adapter.js";
 import type { PersonaEngineAPI } from "../inner-life/types.js";
 import { createPersonaEngine, KURISU_ENGINE_CONFIG } from "../inner-life/index.js";
 import { createSQLiteStateStore } from "../inner-life/orchestrator/sqlite-state-store.js";
+import { handleTimeTick } from "./time-tick-handler.js";
 
 // ============ 类型 ============
 
@@ -518,6 +519,7 @@ async function initRoleServices(
 function initBackgroundServices(
   options: BootstrapFullOptions,
   foundation: Foundation,
+  roles: ReadonlyMap<string, RoleServices>,
 ): BackgroundServices {
   // Tracing wrapper that auto-adds timestamp for background services
   const bgTracing = {
@@ -621,9 +623,40 @@ function initBackgroundServices(
     },
   });
 
-  // Wire RoutineSystem task handler → EvolutionService
+  // Wire RoutineSystem task handler → route by routine name
+  const engines = new Map<string, PersonaEngineAPI>();
+  for (const [roleId, role] of roles) {
+    engines.set(roleId, role.personaEngine);
+  }
+
   routineSystem.setTaskHandler(async (routine) => {
-    await evolution.executeRoutine(routine.id, routine.name);
+    if (routine.name === "时间感知") {
+      handleTimeTick({
+        engines,
+        onAction: (event) => {
+          foundation.tracing.log({
+            level: "info",
+            category: "ile",
+            event: "proactive:action",
+            data: { ...event },
+            timestamp: event.timestamp,
+          });
+        },
+      });
+    } else {
+      await evolution.executeRoutine(routine.id, routine.name);
+    }
+  });
+
+  // Register preCheck: ile:shouldTick — skip if no users tracked
+  routineSystem.registerPreCheck("ile:shouldTick", async () => {
+    for (const engine of engines.values()) {
+      const snapshot = engine.getDebugSnapshot();
+      if (Object.keys(snapshot.userProjections).length > 0) {
+        return true;
+      }
+    }
+    return false;
   });
 
   return { eventBus, scheduler, routineSystem, pipeline, evolution };
@@ -676,7 +709,7 @@ export async function bootstrapFull(
   const roles = await initRoleServices(options, foundation, shared);
 
   // Phase 4: Background services (EventBus, Scheduler, RoutineSystem, Evolution)
-  const background = initBackgroundServices(options, foundation);
+  const background = initBackgroundServices(options, foundation, roles);
 
   // Phase 5: Browser service (optional, lazy init)
   const browserUseConfig = foundation.config.get("browserUse");

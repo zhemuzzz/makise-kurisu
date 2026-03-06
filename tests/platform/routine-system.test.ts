@@ -798,9 +798,9 @@ describe("RoutineSystem", () => {
   describe("RT-C: 生命周期", () => {
     it("RT-36: 容量超限拒绝", async () => {
       const deps = await createDeps();
-      const system = createSystem(deps, { maxRoutinesPerRole: 6 });
+      const system = createSystem(deps, { maxRoutinesPerRole: 7 });
 
-      // 系统内置占 4 条，还能加 2 条
+      // 系统内置占 5 条，还能加 2 条
       system.add({
         name: "Slot 5",
         description: "Fifth routine",

@@ -148,6 +148,15 @@ const SYSTEM_ROUTINES: readonly AddRoutineOptions[] = [
     source: "system",
     preCheck: "ks:shouldConsolidate",
   },
+  {
+    id: "time-tick",
+    name: "时间感知",
+    description: "定期触发心境衰减、关系衰减和主动行为判定",
+    enabled: true,
+    trigger: "interval:1800000",
+    source: "system",
+    preCheck: "ile:shouldTick",
+  },
 ];
 
 // ============ YAML snake_case ↔ camelCase ============
