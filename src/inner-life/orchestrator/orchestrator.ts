@@ -18,6 +18,7 @@ import type {
   CharacterState,
   UserMoodProjection,
   RelationshipState,
+  TimeTickResult,
 } from "../types.js";
 
 import { mapEmotionTags } from "../core/emotion-mapping.js";
@@ -37,6 +38,11 @@ import {
 } from "../core/relationship-rules.js";
 import { syncBaseMood } from "../core/growth-rules.js";
 import { buildPromptSegments } from "./context-builder.js";
+import { formatTimeContext } from "../core/time-context.js";
+import {
+  computeShouldAct,
+  DEFAULT_PROACTIVE_CONFIG,
+} from "../core/proactive-behavior.js";
 import type { StateStore } from "./state-store.js";
 import { createInMemoryStateStore } from "./state-store.js";
 
@@ -54,6 +60,8 @@ const MS_PER_DAY = 86_400_000;
 class PersonaOrchestrator implements PersonaEngineAPI {
   private readonly config: PersonaEngineConfig;
   private readonly store: StateStore;
+  /** 每日行动计数 (per-userId) — 非持久化，重启从 0 开始 */
+  private readonly dailyActionCounts = new Map<string, { date: string; count: number }>();
 
   constructor(config: PersonaEngineConfig, store: StateStore) {
     this.config = config;
@@ -313,6 +321,84 @@ class PersonaOrchestrator implements PersonaEngineAPI {
     };
   }
 
+  /**
+   * 时间 tick — 纯数学，不调 LLM
+   *
+   * 1. mood 衰减 + 性格方向回归 (computeMoodDecay)
+   * 2. 关系衰减 (computeRelationshipDecay)
+   * 3. 持久化衰减后状态
+   * 4. shouldAct 判定 (B2 补全，当前 stranger 一律 false)
+   * 5. 生成时间上下文
+   */
+  processTimeTick(
+    userId: string,
+    elapsedMs: number,
+    currentTime: number,
+  ): TimeTickResult {
+    const charState = this.getOrCreateCharacterState();
+    const relationship = this.getOrCreateRelationship(userId);
+    const projection = this.getOrCreateProjection(userId, charState);
+
+    // 1. Mood 衰减 (向 personality.defaultMood 回归)
+    const decayedMood = computeMoodDecay(
+      projection.projectedMood,
+      this.config.personality,
+      elapsedMs,
+    );
+
+    // 2. 关系衰减
+    const relDays = elapsedMs / MS_PER_DAY;
+    const decayedRelationship = computeRelationshipDecay(
+      relationship,
+      relDays,
+    );
+
+    // 3. 持久化衰减后状态
+    const updatedProjection: UserMoodProjection = {
+      projectedMood: decayedMood,
+      recentEmotions: projection.recentEmotions,
+      lastInteraction: projection.lastInteraction,
+    };
+    this.store.saveUserProjection(
+      this.config.roleId,
+      userId,
+      updatedProjection,
+    );
+    this.store.saveRelationship(
+      this.config.roleId,
+      userId,
+      decayedRelationship,
+    );
+
+    // 4. shouldAct 判定
+    const actionsToday = this.getActionsToday(userId);
+    const shouldActResult = computeShouldAct({
+      relationship: decayedRelationship,
+      elapsedMs,
+      mood: decayedMood,
+      actionsToday,
+      config: DEFAULT_PROACTIVE_CONFIG,
+    });
+
+    const shouldAct = shouldActResult.shouldAct;
+
+    // 递增每日计数
+    if (shouldAct) {
+      this.incrementActionsToday(userId);
+    }
+
+    // 5. 时间上下文
+    const timeContext = formatTimeContext(elapsedMs, currentTime);
+
+    return {
+      userId,
+      mood: decayedMood,
+      relationship: decayedRelationship,
+      shouldAct,
+      timeContext,
+    };
+  }
+
   // --------------------------------------------------------------------------
   // 内部方法
   // --------------------------------------------------------------------------
@@ -369,6 +455,23 @@ class PersonaOrchestrator implements PersonaEngineAPI {
     };
     this.store.saveUserProjection(this.config.roleId, userId, initial);
     return initial;
+  }
+
+  private getActionsToday(userId: string): number {
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const entry = this.dailyActionCounts.get(userId);
+    if (!entry || entry.date !== today) return 0;
+    return entry.count;
+  }
+
+  private incrementActionsToday(userId: string): void {
+    const today = new Date().toISOString().slice(0, 10);
+    const entry = this.dailyActionCounts.get(userId);
+    if (!entry || entry.date !== today) {
+      this.dailyActionCounts.set(userId, { date: today, count: 1 });
+    } else {
+      this.dailyActionCounts.set(userId, { date: today, count: entry.count + 1 });
+    }
   }
 }
 

@@ -33,6 +33,7 @@ export type {
   DebugSnapshot,
   PersonaEngineAPI,
   PersonaEngineConfig,
+  TimeTickResult,
 } from "./types.js";
 
 export { EMOTION_TAGS } from "./types.js";
@@ -75,6 +76,21 @@ export {
   computeGrowthDrift,
   syncBaseMood,
 } from "./core/growth-rules.js";
+
+// time-context
+export { formatTimeContext } from "./core/time-context.js";
+
+// proactive-behavior
+export {
+  computeShouldAct,
+  DEFAULT_PROACTIVE_CONFIG,
+} from "./core/proactive-behavior.js";
+export type {
+  ProactiveConfig,
+  ProactiveAction,
+  ShouldActInput,
+  ShouldActResult,
+} from "./core/proactive-behavior.js";
 
 // ============================================================================
 // Orchestrator (工厂)

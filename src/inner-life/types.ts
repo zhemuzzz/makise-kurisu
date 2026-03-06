@@ -338,6 +338,28 @@ export interface PromptSegments {
 }
 
 // ============================================================================
+// 时间 Tick 结果
+// ============================================================================
+
+/**
+ * processTimeTick 输出
+ *
+ * 纯数学计算结果：mood 衰减/性格回归 + 关系衰减 + 是否建议主动行动
+ */
+export interface TimeTickResult {
+  /** 用户 ID */
+  readonly userId: string;
+  /** tick 后的 mood (衰减 + 性格方向回归) */
+  readonly mood: MoodState;
+  /** tick 后的关系状态 (衰减后) */
+  readonly relationship: RelationshipState;
+  /** 是否建议主动行动 */
+  readonly shouldAct: boolean;
+  /** 时间上下文描述 (注入 prompt 用) */
+  readonly timeContext: string;
+}
+
+// ============================================================================
 // 调试快照
 // ============================================================================
 
@@ -407,6 +429,26 @@ export interface PersonaEngineAPI {
    * @returns 调试快照
    */
   getDebugSnapshot(userId?: string): DebugSnapshot;
+
+  /**
+   * 时间 tick — 纯数学，不调 LLM
+   *
+   * 沉默期间由 Scheduler 周期调用：
+   * - mood 衰减 + 性格方向回归
+   * - 关系衰减 (familiarity/warmth)
+   * - shouldAct 概率判定
+   * - 时间上下文生成
+   *
+   * @param userId - 用户 ID
+   * @param elapsedMs - 距上次交互的毫秒数
+   * @param currentTime - 当前时间戳
+   * @returns TimeTickResult
+   */
+  processTimeTick(
+    userId: string,
+    elapsedMs: number,
+    currentTime: number,
+  ): TimeTickResult;
 }
 
 // ============================================================================
