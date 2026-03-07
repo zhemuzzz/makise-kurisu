@@ -152,7 +152,7 @@ class ConfigManagerImpl implements ConfigManager {
       if (modelsDefaults && typeof modelsDefaults === "object") {
         const defaults = modelsDefaults as Record<string, string>;
         modelsSection["defaults"] = {
-          chat: defaults["conversation"] ?? defaults["chat"] ?? "",
+          main: defaults["main"] ?? defaults["conversation"] ?? defaults["chat"] ?? "",
           embedding: defaults["embedding"] ?? "",
         };
       }
@@ -295,6 +295,15 @@ function maskSecrets(secrets: PlatformConfig["secrets"]): PlatformConfig["secret
 }
 
 /**
+ * 替换字符串中的 ${VAR} 环境变量引用
+ */
+function resolveEnvVars(value: string): string {
+  return value.replace(/\$\{([^}]+)\}/g, (_match, varName: string) => {
+    return process.env[varName] ?? "";
+  });
+}
+
+/**
  * 将 models.yaml 格式转换为 ModelProviderConfig 格式
  */
 function transformModelsToProviders(
@@ -303,9 +312,9 @@ function transformModelsToProviders(
   return models.map((model) => ({
     id: String(model["id"] ?? model["name"] ?? ""),
     provider: String(model["provider"] ?? ""),
-    model: String(model["model"] ?? ""),
-    endpoint: String(model["endpoint"] ?? ""),
-    secretRef: String(model["secretRef"] ?? model["apiKey"] ?? ""),
+    model: resolveEnvVars(String(model["model"] ?? model["name"] ?? "")),
+    endpoint: resolveEnvVars(String(model["endpoint"] ?? "")),
+    secretRef: resolveEnvVars(String(model["secretRef"] ?? model["apiKey"] ?? "")),
     capabilities: Array.isArray(model["capabilities"])
       ? (model["capabilities"] as string[])
       : ["chat"],

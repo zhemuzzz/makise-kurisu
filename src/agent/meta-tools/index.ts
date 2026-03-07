@@ -10,7 +10,7 @@ import { manageTodoDefinition } from "./manage-todo.js";
 import { manageCognitionDefinition } from "./manage-cognition.js";
 import { findSkillDefinition } from "./find-skill.js";
 import { manageSkillDefinition } from "./manage-skill.js";
-import { spawnSubAgentDefinition } from "./spawn-sub-agent.js";
+import { spawnSubAgentDefinition, getSpawnSubAgentToolDef } from "./spawn-sub-agent.js";
 import type { MetaToolDefinition, MetaToolContext } from "./types.js";
 import type { ToolDef, ToolResult } from "../../platform/tools/types.js";
 
@@ -43,8 +43,13 @@ const META_TOOL_MAP: ReadonlyMap<string, MetaToolDefinition> = new Map(
 /**
  * 获取所有元工具的 ToolDef（用于 LLM 工具列表）
  */
-export function getMetaToolDefs(): readonly ToolDef[] {
-  return META_TOOL_DEFINITIONS.map((def) => def.toolDef);
+export function getMetaToolDefs(availableModels?: string[]): readonly ToolDef[] {
+  return META_TOOL_DEFINITIONS.map((def) => {
+    if (def.toolDef.name === "spawn-sub-agent" && availableModels && availableModels.length > 0) {
+      return getSpawnSubAgentToolDef(availableModels);
+    }
+    return def.toolDef;
+  });
 }
 
 /**

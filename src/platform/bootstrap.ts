@@ -256,7 +256,8 @@ function resolveSecretRef(
     qqBotToken: secrets.qqBotToken,
     qdrantApiKey: secrets.qdrantApiKey,
   };
-  return map[ref] ?? "";
+  // 如果 ref 是已知键名则查 map，否则 ref 本身已被 resolveEnvVars 解析为实际值
+  return map[ref] ?? ref;
 }
 
 /**
@@ -382,7 +383,7 @@ function initSharedInfra(foundation: Foundation): SharedInfra {
       return text.length > 200 ? text.slice(0, 200) + "..." : text;
     }
     try {
-      const chatModel = capturedModelProvider.getByCapability("chat");
+      const chatModel = capturedModelProvider.getByCapability("main");
       const response = await chatModel.chat(
         [{ role: "user", content: `请用中文简洁总结以下对话内容:\n${text}` }],
         { maxTokens: 500 },
@@ -429,9 +430,9 @@ async function initRoleServices(
       // Per-role ContextManagerOptions (different identityContent per role)
       const identityContent = [
         identity.soul,
-        JSON.stringify(identity.persona),
-        identity.loreCore,
-      ].join("\n");
+        roleConfig.persona.rawContent,
+        roleConfig.lore.rawContent,
+      ].filter(Boolean).join("\n\n");
 
       const contextManagerOptions = {
         totalContextTokens: 128000,
@@ -482,6 +483,10 @@ async function initRoleServices(
         skills: shared.skillManager,
         subAgents: shared.subAgentManager,
         agentId: roleId,
+        getAvailableModels: () =>
+          shared.modelProvider !== null
+            ? shared.modelProvider.listModels().map((m) => m.name)
+            : [],
       };
 
       const services: PlatformServices = {
@@ -494,7 +499,7 @@ async function initRoleServices(
         tracing: new TracingAdapter(foundation.tracing),
         memory: new MemoryAdapter(shared.memoryEngine),
         llm: shared.modelProvider !== null
-          ? new LLMProviderAdapter(shared.modelProvider)
+          ? new LLMProviderAdapter(shared.modelProvider, foundation.tracing)
           : createNoopLLMProviderPort(),
       };
 

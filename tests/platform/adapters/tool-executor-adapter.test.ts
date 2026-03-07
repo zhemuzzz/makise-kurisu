@@ -184,6 +184,7 @@ function createMockMetaToolDeps(overrides?: Partial<MetaToolDeps>): MetaToolDeps
       getStatus: vi.fn().mockReturnValue("completed"),
     } as unknown as MetaToolDeps["subAgents"],
     agentId: "test-agent",
+    getAvailableModels: vi.fn().mockReturnValue([]),
     ...overrides,
   };
 }

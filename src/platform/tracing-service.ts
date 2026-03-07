@@ -11,6 +11,7 @@
  */
 
 import type Database from "better-sqlite3";
+import type { KurisuErrorType } from "./errors.js";
 
 // ============ 类型 ============
 
@@ -41,6 +42,7 @@ export interface TraceEvent {
   readonly parentId?: string;
   readonly data?: Record<string, unknown>;
   readonly outcome?: TraceOutcome;
+  readonly errorCode?: KurisuErrorType;
   readonly timestamp: number;
 }
 
@@ -130,6 +132,7 @@ export const TELEMETRY_SCHEMA = `
     parent_id TEXT,
     data TEXT,
     outcome TEXT,
+    error_code TEXT,
     timestamp INTEGER NOT NULL
   );
 
@@ -137,6 +140,7 @@ export const TELEMETRY_SCHEMA = `
   CREATE INDEX IF NOT EXISTS idx_telemetry_level ON telemetry(level, timestamp);
   CREATE INDEX IF NOT EXISTS idx_telemetry_category ON telemetry(category, timestamp);
   CREATE INDEX IF NOT EXISTS idx_telemetry_event_ts ON telemetry(event, timestamp);
+  CREATE INDEX IF NOT EXISTS idx_telemetry_error_code ON telemetry(error_code);
 `;
 
 // ============ 实现 ============
@@ -166,8 +170,8 @@ class TracingServiceImpl implements TracingService {
       .map((v) => new RegExp(escapeRegExp(v), "g"));
 
     this.insertStmt = this.sqlite.prepare(
-      `INSERT INTO telemetry (level, category, event, session_id, span_id, parent_id, data, outcome, timestamp)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO telemetry (level, category, event, session_id, span_id, parent_id, data, outcome, error_code, timestamp)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
 
     const flushIntervalMs = config.flushIntervalMs ?? 5000;
@@ -238,6 +242,7 @@ class TracingServiceImpl implements TracingService {
             e.parentId ?? null,
             e.data ? JSON.stringify(e.data) : null,
             e.outcome ? JSON.stringify(e.outcome) : null,
+            e.errorCode ?? null,
             e.timestamp,
           );
         }
@@ -271,7 +276,7 @@ class TracingServiceImpl implements TracingService {
     const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
     const limit = filter.limit ?? 100;
 
-    const sql = `SELECT level, category, event, session_id, span_id, parent_id, data, outcome, timestamp
+    const sql = `SELECT level, category, event, session_id, span_id, parent_id, data, outcome, error_code, timestamp
                  FROM telemetry ${where}
                  ORDER BY timestamp ASC
                  LIMIT ?`;
@@ -286,6 +291,7 @@ class TracingServiceImpl implements TracingService {
       parent_id: string | null;
       data: string | null;
       outcome: string | null;
+      error_code: string | null;
       timestamp: number;
     }>;
 
@@ -298,6 +304,7 @@ class TracingServiceImpl implements TracingService {
       ...(r.parent_id ? { parentId: r.parent_id } : {}),
       ...(r.data ? { data: JSON.parse(r.data) as Record<string, unknown> } : {}),
       ...(r.outcome ? { outcome: JSON.parse(r.outcome) as TraceOutcome } : {}),
+      ...(r.error_code ? { errorCode: r.error_code as KurisuErrorType } : {}),
       timestamp: r.timestamp,
     }));
   }
@@ -406,9 +413,10 @@ class TracingServiceImpl implements TracingService {
     const ts = new Date(event.timestamp).toISOString().slice(11, 23);
     const lvl = event.level.toUpperCase().padEnd(5);
     const prefix = `[${ts}] ${lvl} [${event.category}]`;
+    const errSuffix = event.errorCode ? ` [${event.errorCode}]` : "";
     const msg = event.sessionId
-      ? `${prefix} ${event.event} (session: ${event.sessionId})`
-      : `${prefix} ${event.event}`;
+      ? `${prefix} ${event.event}${errSuffix} (session: ${event.sessionId})`
+      : `${prefix} ${event.event}${errSuffix}`;
 
     process.stderr.write(msg + "\n");
   }
@@ -490,17 +498,26 @@ function computeMetrics(
 
 // ============ Migration ============
 
-/** 幂等添加 outcome 列（旧数据库兼容） */
-export function migrateTelemetryOutcomeColumn(db: Database.Database): void {
+/** 幂等添加 outcome + error_code 列（旧数据库兼容） */
+export function migrateTelemetryColumns(db: Database.Database): void {
   const columns = db.pragma("table_info(telemetry)") as Array<{ name: string }>;
   if (!columns.some((c) => c.name === "outcome")) {
     db.exec("ALTER TABLE telemetry ADD COLUMN outcome TEXT");
   }
-  // 确保 event+timestamp 索引存在
+  if (!columns.some((c) => c.name === "error_code")) {
+    db.exec("ALTER TABLE telemetry ADD COLUMN error_code TEXT");
+  }
+  // 确保索引存在
   db.exec(
     "CREATE INDEX IF NOT EXISTS idx_telemetry_event_ts ON telemetry(event, timestamp)",
   );
+  db.exec(
+    "CREATE INDEX IF NOT EXISTS idx_telemetry_error_code ON telemetry(error_code)",
+  );
 }
+
+/** @deprecated Use migrateTelemetryColumns instead */
+export const migrateTelemetryOutcomeColumn = migrateTelemetryColumns;
 
 // ============ 工厂函数 ============
 

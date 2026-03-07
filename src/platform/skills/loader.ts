@@ -134,6 +134,9 @@ function validateSkillConfig(config: unknown, skillPath: string): SkillConfig {
   if (cfg["requires"] !== undefined) {
     optionalProps["requires"] = normalizeRequires(cfg["requires"]);
   }
+  if (typeof cfg["model"] === "string" && cfg["model"]) {
+    optionalProps["model"] = cfg["model"];
+  }
 
   return Object.assign({}, baseConfig, optionalProps) as SkillConfig;
 }

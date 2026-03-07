@@ -291,6 +291,23 @@ export interface GatewayDeps {
   mcpWorkDirSync?: MCPWorkDirSync;
   /** MCP 桥接（可选，KURISU-029 优雅退出） */
   mcpBridge?: { disconnectAll(timeout?: number): Promise<void> };
+  /** Tracing 服务（可选） */
+  tracing?: TracingServiceLike;
+}
+
+/**
+ * TracingService 最小接口 — 避免 gateway/types.ts 直接依赖 tracing-service.ts
+ */
+export interface TracingServiceLike {
+  log(event: {
+    readonly level: string;
+    readonly category: string;
+    readonly event: string;
+    readonly sessionId?: string;
+    readonly data?: Record<string, unknown>;
+    readonly errorCode?: string;
+    readonly timestamp: number;
+  }): void;
 }
 
 /**

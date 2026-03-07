@@ -24,6 +24,7 @@ import type {
   LLMToolCall,
   OpenAIToolDefinition,
 } from "../models/types.js";
+import type { TracingServiceLike } from "../gateway/types.js";
 
 // ============================================================================
 // Adapter
@@ -31,9 +32,11 @@ import type {
 
 export class LLMProviderAdapter implements LLMProviderPort {
   private readonly provider: IModelProvider;
+  private readonly tracing: TracingServiceLike | undefined;
 
-  constructor(provider: IModelProvider) {
+  constructor(provider: IModelProvider, tracing?: TracingServiceLike) {
     this.provider = provider;
+    this.tracing = tracing;
   }
 
   // --------------------------------------------------------------------------
@@ -68,10 +71,53 @@ export class LLMProviderAdapter implements LLMProviderPort {
     };
 
     // Call chat() for complete response (MVP: non-streaming)
-    const chatResponse: ChatResponse = await model.chat(
-      platformMessages,
-      options,
-    );
+    const llmStartTime = Date.now();
+    this.tracing?.log({
+      level: "debug",
+      category: "agent",
+      event: "llm:call_start",
+      data: {
+        modelId: config.modelId,
+        messageCount: messages.length,
+        toolCount: tools.length,
+      },
+      timestamp: llmStartTime,
+    });
+
+    let chatResponse: ChatResponse;
+    try {
+      chatResponse = await model.chat(platformMessages, options);
+    } catch (error) {
+      const durationMs = Date.now() - llmStartTime;
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorCode = classifyLLMError(error);
+      this.tracing?.log({
+        level: "error",
+        category: "agent",
+        event: "llm:call_error",
+        errorCode,
+        data: { modelId: config.modelId, error: errorMessage, durationMs },
+        timestamp: Date.now(),
+      });
+      throw error;
+    }
+
+    const llmDurationMs = Date.now() - llmStartTime;
+    this.tracing?.log({
+      level: "info",
+      category: "agent",
+      event: "llm:call_complete",
+      data: {
+        modelId: config.modelId,
+        durationMs: llmDurationMs,
+        promptTokens: chatResponse.usage.promptTokens,
+        completionTokens: chatResponse.usage.completionTokens,
+        totalTokens: chatResponse.usage.totalTokens,
+        finishReason: chatResponse.finishReason,
+        hasToolCalls: (chatResponse.toolCalls?.length ?? 0) > 0,
+      },
+      timestamp: Date.now(),
+    });
 
     // Yield content as a single chunk
     if (chatResponse.content.length > 0) {
@@ -193,6 +239,27 @@ function convertToolDefToOpenAI(def: ToolDef): OpenAIToolDefinition {
       parameters: def.inputSchema as unknown as Record<string, unknown>,
     },
   };
+}
+
+/**
+ * LLM 错误分类 — 从错误消息推断 KurisuErrorType
+ */
+function classifyLLMError(error: unknown): string {
+  if (!(error instanceof Error)) return "llm_error";
+  const msg = error.message.toLowerCase();
+  if (msg.includes("rate") || msg.includes("429") || msg.includes("quota")) {
+    return "rate_limit_error";
+  }
+  if (msg.includes("timeout") || msg.includes("econnrefused") || msg.includes("network") || msg.includes("fetch")) {
+    return "network_error";
+  }
+  if (msg.includes("not found") || msg.includes("does not exist") || msg.includes("unavailable")) {
+    return "model_unavailable";
+  }
+  if (msg.includes("context") || msg.includes("token") || msg.includes("length")) {
+    return "context_overflow";
+  }
+  return "llm_error";
 }
 
 /**

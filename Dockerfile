@@ -67,5 +67,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # Entry point
 ENTRYPOINT ["/sbin/tini", "--"]
 
-# Default command: HTTP server (using tsx runtime)
-CMD ["npx", "tsx", "src/platform/gateway/server.ts"]
+# Default command: main entry point (using tsx runtime)
+CMD ["npx", "tsx", "src/main.ts"]

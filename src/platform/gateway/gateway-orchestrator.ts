@@ -11,6 +11,7 @@ import type {
   AgentHandle,
   ToolCall,
   AnyStreamEvent,
+  TracingServiceLike,
 } from "./types.js";
 import { StreamEventType } from "./types.js";
 import type { SessionManager } from "./session-manager.js";
@@ -67,6 +68,7 @@ export class GatewayOrchestrator {
     private readonly agentHandle: AgentHandle,
     private readonly streamHandler: StreamHandler,
     private readonly settingRegistry: SessionSettingRegistry,
+    private readonly tracing?: TracingServiceLike,
   ) {}
 
   /**
@@ -93,7 +95,7 @@ export class GatewayOrchestrator {
 
       throw new GatewayError(
         "Session must be created before processing stream",
-        "SESSION_NOT_FOUND",
+        "session_not_found",
       );
     }
 
@@ -158,6 +160,16 @@ export class GatewayOrchestrator {
     callbacks?: StreamCallbacks,
   ): Promise<GatewayStreamResult> {
     const { agent, getCognition, personaEngine } = this.agentHandle;
+    const startTime = Date.now();
+
+    this.tracing?.log({
+      level: "info",
+      category: "gateway",
+      event: "gateway:agent_start",
+      sessionId,
+      data: { userId, inputLength: input.length },
+      timestamp: startTime,
+    });
 
     // Build AgentInput
     const cognition = getCognition();
@@ -191,27 +203,83 @@ export class GatewayOrchestrator {
       finalResponseResolve = resolve;
     });
 
-    // Create the text stream async generator
+    // Create the text stream async generator with error handling
     const pe = personaEngine;
+    const tracing = this.tracing;
     async function* createTextStream(): AsyncGenerator<string> {
-      let iter = await generator.next();
-      while (!iter.done) {
-        const event: AgentEvent = iter.value;
-        if (event.type === "text_delta" && "delta" in event) {
-          const delta = (event as { delta: string }).delta;
-          textChunks.push(delta);
-          yield delta;
+      try {
+        let iter = await generator.next();
+        while (!iter.done) {
+          const event: AgentEvent = iter.value;
+          if (event.type === "text_delta" && "delta" in event) {
+            const delta = (event as { delta: string }).delta;
+            textChunks.push(delta);
+            yield delta;
+          }
+          iter = await generator.next();
         }
-        iter = await generator.next();
-      }
 
-      // Extract final response from AgentResult
-      const result: AgentResult = iter.value;
-      finalResponseResolve!(result.finalResponse);
+        // Extract final response from AgentResult
+        const result: AgentResult = iter.value;
+        const durationMs = Date.now() - startTime;
 
-      // Post-turn ILE update: feed emotion tags back to PersonaEngine
-      if (pe !== null && result.emotionTags.length > 0) {
-        pe.processTurn(userId, result.emotionTags, "text_chat");
+        // Trace agent completion
+        if (result.error) {
+          tracing?.log({
+            level: "warn",
+            category: "gateway",
+            event: "gateway:agent_degraded",
+            sessionId,
+            errorCode: result.error.type,
+            data: {
+              message: result.error.message,
+              degraded: result.degraded,
+              responseLength: result.finalResponse.length,
+              durationMs,
+            },
+            timestamp: Date.now(),
+          });
+        } else {
+          tracing?.log({
+            level: "info",
+            category: "gateway",
+            event: "gateway:agent_complete",
+            sessionId,
+            data: {
+              success: result.success,
+              degraded: result.degraded,
+              responseLength: result.finalResponse.length,
+              toolCallCount: result.toolCalls.length,
+              durationMs,
+            },
+            timestamp: Date.now(),
+          });
+        }
+
+        finalResponseResolve!(result.finalResponse);
+
+        // Post-turn ILE update: feed emotion tags back to PersonaEngine
+        if (pe !== null && result.emotionTags.length > 0) {
+          pe.processTurn(userId, result.emotionTags, "text_chat");
+        }
+      } catch (error) {
+        const durationMs = Date.now() - startTime;
+        tracing?.log({
+          level: "error",
+          category: "gateway",
+          event: "gateway:agent_error",
+          sessionId,
+          errorCode: "gateway_error",
+          data: {
+            error: error instanceof Error ? error.message : String(error),
+            durationMs,
+          },
+          timestamp: Date.now(),
+        });
+
+        const fallback = "抱歉，处理你的消息时出了点问题。再试一次？";
+        yield fallback;
+        finalResponseResolve!(fallback);
       }
     }
 

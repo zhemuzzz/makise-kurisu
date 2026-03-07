@@ -46,6 +46,12 @@ const toolDef: ToolDef = {
         description: "分配给 Sub-Agent 的 Skill ID 列表",
         items: { type: "string" },
       },
+      model: {
+        type: "string",
+        description:
+          "覆盖默认模型。通常不需要指定 — 系统根据 skill 自动选择。" +
+          "仅在 skill 默认模型不适合当前任务时才指定。",
+      },
       template_id: {
         type: "string",
         description: "Sub-Agent 模板 ID（可选）",
@@ -98,6 +104,21 @@ export async function spawnSubAgentHandler(
   const maxIterations = params["max_iterations"];
   const timeout = params["timeout"];
   const returnFormat = params["return_format"];
+  const modelParam = params["model"];
+
+  // 模型选择优先级: (1) LLM 显式指定 → (2) Skill 声明默认 → (3) undefined（走 defaults.main）
+  let resolvedModelId: string | undefined;
+  if (typeof modelParam === "string" && modelParam.length > 0) {
+    // (1) LLM 显式指定
+    resolvedModelId = modelParam;
+  } else if (Array.isArray(skillIds) && skillIds.length > 0) {
+    // (2) 查询第一个 skill 的声明模型
+    const firstSkillId = skillIds[0] as string;
+    const skillModel = context.skills.getSkillModel?.(firstSkillId);
+    if (skillModel) {
+      resolvedModelId = skillModel;
+    }
+  }
 
   // Build SubAgentConfig (exactOptionalPropertyTypes: no undefined assignment)
   const baseConfig = {
@@ -114,14 +135,13 @@ export async function spawnSubAgentHandler(
       (returnFormat === "structured" ? "structured" : "natural") as SubAgentConfig["returnFormat"],
   };
 
-  const config: SubAgentConfig =
-    typeof maxIterations === "number" && typeof timeout === "number"
-      ? { ...baseConfig, maxIterations, timeout }
-      : typeof maxIterations === "number"
-        ? { ...baseConfig, maxIterations }
-        : typeof timeout === "number"
-          ? { ...baseConfig, timeout }
-          : baseConfig;
+  // Build config with optional fields (exactOptionalPropertyTypes)
+  const optionalFields: Record<string, unknown> = {};
+  if (typeof maxIterations === "number") optionalFields["maxIterations"] = maxIterations;
+  if (typeof timeout === "number") optionalFields["timeout"] = timeout;
+  if (resolvedModelId !== undefined) optionalFields["modelId"] = resolvedModelId;
+
+  const config: SubAgentConfig = { ...baseConfig, ...optionalFields } as SubAgentConfig;
 
   try {
     // Spawn sub-agent
@@ -159,6 +179,31 @@ export async function spawnSubAgentHandler(
       hint: "Sub-Agent 创建或执行过程出错",
     });
   }
+}
+
+// ============================================================================
+// Dynamic Tool Definition
+// ============================================================================
+
+/**
+ * 生成工具定义（注入运行时可用模型列表到 model.enum）
+ */
+export function getSpawnSubAgentToolDef(availableModels: string[]): ToolDef {
+  if (availableModels.length === 0) {
+    return toolDef;
+  }
+
+  const schema = { ...toolDef.inputSchema };
+  const props = { ...(schema.properties ?? {}) };
+  props["model"] = {
+    type: "string",
+    enum: availableModels,
+    description:
+      "覆盖默认模型。通常不需要指定 — 系统根据 skill 自动选择。" +
+      "仅在 skill 默认模型不适合当前任务时才指定。",
+  };
+
+  return { ...toolDef, inputSchema: { ...schema, properties: props } };
 }
 
 // ============================================================================

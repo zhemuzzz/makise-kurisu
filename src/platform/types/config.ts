@@ -293,7 +293,7 @@ export interface PlatformConfig {
   readonly models: {
     readonly providers: readonly ModelProviderConfig[];
     readonly defaults: {
-      readonly chat: string;
+      readonly main: string;
       readonly embedding: string;
     };
   };
@@ -368,7 +368,7 @@ export const PlatformConfigSchema = z.object({
   models: z.object({
     providers: z.array(ModelProviderConfigSchema).min(1),
     defaults: z.object({
-      chat: z.string().min(1),
+      main: z.string().min(1),
       embedding: z.string().min(1),
     }),
   }),

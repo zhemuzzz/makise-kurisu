@@ -4,6 +4,7 @@ description: 代码编写、命令执行、项目构建、调试排错
 version: "1.0"
 type: hybrid
 category: system
+model: claude-sonnet-4-6
 
 trigger:
   commands: [/code, /coding, /run, /shell]

@@ -338,6 +338,11 @@ export class QQChannel extends BaseChannel {
         }
       } catch (error) {
         console.error("QQ Channel Gateway error:", error);
+        await this.sendMessage({
+          channelType: this.channelType,
+          sessionId: inbound.sessionId,
+          content: "抱歉，出了点问题，请稍后再试。",
+        });
       }
     }
   }

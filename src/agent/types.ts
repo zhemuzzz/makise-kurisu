@@ -11,6 +11,7 @@
  */
 
 import type { ToolDef, ToolCall, ToolResult } from "../platform/tools/types.js";
+import type { KurisuError } from "../platform/errors.js";
 
 // ============================================================================
 // Identity - Agent 不可变身份
@@ -251,6 +252,9 @@ export interface AgentConfig {
   /** 父 Agent ID (Sub-Agent 时) */
   readonly parentAgentId?: string;
 
+  /** 模型 ID — 该 Agent 使用的 LLM 模型名称（对应 models.yaml 中的 name） */
+  readonly modelId?: string;
+
   /** 是否启用调试模式 */
   readonly debugEnabled: boolean;
 }
@@ -461,10 +465,7 @@ export interface AgentResult {
   readonly degradationReason?: string;
 
   /** 错误信息 (失败时) */
-  readonly error?: {
-    readonly code: string;
-    readonly message: string;
-  };
+  readonly error?: KurisuError;
 
   /** 执行统计 */
   readonly stats: AgentStats;

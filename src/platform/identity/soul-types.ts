@@ -77,6 +77,8 @@ export interface FormattingConfig {
  * 来源: persona.yaml
  */
 export interface PersonaConfig {
+  /** persona.yaml 原始 YAML 文本（用于 LLM 注入） */
+  readonly rawContent: string;
   readonly speech: SpeechPatterns;
   readonly behavior: BehaviorPatterns;
   readonly formatting: FormattingConfig;

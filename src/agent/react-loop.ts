@@ -22,6 +22,7 @@ import type {
 import { ErrorCode, type ErrorCodeType } from "./types.js";
 import type { PlatformServices } from "./ports/platform-services.js";
 import type { ToolCall, ToolResult, ToolDef } from "../platform/tools/types.js";
+import type { KurisuErrorType, KurisuError } from "../platform/errors.js";
 
 // ============================================================================
 // 类型定义
@@ -111,6 +112,9 @@ export interface ReactLoopResult {
   /** 降级原因 */
   degradationReason?: string;
 
+  /** 结构化错误信息 (失败时) */
+  error?: KurisuError;
+
   /** 统计信息 */
   stats: AgentStats;
 }
@@ -192,12 +196,29 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// ErrorCode → KurisuErrorType 映射
+const ERROR_CODE_MAP: Record<ErrorCodeType, KurisuErrorType> = {
+  LLM_ERROR: "llm_error",
+  RATE_LIMITED: "rate_limit_error",
+  NETWORK_ERROR: "network_error",
+  MODEL_UNAVAILABLE: "model_unavailable",
+  CONTEXT_OVERFLOW: "context_overflow",
+  TOOL_NOT_FOUND: "tool_not_found",
+  EXECUTION_FAILED: "tool_execution_error",
+  TIMEOUT: "tool_timeout",
+  INVALID_PARAMS: "invalid_params",
+  MCP_CONNECTION_LOST: "mcp_connection_lost",
+  PERMISSION_DENIED: "permission_denied",
+  USER_REJECTED: "user_rejected",
+};
+
 /**
  * 分类错误
  */
 function classifyError(error: unknown): {
   classification: "TOOL_ERROR" | "TRANSIENT" | "SYSTEM_ERROR";
   code: ErrorCodeType;
+  errorType: KurisuErrorType;
   message: string;
 } {
   if (error instanceof Error) {
@@ -213,6 +234,7 @@ function classifyError(error: unknown): {
       return {
         classification: "TRANSIENT",
         code: ErrorCode.NETWORK_ERROR,
+        errorType: ERROR_CODE_MAP[ErrorCode.NETWORK_ERROR],
         message: error.message,
       };
     }
@@ -222,6 +244,7 @@ function classifyError(error: unknown): {
       return {
         classification: "TRANSIENT",
         code: ErrorCode.RATE_LIMITED,
+        errorType: ERROR_CODE_MAP[ErrorCode.RATE_LIMITED],
         message: error.message,
       };
     }
@@ -235,6 +258,7 @@ function classifyError(error: unknown): {
       return {
         classification: "SYSTEM_ERROR",
         code: ErrorCode.LLM_ERROR,
+        errorType: ERROR_CODE_MAP[ErrorCode.LLM_ERROR],
         message: error.message,
       };
     }
@@ -243,6 +267,7 @@ function classifyError(error: unknown): {
     return {
       classification: "SYSTEM_ERROR",
       code: ErrorCode.EXECUTION_FAILED,
+      errorType: ERROR_CODE_MAP[ErrorCode.EXECUTION_FAILED],
       message: error.message,
     };
   }
@@ -250,6 +275,7 @@ function classifyError(error: unknown): {
   return {
     classification: "SYSTEM_ERROR",
     code: ErrorCode.EXECUTION_FAILED,
+    errorType: ERROR_CODE_MAP[ErrorCode.EXECUTION_FAILED],
     message: String(error),
   };
 }
@@ -348,7 +374,7 @@ export async function* reactLoop(
         messages,
         tools,
         {
-          modelId: "default",
+          modelId: config.modelId ?? "default",
           temperature: config.mode === "conversation" ? CONVERSATION_TEMPERATURE : BACKGROUND_TEMPERATURE,
           maxTokens: DEFAULT_MAX_TOKENS,
         },
@@ -414,7 +440,7 @@ export async function* reactLoop(
             type: "transient_retry_exhausted",
             sessionId: config.sessionId,
             level: "error",
-            data: { retries: state.transientRetryCount, message: classified.message },
+            data: { retries: state.transientRetryCount, errorType: classified.errorType, message: classified.message },
           });
 
           yield createEvent("error", {
@@ -422,15 +448,13 @@ export async function* reactLoop(
             message: "Service temporarily unavailable after retries",
           });
 
+          const degradation = await handleDegradation(
+            "system_error", state, messages, services, signal,
+          );
+          if (degradation.event) yield degradation.event;
           return {
-            finalResponse: "",
-            emotionTags: [],
-            toolCalls: state.toolCalls,
-            success: false,
-            aborted: false,
-            degraded: true,
-            degradationReason: "system_error",
-            stats: buildStats(state),
+            ...degradation.result,
+            error: { type: classified.errorType, message: classified.message },
           };
         }
 
@@ -443,12 +467,12 @@ export async function* reactLoop(
       }
 
       if (classified.classification === "SYSTEM_ERROR") {
-        // SYSTEM_ERROR: 不写入 history，直接降级
+        // SYSTEM_ERROR: 不写入 history，降级处理
         services.tracing.log({
           type: "system_error",
           sessionId: config.sessionId,
           level: "error",
-          data: { code: classified.code, message: classified.message },
+          data: { errorType: classified.errorType, message: classified.message },
         });
 
         // H10: 日志记录完整错误，事件返回脱敏消息
@@ -457,15 +481,13 @@ export async function* reactLoop(
           message: "Internal system error",
         });
 
+        const degradation = await handleDegradation(
+          "system_error", state, messages, services, signal,
+        );
+        if (degradation.event) yield degradation.event;
         return {
-          finalResponse: "",
-          emotionTags: [],
-          toolCalls: state.toolCalls,
-          success: false,
-          aborted: false,
-          degraded: true,
-          degradationReason: "system_error",
-          stats: buildStats(state),
+          ...degradation.result,
+          error: { type: classified.errorType, message: classified.message },
         };
       }
 
@@ -485,12 +507,24 @@ export async function* reactLoop(
     }
 
     // 累积内容
-    state.accumulatedContent += iterationContent;
-
-    // 没有工具调用 → 完成
+    // 当同时有 content 和 tool_calls 时，content 是 LLM 的中间推理，
+    // 不应发给用户 — 工具执行后 LLM 会生成完整回复
     if (pendingToolCalls.length === 0) {
+      state.accumulatedContent += iterationContent;
       break;
     }
+
+    // Anthropic API 要求: assistant (with tool_use) → user (with tool_result)
+    // 必须先注入 assistant 消息（含 toolCalls），再注入 tool result
+    messages.push({
+      role: "assistant",
+      content: iterationContent,
+      toolCalls: pendingToolCalls.map((tc) => ({
+        id: tc.id,
+        name: tc.name,
+        arguments: tc.arguments,
+      })),
+    });
 
     // 执行工具 (C2: parallel for all-safe batches)
     const toolResults = await executeToolBatch(

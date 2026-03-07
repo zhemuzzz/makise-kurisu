@@ -211,8 +211,8 @@ export class CLIChannel {
       // 会话相关错误时重置会话，下次使用时重新创建
       // 保持 CLI 可继续使用
       if (
-        err.code === "SESSION_NOT_FOUND" ||
-        err.code === "SESSION_EXPIRED" ||
+        err.code === "session_not_found" ||
+        err.code === "session_expired" ||
         err.message.toLowerCase().includes("session")
       ) {
         this.currentSessionId = undefined as string | undefined;

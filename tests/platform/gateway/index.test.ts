@@ -400,26 +400,23 @@ describe("Gateway", () => {
         throw new Error("Agent error");
       });
 
-      // processStream returns a stream result; the error surfaces when consuming
+      // processStream returns a stream result; error is caught and yields fallback
       const result = await gateway.processStream("session-1", "Hello", "user-1");
 
-      // The error propagates through the text stream
-      try {
-        for await (const _ of result.textStream) {
-          // consume
-        }
-        expect.fail("Should have thrown");
-      } catch (err) {
-        expect((err as Error).message).toBe("Agent error");
+      const chunks: string[] = [];
+      for await (const chunk of result.textStream) {
+        chunks.push(chunk);
       }
 
-      // Suppress unhandled rejection from finalResponse
-      result.finalResponse.catch(() => {});
+      // Should receive fallback message instead of throwing
+      const fullText = chunks.join("");
+      expect(fullText).toContain("抱歉");
+
+      const finalResponse = await result.finalResponse;
+      expect(finalResponse).toContain("抱歉");
     });
 
-    it("should emit error event for stream failures", async () => {
-      const onError = vi.fn();
-
+    it("should yield fallback message on stream failures", async () => {
       mockAgentHandle.agent.execute.mockImplementation(async function* () {
         yield { type: "text_delta", delta: "partial" } as AgentEvent;
         throw new Error("Stream failed");
@@ -429,22 +426,20 @@ describe("Gateway", () => {
         "session-1",
         "Hello",
         "user-1",
-        { onError },
       );
 
-      // Immediately attach catch to prevent unhandled rejection
-      result.finalResponse.catch(() => {});
-
-      // Consume the textStream to trigger the error
-      try {
-        for await (const _ of result.textStream) {
-          // Just consume
-        }
-      } catch {
-        // Expected error
+      // Consume the textStream — should NOT throw, instead yields fallback
+      const chunks: string[] = [];
+      for await (const chunk of result.textStream) {
+        chunks.push(chunk);
       }
 
-      expect(onError).toHaveBeenCalled();
+      const fullText = chunks.join("");
+      expect(fullText).toContain("partial");
+      expect(fullText).toContain("抱歉");
+
+      const finalResponse = await result.finalResponse;
+      expect(finalResponse).toContain("抱歉");
     });
   });
 

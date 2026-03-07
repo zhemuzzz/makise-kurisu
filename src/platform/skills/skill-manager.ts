@@ -251,6 +251,13 @@ export function createSkillManager(config: SkillManagerConfig): ISkillManager {
     return cleaned;
   }
 
+  // ---- getSkillModel ----
+
+  function getSkillModel(skillId: string): string | undefined {
+    const skill = registry.get(skillId);
+    return skill?.config.model;
+  }
+
   return {
     findSkill,
     getActiveSkills,
@@ -258,6 +265,7 @@ export function createSkillManager(config: SkillManagerConfig): ISkillManager {
     archive,
     createDraft,
     confirmDraft,
+    getSkillModel,
     endSession,
     cleanExpiredDrafts,
   };

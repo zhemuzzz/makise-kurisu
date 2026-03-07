@@ -40,6 +40,9 @@ export interface MetaToolContext {
   /** Platform Services（按需使用） */
   readonly skills: SkillManagerPort;
   readonly subAgents: SubAgentManagerPort;
+
+  /** 获取可用模型列表（用于 spawn-sub-agent 动态枚举） */
+  readonly getAvailableModels: () => string[];
 }
 
 /**
@@ -116,6 +119,23 @@ export interface MetaToolError {
   readonly code: MetaToolErrorCodeType;
   readonly message: string;
   readonly hint?: string;
+}
+
+// MetaToolErrorCode → KurisuErrorType 映射
+import type { KurisuErrorType } from "../../platform/errors.js";
+
+const META_TOOL_ERROR_MAP: Record<MetaToolErrorCodeType, KurisuErrorType> = {
+  TOOL_NOT_FOUND: "tool_not_found",
+  PERMISSION_DENIED: "permission_denied",
+  USER_REJECTED: "user_rejected",
+  EXECUTION_FAILED: "tool_execution_error",
+  TIMEOUT: "tool_timeout",
+  INVALID_PARAMS: "invalid_params",
+  RATE_LIMITED: "rate_limit_error",
+};
+
+export function toKurisuErrorType(code: MetaToolErrorCodeType): KurisuErrorType {
+  return META_TOOL_ERROR_MAP[code];
 }
 
 // ============================================================================

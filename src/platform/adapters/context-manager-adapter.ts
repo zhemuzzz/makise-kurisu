@@ -35,7 +35,7 @@ import { createContextManager } from "../context-manager.js";
 // Priority Constants (CM-3: 9 级优先队列)
 // ============================================================================
 
-/** Identity 已由 ContextManager 内部管理（identityContent），不需要 block */
+/** Identity 通过 assembledToMessages() 直接注入系统消息，不走 block 系统以避免与 identityFixed 预算双重计数 */
 const PRIORITY_USER_MESSAGE = 2 as const;
 const PRIORITY_MENTAL_MODEL = 3 as const;
 const PRIORITY_COGNITION = 3 as const;
@@ -367,6 +367,12 @@ export class ContextManagerAdapter implements ContextManagerPort {
 
     // Collect system-level blocks (everything except user-message and history)
     const systemParts: string[] = [];
+
+    // Priority 1: Identity（soul.md + persona + lore）— 始终注入，不走 block 系统
+    if (this.options.identityContent.length > 0) {
+      systemParts.push(this.options.identityContent);
+    }
+
     let hasHistory = false;
 
     for (const block of assembled.included) {

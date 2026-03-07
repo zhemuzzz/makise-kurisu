@@ -230,26 +230,26 @@ export const TIMING_THRESHOLDS = {
 export const ERROR_SCENARIOS = {
   sessionNotFound: {
     message: "Session not found",
-    code: "SESSION_NOT_FOUND",
+    code: "session_not_found",
   },
   sessionExpired: {
     message: "Session has expired",
-    code: "SESSION_EXPIRED",
+    code: "session_expired",
   },
   invalidInput: {
     message: "Invalid input provided",
-    code: "INVALID_INPUT",
+    code: "invalid_input",
   },
   streamError: {
     message: "Stream processing error",
-    code: "STREAM_ERROR",
+    code: "stream_error",
   },
   orchestratorError: {
     message: "Agent orchestrator error",
-    code: "ORCHESTRATOR_ERROR",
+    code: "gateway_error",
   },
   channelError: {
     message: "Channel communication error",
-    code: "CHANNEL_ERROR",
+    code: "gateway_error",
   },
 };

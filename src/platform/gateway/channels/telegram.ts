@@ -307,8 +307,12 @@ export class TelegramChannel extends BaseChannel {
             await this.sendMessage(approvalOutbound);
           }
         } catch (error) {
-          console.error("TelegramChannel Gateway error:", error);
-          // 错误已记录，不影响 HTTP 响应（已经返回 200）
+          console.error("TelegramChannel gateway error:", error);
+          await this.sendMessage({
+            channelType: this.channelType,
+            sessionId: inbound.sessionId,
+            content: "抱歉，出了点问题，请稍后再试。",
+          });
         }
       } else {
         // 没有 Gateway 配置时，返回基础确认（向后兼容）

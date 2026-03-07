@@ -2,15 +2,17 @@
  * L1 交互网关 - 错误类定义
  */
 
+import type { KurisuErrorType } from "../errors.js";
+
 /**
  * Gateway 基础错误类
  */
 export class GatewayError extends Error {
-  public readonly code: string;
+  public readonly code: KurisuErrorType;
 
-  constructor(message: string, code: string = 'GATEWAY_ERROR') {
+  constructor(message: string, code: KurisuErrorType = "gateway_error") {
     super(message);
-    this.name = 'GatewayError';
+    this.name = "GatewayError";
     this.code = code;
   }
 }
@@ -19,9 +21,9 @@ export class GatewayError extends Error {
  * 会话错误
  */
 export class SessionError extends GatewayError {
-  constructor(message: string, code: string = 'SESSION_ERROR') {
+  constructor(message: string, code: KurisuErrorType = "gateway_error") {
     super(message, code);
-    this.name = 'SessionError';
+    this.name = "SessionError";
   }
 }
 
@@ -30,8 +32,8 @@ export class SessionError extends GatewayError {
  */
 export class SessionNotFoundError extends SessionError {
   constructor(sessionId: string) {
-    super(`Session not found: ${sessionId}`, 'SESSION_NOT_FOUND');
-    this.name = 'SessionNotFoundError';
+    super(`Session not found: ${sessionId}`, "session_not_found");
+    this.name = "SessionNotFoundError";
   }
 }
 
@@ -40,8 +42,8 @@ export class SessionNotFoundError extends SessionError {
  */
 export class SessionAlreadyExistsError extends SessionError {
   constructor(sessionId: string) {
-    super(`Session already exists: ${sessionId}`, 'SESSION_ALREADY_EXISTS');
-    this.name = 'SessionAlreadyExistsError';
+    super(`Session already exists: ${sessionId}`, "gateway_error");
+    this.name = "SessionAlreadyExistsError";
   }
 }
 
@@ -50,8 +52,8 @@ export class SessionAlreadyExistsError extends SessionError {
  */
 export class SessionExpiredError extends SessionError {
   constructor(sessionId: string) {
-    super(`Session has expired: ${sessionId}`, 'SESSION_EXPIRED');
-    this.name = 'SessionExpiredError';
+    super(`Session has expired: ${sessionId}`, "session_expired");
+    this.name = "SessionExpiredError";
   }
 }
 
@@ -60,8 +62,8 @@ export class SessionExpiredError extends SessionError {
  */
 export class InputValidationError extends GatewayError {
   constructor(message: string) {
-    super(message, 'INVALID_INPUT');
-    this.name = 'InputValidationError';
+    super(message, "invalid_input");
+    this.name = "InputValidationError";
   }
 }
 
@@ -69,9 +71,9 @@ export class InputValidationError extends GatewayError {
  * 流处理错误
  */
 export class StreamError extends GatewayError {
-  constructor(message: string, code: string = 'STREAM_ERROR') {
+  constructor(message: string, code: KurisuErrorType = "stream_error") {
     super(message, code);
-    this.name = 'StreamError';
+    this.name = "StreamError";
   }
 }
 
@@ -79,8 +81,8 @@ export class StreamError extends GatewayError {
  * 渠道错误
  */
 export class ChannelError extends GatewayError {
-  constructor(message: string, code: string = 'CHANNEL_ERROR') {
+  constructor(message: string, code: KurisuErrorType = "gateway_error") {
     super(message, code);
-    this.name = 'ChannelError';
+    this.name = "ChannelError";
   }
 }

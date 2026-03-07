@@ -82,7 +82,7 @@ export class GatewaySessionManager {
     if (this.sessionManager!.count() >= this.config.maxSessions) {
       throw new GatewayError(
         "Maximum number of sessions reached",
-        "MAX_SESSIONS_REACHED",
+        "gateway_error",
       );
     }
 

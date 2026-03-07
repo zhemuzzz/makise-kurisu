@@ -145,6 +145,7 @@ export class RoleLoader {
     }
 
     return {
+      rawContent: content,
       speech: {
         catchphrases: parsed.speech?.["catchphrases"] ?? [],
         patterns: parsed.speech?.["patterns"] ?? {},

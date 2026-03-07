@@ -257,6 +257,9 @@ export interface SkillConfig {
   /** 依赖声明（激活时检查） */
   readonly requires?: SkillRequires;
 
+  /** 推荐的 Sub-Agent 模型（对应 models.yaml 中的 name） */
+  readonly model?: string;
+
   /** 元数据 */
   readonly metadata?: {
     readonly author?: string;

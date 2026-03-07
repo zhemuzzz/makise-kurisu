@@ -320,6 +320,14 @@ export interface SkillManagerPort {
    * @returns 是否成功
    */
   confirmDraft(draftId: string): Promise<boolean>;
+
+  /**
+   * 获取 Skill 声明的默认模型
+   *
+   * @param skillId - Skill ID
+   * @returns 模型名称（skill.yaml 中声明），无声明时返回 undefined
+   */
+  getSkillModel?(skillId: string): string | undefined;
 }
 
 /**
@@ -440,6 +448,9 @@ export interface SubAgentConfig {
 
   /** 返回格式 */
   readonly returnFormat: "structured" | "natural";
+
+  /** 指定模型 ID（可选，覆盖 skill 默认） */
+  readonly modelId?: string;
 }
 
 /**

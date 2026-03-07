@@ -15,6 +15,7 @@ import {
   type SessionWorkDirManagerLike,
   type SessionPermissionManagerLike,
   type FilePermissionLevel,
+  type TracingServiceLike,
   ChannelType,
 } from "./types.js";
 import type { MCPWorkDirSync } from "../tools/mcp-workdir-sync.js";
@@ -68,6 +69,7 @@ export class Gateway {
   private readonly mcpBridge:
     | { disconnectAll(timeout?: number): Promise<void> }
     | undefined;
+  private readonly tracing: TracingServiceLike | undefined;
   private readonly config: Required<GatewayConfig>;
   private readonly streamHandler: StreamHandler;
   private readonly gatewayOrchestrator: GatewayOrchestrator;
@@ -89,6 +91,7 @@ export class Gateway {
     this.sessionPermissionManager = deps.sessionPermissionManager;
     this.mcpWorkDirSync = deps.mcpWorkDirSync;
     this.mcpBridge = deps.mcpBridge;
+    this.tracing = deps.tracing;
     this.config = {
       sessionTTL: config.sessionTTL ?? DEFAULT_SESSION_TTL,
       maxSessions: config.maxSessions ?? DEFAULT_MAX_SESSIONS,
@@ -130,6 +133,7 @@ export class Gateway {
       this.agentHandle,
       this.streamHandler,
       this.settingRegistry,
+      this.tracing,
     );
 
     this.gatewaySessionManager = new GatewaySessionManager(

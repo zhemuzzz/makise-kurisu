@@ -5,6 +5,9 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
+    "dev": "npx tsx src/main.ts",
+    "dev:cli": "npx tsx src/main.ts --cli",
+    "start": "node dist/main.js",
     "build": "tsc",
     "test": "vitest",
     "test:coverage": "vitest --coverage",

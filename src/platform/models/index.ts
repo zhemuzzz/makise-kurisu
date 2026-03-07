@@ -72,6 +72,14 @@ export class ModelProvider implements IModelProvider {
    * 获取指定模型
    */
   get(modelName: string): IModel {
+    // "default" → 解析为 main 默认模型
+    if (modelName === "default") {
+      const defaultName = this.defaults["main"];
+      if (defaultName) {
+        const defaultModel = this.models.get(defaultName);
+        if (defaultModel) return defaultModel;
+      }
+    }
     const model = this.models.get(modelName);
     if (!model) {
       throw new ModelNotFoundError(modelName);
@@ -96,9 +104,9 @@ export class ModelProvider implements IModelProvider {
   getByTask(taskType: string): IModel {
     // 任务类型映射到能力
     const taskToCapability: Record<string, string> = {
-      conversation: "conversation",
-      code: "code",
-      reasoning: "reasoning",
+      conversation: "main",
+      code: "main",
+      reasoning: "main",
       embedding: "embedding",
     };
 

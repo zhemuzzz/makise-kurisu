@@ -273,7 +273,7 @@ describe("ConfigManager", () => {
 
       const models = cm.get("models");
       expect(models.providers).toHaveLength(2);
-      expect(models.defaults.chat).toBe("zhipu-glm5");
+      expect(models.defaults.main).toBe("zhipu-glm5");
       expect(models.defaults.embedding).toBe("zhipu-embedding");
     });
   });

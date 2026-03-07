@@ -40,6 +40,9 @@ export interface MetaToolDeps {
 
   /** Agent ID (通常是 roleId) */
   readonly agentId: string;
+
+  /** 获取可用模型列表 (用于 spawn-sub-agent 动态枚举) */
+  readonly getAvailableModels: () => string[];
 }
 
 // ============================================================================
@@ -93,9 +96,10 @@ export class ToolExecutorAdapter implements ToolExecutorPort {
   async getToolDefinitions(_skillIds?: string[]): Promise<ToolDef[]> {
     const registryTools = this.registry.list();
 
-    // 如果配置了元工具，把元工具定义也加入
+    // 如果配置了元工具，把元工具定义也加入（含动态模型枚举）
     if (this.metaToolDeps) {
-      return [...registryTools, ...getMetaToolDefs()];
+      const models = this.metaToolDeps.getAvailableModels();
+      return [...registryTools, ...getMetaToolDefs(models)];
     }
 
     return registryTools;
@@ -121,6 +125,7 @@ export class ToolExecutorAdapter implements ToolExecutorPort {
       sessionState: deps.getSessionState(sessionId),
       skills: deps.skills,
       subAgents: deps.subAgents,
+      getAvailableModels: deps.getAvailableModels,
     };
   }
 }

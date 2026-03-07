@@ -3,12 +3,8 @@
 
 # 默认配置
 defaults:
-  conversation: glm-5
-  task: glm-5
-  code: glm-5
-  reasoning: glm-5
+  main: glm-5               # 主 Agent 默认模型
   embedding: zhipu-embedding
-  role: kurisu              # 默认角色（对应 config/personas/{role}/）
 
 # 模型定义
 models:
@@ -129,12 +125,3 @@ models:
       speed: fast
       cost: low
     costPerMillionTokens: 0.3
-
-# 路由规则
-# 开发阶段使用 GLM-5，后续根据需求调整
-routing:
-  rules:
-    conversation: glm-5          # 对话（中文最佳，质量 excellent）
-    code: glm-5                  # 代码生成/理解
-    reasoning: glm-5             # 复杂推理（质量 excellent）
-    embedding: zhipu-embedding    # 向量化（Zhipu embedding-3）

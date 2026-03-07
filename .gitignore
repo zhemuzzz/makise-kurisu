@@ -40,6 +40,8 @@ data/
 .claude/
 .claude.json
 .mcp.json
+.agents/
+AGENTS.md
 
 # Project management (development tracking)
 CLAUDE.md
