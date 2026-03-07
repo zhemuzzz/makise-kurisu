@@ -7,7 +7,7 @@
  */
 
 import { mkdirSync } from "fs";
-import { join } from "path";
+import { dirname, isAbsolute, join, resolve } from "path";
 import BetterSqlite3 from "better-sqlite3";
 import type { ConfigManager } from "./config-manager.js";
 import { createConfigManager } from "./config-manager.js";
@@ -104,6 +104,14 @@ export interface Foundation {
   readonly stores: ReadonlyMap<string, RoleDataStore>;
   readonly permissions: PermissionService;
   shutdown(): void;
+}
+
+export function resolveBootstrapPath(configDir: string, configuredPath: string): string {
+  if (isAbsolute(configuredPath)) {
+    return configuredPath;
+  }
+
+  return resolve(dirname(configDir), configuredPath);
 }
 
 // ============ Bootstrap ============
@@ -300,7 +308,7 @@ interface SharedInfra {
   readonly setExecuteTask: (fn: ExecuteTaskFn) => void;
 }
 
-function initSharedInfra(foundation: Foundation): SharedInfra {
+function initSharedInfra(foundation: Foundation, configDir: string): SharedInfra {
   // SA-1: SubAgentManager with deferred executeTask injection (closure pattern)
   let currentExecuteTask: ExecuteTaskFn = async () => ({
     result: undefined,
@@ -354,9 +362,10 @@ function initSharedInfra(foundation: Foundation): SharedInfra {
 
   // SkillRegistry: Skill 注册表（注入 MCPBridge）
   const skillsConfig = foundation.config.get("skills");
+  const resolvedSkillsDir = resolveBootstrapPath(configDir, skillsConfig.skillsDir);
   const skillRegistry = createSkillRegistry({
     mcpBridge,
-    skillsDir: skillsConfig.skillsDir,
+    skillsDir: resolvedSkillsDir,
   });
 
   // IntentClassifier: 意图分类器（注入 SkillRegistry + ModelProvider）
@@ -683,19 +692,20 @@ export async function bootstrapFull(
   const foundation = await bootstrap(options);
 
   // Phase 2: Shared infrastructure (SubAgentManager, ModelProvider, adapters)
-  const shared = initSharedInfra(foundation);
+  const shared = initSharedInfra(foundation, options.configDir);
 
   // Phase 2.5: Load Skills from directory (if autoLoad enabled)
   const skillsConfig = foundation.config.get("skills");
+  const resolvedSkillsDir = resolveBootstrapPath(options.configDir, skillsConfig.skillsDir);
   if (skillsConfig.autoLoad) {
     try {
-      await shared.skillRegistry.loadFromDirectory(skillsConfig.skillsDir);
+      await shared.skillRegistry.loadFromDirectory(resolvedSkillsDir);
       foundation.tracing.log({
         level: "info",
         category: "agent",
         event: "bootstrap:skills-loaded",
         data: {
-          skillsDir: skillsConfig.skillsDir,
+          skillsDir: resolvedSkillsDir,
           count: shared.skillRegistry.list().length,
         },
         timestamp: Date.now(),

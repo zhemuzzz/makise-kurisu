@@ -237,6 +237,8 @@ executor:
     cpuLimit: "1.0"
     networkMode: none
     timeout: 30000
+skills:
+  autoLoad: false
 `,
   );
 

@@ -158,6 +158,20 @@ This section should not be included in loreCore.
     vi.restoreAllMocks();
   });
 
+  it("BFULL-00: resolveBootstrapPath 应按 configDir 上级解析相对路径", async () => {
+    const { resolveBootstrapPath } = await import("@/platform/bootstrap.js");
+
+    expect(resolveBootstrapPath("/tmp/work/config", "./config/skills")).toBe(
+      "/tmp/work/config/skills",
+    );
+    expect(resolveBootstrapPath("/tmp/work/config", "skills/custom")).toBe(
+      "/tmp/work/skills/custom",
+    );
+    expect(resolveBootstrapPath("/tmp/work/config", "/var/tmp/skills")).toBe(
+      "/var/tmp/skills",
+    );
+  });
+
   it("BFULL-01: bootstrapFull 返回 BootstrapResult with Foundation + RoleServices", async () => {
     vi.stubEnv("ZHIPU_API_KEY", "test-key");
 
